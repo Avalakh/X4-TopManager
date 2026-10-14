@@ -229,7 +229,7 @@
         <do_elseif value="not @Registry.$Station.exists or not @Registry.$Station.isplayerowned">
           <set_value name="$Reason" exact="'Станция утрачена или больше не принадлежит игроку'" />
         </do_elseif>
-        <do_elseif value="not @Registry.$Module.exists or not @Registry.$Module.isoperational">
+        <do_elseif value="(not @Registry.$Module.exists or not @Registry.$Module.isoperational) and Registry.$State != 'draining' and Registry.$State != 'removing_module'">
           <set_value name="$Reason" exact="'Модуль утрачен или не действует'" />
         </do_elseif>
         <do_elseif value="not Registry.$Governor.isplayerowned">
@@ -240,11 +240,15 @@
         </do_elseif>
         <do_else>
           <find_module name="$Modules" object="Registry.$Station" macro="macro.tm_empire_control_arg_macro" multiple="true" />
-          <do_if value="not $Modules.indexof.{Registry.$Module}">
+          <do_if value="not $Modules.indexof.{Registry.$Module} and Registry.$State != 'draining' and Registry.$State != 'removing_module'">
             <set_value name="$Reason" exact="'Модуль больше не входит в станцию управляющего'" />
           </do_if>
         </do_else>
         <do_if value="$Reason">
+          <do_if value="Registry.$State == 'draining' or Registry.$State == 'removing_module'">
+            <set_value name="Registry.$StopReason" exact="'Завершение приостановлено: ' + $Reason" />
+            <return />
+          </do_if>
           <run_actions ref="RevokePurchaseApproval" />
           <run_actions ref="ReleaseGovernorActor" />
           <do_if value="@Registry.$Governor.exists">
@@ -260,7 +264,7 @@
           <run_actions ref="md.TM_Empire_Runtime.PublishAIState" />
           <set_value name="Registry.$StopReason" exact="$Reason" />
         </do_if>
-        <do_elseif value="@Registry.$Governor.podarrivaltime or Registry.$Governor.isintransit or Registry.$Governor.istransferscheduled or Registry.$Governor.station != Registry.$Station or Registry.$Governor.container != Registry.$Station">
+        <do_elseif value="Registry.$State != 'draining' and Registry.$State != 'removing_module' and (@Registry.$Governor.podarrivaltime or Registry.$Governor.isintransit or Registry.$Governor.istransferscheduled or Registry.$Governor.station != Registry.$Station or Registry.$Governor.container != Registry.$Station)">
           <do_if value="Registry.$State != 'waiting_arrival'">
             <run_actions ref="RevokePurchaseApproval" />
             <remove_value name="Registry.$ManagerCue" />
@@ -1035,7 +1039,7 @@
         <do_if value="$Ship == player.controlled">
           <return value="'player_helm'" />
         </do_if>
-        <do_if value="$Claim.$state == 'unknown' or @$Claim.$missing or @$Claim.$issuing">
+        <do_if value="($Claim.$state == 'unknown' and Registry.$State != 'draining' and Registry.$State != 'removing_module') or @$Claim.$missing or @$Claim.$issuing">
           <return value="'unknown_or_pending_claim'" />
         </do_if>
         <do_if value="$Ship.hasorderloop or @$Ship.order.isoverride or @$Ship.order.haspriority or @$Ship.commander != @$Claim.$commander">
@@ -1112,12 +1116,142 @@
         </do_if>
       </actions>
     </library>
+    <library name="RequestShutdown" purpose="run_actions" namespace="this">
+      <params><param name="Actor" /></params>
+      <actions>
+        <do_if value="not @Registry.$Governor or Registry.$Governor != $Actor">
+          <return value="'not_current_governor'" />
+        </do_if>
+        <do_if value="Registry.$State == 'draining' or Registry.$State == 'removing_module'">
+          <return value="'shutdown_pending'" />
+        </do_if>
+        <set_value name="Registry.$State" exact="'draining'" />
+        <run_actions ref="md.TM_Empire_Runtime.PublishAIState" />
+        <set_value name="Registry.$StopReason" exact="'Завершение работы: новые поручения остановлены, действующие обязательства проверяются'" />
+        <set_value name="Registry.$ShutdownManager" exact="@Registry.$ManagerCue" />
+        <set_value name="Registry.$ShutdownModule" exact="@Registry.$Module" />
+        <set_value name="Registry.$ShutdownStation" exact="@Registry.$Station" />
+        <run_actions ref="RevokePurchaseApproval" />
+        <signal_cue_instantly cue="Publish" />
+        <return value="'shutdown_started'" />
+      </actions>
+    </library>
+    <library name="AdvanceShutdown" purpose="run_actions" namespace="this">
+      <actions>
+        <do_if value="Registry.$State != 'draining' and Registry.$State != 'removing_module'">
+          <return value="'inactive'" />
+        </do_if>
+        <do_if value="Registry.$State == 'removing_module'">
+          <do_if value="@Registry.$ShutdownModule.exists">
+            <set_value name="Registry.$StopReason" exact="'Завершение работы: ожидание разборки управляющего модуля'" />
+            <return value="'module_removal_pending'" />
+          </do_if>
+          <run_actions ref="UnbindGovernor" result="$Result"><param name="Actor" value="Registry.$Governor" /></run_actions>
+          <do_if value="$Result == 'unbound'">
+            <set_value name="Registry.$StopReason" exact="'Работа управляющего завершена; модуль разобран'" />
+            <remove_value name="Registry.$ShutdownManager" />
+            <remove_value name="Registry.$ShutdownModule" />
+            <remove_value name="Registry.$ShutdownStation" />
+            <signal_cue_instantly cue="Publish" />
+          </do_if>
+          <return value="$Result" />
+        </do_if>
+        <set_value name="$Blockers" exact="0" />
+        <do_for_each name="$Ship" in="OwnedClaims.$Ships">
+          <do_if value="@global.$TM_EmpireComponentRecords.$claim.{$Ship}.$manager == Registry.$ShutdownManager">
+            <set_value name="$Blockers" operation="add" exact="1" />
+          </do_if>
+        </do_for_each>
+        <do_for_each name="$Ship" in="StationReassignments.$Ships">
+          <do_if value="@global.$TM_EmpireComponentRecords.$station_reassignment.{$Ship}.$manager == Registry.$ShutdownManager">
+            <set_value name="$Blockers" operation="add" exact="1" />
+          </do_if>
+        </do_for_each>
+        <do_if value="@md.TM_Empire_Purchase.Request.$Pending or @md.TM_Empire_Purchase.Tracked.$Build">
+          <set_value name="$Blockers" operation="add" exact="1" />
+        </do_if>
+        <run_actions ref="AdoptShutdownNativeConstruction" />
+        <set_value name="$Receipts" exact="[@md.TM_Empire_Construction.Request.$Receipt, @md.TM_Empire_Construction.Creation.$Receipt, @md.TM_Empire_Construction.Expansion.$Receipt, @md.TM_Empire_Construction.Funding.$Receipt, @md.TM_Empire_Construction.Plot.$Receipt, @md.TM_Empire_Construction.Reservation.$Receipt, @md.TM_Empire_Construction.Builder.$Receipt, @md.TM_Empire_Supply.Request.$Receipt, @md.TM_Empire_Supply.StationFunding.$Receipt, @md.TM_Empire_Personnel.Hire.$Receipt, @md.TM_Empire_Personnel.Transfer.$Receipt, @md.TM_Empire_Personnel.Training.$Receipt]" />
+        <do_for_each name="$Receipt" in="$Receipts">
+          <do_if value="$Receipt and $Receipt.$state != 'observed' and $Receipt.$state != 'delivered' and $Receipt.$state != 'completed' and $Receipt.$state != 'consumed' and $Receipt.$state != 'rejected' and $Receipt.$state != 'rejected_before_effect' and $Receipt.$state != 'revoked' and $Receipt.$state != 'adopted' and $Receipt.$state != 'abandoned_before_effect'">
+            <set_value name="$Blockers" operation="add" exact="1" />
+          </do_if>
+        </do_for_each>
+        <do_if value="$Blockers gt 0">
+          <do_if value="$Blockers == 1 and (@md.TM_Empire_Personnel.Transfer.$Receipt.$state == 'sent' or @md.TM_Empire_Personnel.Transfer.$Receipt.$state == 'unknown')">
+            <set_value name="Registry.$StopReason" exact="'Завершение работы: ожидается подтверждение перевода сотрудника; управляющий модуль пока сохранён'" />
+          </do_if>
+          <do_else>
+            <set_value name="Registry.$StopReason" exact="'Завершение работы: ожидаются корабли, назначения или оплаченные результаты (' + $Blockers + ')'" />
+          </do_else>
+          <return value="'work_pending'" />
+        </do_if>
+        <set_value name="$Station" exact="@Registry.$ShutdownStation" />
+        <set_value name="$Module" exact="@Registry.$ShutdownModule" />
+        <do_if value="not $Station.exists or not $Station.isplayerowned or not $Module.exists or not $Module.isoperational">
+          <set_value name="Registry.$StopReason" exact="'Завершение остановлено: управляющий модуль или станция недоступны; безопасная разборка не подтверждена'" />
+          <return value="'module_unavailable'" />
+        </do_if>
+        <find_module name="$Modules" object="$Station" macro="macro.tm_empire_control_arg_macro" multiple="true" />
+        <do_if value="$Modules.count != 1 or $Modules.{1} != $Module or $Station.hasfixedconstruction or $Station.hasstagedconstruction">
+          <set_value name="Registry.$StopReason" exact="'Завершение остановлено: строительный план нельзя безопасно изменить автоматически'" />
+          <return value="'module_plan_unsafe'" />
+        </do_if>
+        <remove_from_construction_sequence object="$Station" sequence="$Station.plannedconstruction.sequence" macros="[macro.tm_empire_control_arg_macro]">
+          <result sequence="$RemovalSequence" removed="$Removed" />
+        </remove_from_construction_sequence>
+        <do_if value="not $RemovalSequence or ($Removed.count != 1 and ($Removed.count != 0 or $RemovalSequence.count != $Station.plannedconstruction.sequence.count)) or ($Removed.count == 1 and $Removed.{1} != $Module)">
+          <set_value name="Registry.$StopReason" exact="'Завершение остановлено: разборка затронула бы другие модули станции'" />
+          <return value="'module_removal_unsafe'" />
+        </do_if>
+        <set_value name="Registry.$State" exact="'removing_module'" />
+        <run_actions ref="md.TM_Empire_Runtime.PublishAIState" />
+        <set_value name="Registry.$StopReason" exact="'Завершение работы: управляющий модуль передан на разборку'" />
+        <do_if value="$Removed.count == 1">
+          <apply_construction_sequence station="$Station" sequence="$RemovalSequence" remove="true" />
+        </do_if>
+        <do_else>
+          <destroy_object object="$Module" explosion="false" />
+        </do_else>
+        <signal_cue_instantly cue="Publish" />
+        <return value="'module_removal_sent'" />
+      </actions>
+    </library>
+    <library name="AdoptShutdownNativeConstruction" purpose="run_actions" namespace="this">
+      <actions>
+        <set_value name="$Receipt" exact="@md.TM_Empire_Construction.Expansion.$Receipt" />
+        <set_value name="$Station" exact="@$Receipt.$station" />
+        <set_value name="$Build" exact="@$Receipt.$build" />
+        <do_if value="not $Receipt or $Receipt.$state != 'queued' or not @$Receipt.$nativecreation or not $Station.exists or not $Station.isplayerowned or not $Station.buildstorage.exists or not $Build.exists or $Build.buildobject != $Station or $Build.object != $Station.buildstorage or (not $Station.buildstorage.builds.queued.indexof.{$Build} and not $Station.buildstorage.builds.inprogress.indexof.{$Build})">
+          <return value="'native_queue_not_proven'" />
+        </do_if>
+        <do_if value="@md.TM_Empire_Construction.Creation.$Receipt.$state != 'adopted' or @md.TM_Empire_Construction.Creation.$Receipt.$station != $Station or @md.TM_Empire_Construction.Funding.$Receipt.$state != 'observed' or @md.TM_Empire_Construction.Funding.$Receipt.$build != $Build or @md.TM_Empire_Construction.Plot.$Receipt.$state != 'observed' or @md.TM_Empire_Construction.Plot.$Receipt.$build != $Build or @md.TM_Empire_Construction.Builder.$Receipt.$state != 'observed' or @md.TM_Empire_Construction.Builder.$Receipt.$build != $Build or not @$Station.buildstorage.buildmodule.constructionvessel.exists">
+          <return value="'native_build_obligations_unsettled'" />
+        </do_if>
+        <do_if value="@global.$TM_EmpireComponentRecords.$construction_claim.{$Station}.$key != $Receipt.$key or @global.$TM_EmpireComponentRecords.$construction_claim.{$Station}.$manager != Registry.$ShutdownManager or @global.$TM_EmpireComponentRecords.$construction_claim.{$Station}.$build != $Build">
+          <return value="'native_construction_claim_changed'" />
+        </do_if>
+        <set_value name="md.TM_Empire_Construction.Expansion.$Receipt.$state" exact="'adopted'" />
+        <set_value name="md.TM_Empire_Construction.Expansion.$Receipt.$reason" exact="'shutdown_native_build_queue_adopted'" />
+        <remove_value name="global.$TM_EmpireComponentRecords.$construction_claim.{$Station}" />
+        <return value="'native_queue_adopted'" />
+      </actions>
+    </library>
+    <cue name="ShutdownWatch" checkinterval="15s" namespace="this">
+      <conditions><check_value value="Registry.$State == 'draining' or Registry.$State == 'removing_module'" /></conditions>
+      <delay exact="15s" />
+      <actions>
+        <run_actions ref="AdvanceShutdown" />
+        <signal_cue_instantly cue="Publish" />
+        <reset_cue cue="this" />
+      </actions>
+    </cue>
     <library name="UnbindGovernor" purpose="run_actions" namespace="this">
       <params>
         <param name="Actor" />
       </params>
       <actions>
-        <do_if value="not @Registry.$Governor or Registry.$Governor != $Actor">
+        <do_if value="Registry.$Governor != $Actor or (not @Registry.$Governor and Registry.$State != 'removing_module')">
           <return value="'not_current_governor'" />
         </do_if>
         <run_actions ref="RevokePurchaseApproval" />
@@ -1155,6 +1289,9 @@
             <set_value name="player.entity.$tm_empire_projection.$active" exact="true" />
             <set_value name="player.entity.$tm_empire_projection.$reason" exact="'Управляющий выполняет штатный алгоритм империи'" />
           </do_if>
+          <do_elseif value="Registry.$State == 'draining' or Registry.$State == 'removing_module'">
+            <set_value name="player.entity.$tm_empire_projection.$reason" exact="Registry.$StopReason" />
+          </do_elseif>
           <do_elseif value="Registry.$State == 'starting'">
             <set_value name="player.entity.$tm_empire_projection.$reason" exact="'Запуск управляющего империей'" />
           </do_elseif>

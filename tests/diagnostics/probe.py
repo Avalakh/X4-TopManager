@@ -56,6 +56,7 @@ def request(pipe, frame, timeout=15):
         'save_remote_personnel': 'save_remote_personnel|',
         'save_current_status': 'save_current_status|',
         'save_scenario_checkpoint': 'save_scenario_checkpoint|',
+        'save_clean_shutdown': 'save_clean_shutdown|',
         'save_station_package': 'save_station_package|',
         'local_builder': 'local_builder|',
         'local_owned_builder': 'local_builder|',

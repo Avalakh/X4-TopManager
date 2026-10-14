@@ -21,7 +21,8 @@ local function respond(_, data)
             .. '|reason=' .. tostring(reason):gsub('[|\r\n]', ' ') .. '|effects=false'
     end
     local menu = Helper.getMenu('PlayerInfoMenu')
-    local status = require('extensions.tm_empire_management.ui.empire_status')
+    local statusOk, status = pcall(require, 'extensions.tm_empire_management.ui.empire_status')
+    if not statusOk then status = nil end
     local hooks = menu and type(menu.registerCallback) == 'function'
     local projection = status and status.snapshot and status.snapshot()
     local raw = GetNPCBlackboard(ConvertStringToLuaID(tostring(require('ffi').C.GetPlayerID())), '$tm_empire_projection')
@@ -211,6 +212,7 @@ arm = function()
     Presence.when_ready(PIPE, function()
         Pipes.Schedule_Read(PIPE, function(message)
             local scenarioSlot = type(message) == 'string' and (message:match('^save_scenario_checkpoint|preflight_(save_01[5-9])_absent$') or message:match('^save_scenario_checkpoint|preflight_(save_02[0-9])_absent$') or message:match('^save_scenario_checkpoint|preflight_(save_03[0-9])_absent$'))
+            local cleanShutdownSlot = type(message) == 'string' and message:match('^save_clean_shutdown|preflight_(save_04[01])_absent$') or nil
             if message == 'ERROR' then
                 Time.Set_Alarm('tm_empire_probe_retry', 2, function() arm() end)
             elseif message == 'projection_raw' then
@@ -679,6 +681,10 @@ arm = function()
                 AddUITriggeredEvent('TM_Empire_Probe', 'CheckRoles')
             elseif message == 'release_fixture' then
                 AddUITriggeredEvent('TM_Empire_Probe', 'Release')
+            elseif message == 'shutdown_read' then
+                AddUITriggeredEvent('TM_Empire_Probe', 'ShutdownRead')
+            elseif message == 'shutdown_fixture' then
+                AddUITriggeredEvent('TM_Empire_Probe', 'ShutdownFixture')
             elseif message == 'role_contract' then
                 AddUITriggeredEvent('TM_Empire_Probe', 'RoleContract')
             elseif message == 'training_positive_fixture' then
@@ -740,7 +746,7 @@ arm = function()
                 or message == 'save_station_package|preflight_save_012_absent'
                 or message == 'save_boundary_package|preflight_save_013_absent'
                 or message == 'save_domain_checkpoint|preflight_save_014_absent'
-                or scenarioSlot then
+                or scenarioSlot or cleanShutdownSlot then
                 -- Diagnostic client checks the physical folder immediately before
                 -- this exact request. The stock ten slots are never selected.
                 local ffi = require('ffi')
@@ -749,9 +755,9 @@ arm = function()
                 local boundaryPackage = message == 'save_boundary_package|preflight_save_013_absent'
                 local domainCheckpoint = message == 'save_domain_checkpoint|preflight_save_014_absent'
                 local scenarioCheckpoint = scenarioSlot
-                local saveCommand = scenarioCheckpoint and 'save_scenario_checkpoint' or domainCheckpoint and 'save_domain_checkpoint' or boundaryPackage and 'save_boundary_package' or stationPackage and 'save_station_package' or 'save_current_status'
-                local marker = scenarioCheckpoint and (scenarioSlot == 'save_015' and '$tm_empire_scenario_checkpoint_save' or '$tm_empire_scenario_checkpoint_' .. scenarioSlot) or domainCheckpoint and '$tm_empire_domain_checkpoint_save' or boundaryPackage and '$tm_empire_boundary_package_save' or stationPackage and '$tm_empire_station_package_save' or '$tm_empire_current_status_save'
-                local slot = scenarioCheckpoint and scenarioSlot or domainCheckpoint and 'save_014' or boundaryPackage and 'save_013' or stationPackage and 'save_012' or 'save_011'
+                local saveCommand = cleanShutdownSlot and 'save_clean_shutdown' or scenarioCheckpoint and 'save_scenario_checkpoint' or domainCheckpoint and 'save_domain_checkpoint' or boundaryPackage and 'save_boundary_package' or stationPackage and 'save_station_package' or 'save_current_status'
+                local marker = cleanShutdownSlot and '$tm_empire_clean_shutdown_' .. cleanShutdownSlot or scenarioCheckpoint and (scenarioSlot == 'save_015' and '$tm_empire_scenario_checkpoint_save' or '$tm_empire_scenario_checkpoint_' .. scenarioSlot) or domainCheckpoint and '$tm_empire_domain_checkpoint_save' or boundaryPackage and '$tm_empire_boundary_package_save' or stationPackage and '$tm_empire_station_package_save' or '$tm_empire_current_status_save'
+                local slot = cleanShutdownSlot or scenarioCheckpoint and scenarioSlot or domainCheckpoint and 'save_014' or boundaryPackage and 'save_013' or stationPackage and 'save_012' or 'save_011'
                 if GetNPCBlackboard(player, marker) then
                     respond(nil, saveCommand .. '|previous_attempt|effects=false')
                 else
@@ -767,21 +773,25 @@ arm = function()
                             end
                         end
                         local projection = GetNPCBlackboard(player, '$tm_empire_projection')
-                        if type(projection) ~= 'table' or (projection.active ~= true and projection.active ~= 1) then
+                        if cleanShutdownSlot then
+                            if type(projection) ~= 'table' or (projection.active ~= false and projection.active ~= 0) or (projection.has_governor ~= false and projection.has_governor ~= 0) or projection.reason ~= 'Работа управляющего завершена; модуль разобран' then
+                                respond(nil, saveCommand .. '|shutdown_not_clean|effects=false'); return
+                            end
+                        elseif type(projection) ~= 'table' or (projection.active ~= true and projection.active ~= 1) then
                             respond(nil, saveCommand .. '|governor_not_active|effects=false'); return
                         end
                         if GetNPCBlackboard(player, marker) then
                             respond(nil, saveCommand .. '|previous_attempt|effects=false'); return
                         end
                         SetNPCBlackboard(player, marker, {slot=slot, state='requested'})
-                        SaveGame(slot, scenarioCheckpoint and 'TM Empire scenario checkpoint' or domainCheckpoint and 'TM Empire domain checkpoint' or boundaryPackage and 'TM Empire boundary package' or stationPackage and 'TM Empire station package' or 'TM Empire current station status')
+                        SaveGame(slot, cleanShutdownSlot and 'TM Empire clean shutdown' or scenarioCheckpoint and 'TM Empire scenario checkpoint' or domainCheckpoint and 'TM Empire domain checkpoint' or boundaryPackage and 'TM Empire boundary package' or stationPackage and 'TM Empire station package' or 'TM Empire current station status')
                         local current = Helper.getMenu('PlayerInfoMenu')
                         if current and current.infoFrame and current.infoFrame.id then current.closeMenu('close') end
                         respond(nil, saveCommand .. '|requested|slot=' .. slot .. '|overwrite=false')
                     end, true, getElapsedTime() + .5)
                 end
             elseif message == 'save_current_status' or message == 'save_station_package' or message == 'save_boundary_package' or message == 'save_validation'
-                or message == 'save_scenario_checkpoint' or message == 'save_domain_checkpoint' or message == 'save_checkpoint' or message == 'save_remote_personnel' then
+                or message == 'save_scenario_checkpoint' or message == 'save_clean_shutdown' or message == 'save_domain_checkpoint' or message == 'save_checkpoint' or message == 'save_remote_personnel' then
                 respond(nil, message .. '|preflight_required|effects=false')
             elseif message == 'save_fixture' then
                 respond(nil, 'save_fixture|retired|reason=unsafe_fixed_slot|effects=false')

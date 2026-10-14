@@ -49,7 +49,7 @@
           </run_actions>
         </do_if>
         <do_elseif value="event.param == 'tm_empire_release' and typeof $Actor == datatype.component">
-          <run_actions ref="md.TM_Empire_Runtime.UnbindGovernor" result="$Result">
+          <run_actions ref="md.TM_Empire_Runtime.RequestShutdown" result="$Result">
             <param name="Actor" value="$Actor" />
           </run_actions>
         </do_elseif>
@@ -104,6 +104,9 @@
           </do_elseif>
           <do_elseif value="$Result == 'unbound'">
             <set_value name="$Message" exact="{98761,23}" />
+          </do_elseif>
+          <do_elseif value="$Result == 'shutdown_started' or $Result == 'shutdown_pending'">
+            <set_value name="$Message" exact="{98761,33} + ': ' + @md.TM_Empire_Runtime.Registry.$StopReason" />
           </do_elseif>
           <do_elseif value="$Result == 'existing_post'">
             <set_value name="$Message" exact="{98761,24}" />

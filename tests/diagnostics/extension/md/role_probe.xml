@@ -1,6 +1,116 @@
 <?xml version='1.0' encoding='utf-8'?>
 <mdscript name="TM_Empire_Probe">
   <cues>
+    <cue name="ShutdownFixture" instantiate="true">
+      <conditions><event_ui_triggered screen="'TM_Empire_Probe'" control="'ShutdownFixture'" /></conditions>
+      <actions><run_actions ref="RunShutdownFixture" /></actions>
+    </cue>
+    <library name="RunShutdownFixture" purpose="run_actions" namespace="this">
+      <actions>
+        <do_if value="State.$ShutdownFixture?">
+          <raise_lua_event name="'TM_Empire_Probe.Result'" param="'shutdown_fixture|previous_attempt'" />
+          <return />
+        </do_if>
+        <do_if value="@md.TM_Empire_Runtime.Registry.$Governor or md.TM_Empire_Runtime.Registry.$State != 'inactive'">
+          <raise_lua_event name="'TM_Empire_Probe.Result'" param="'shutdown_fixture|governor_already_present'" />
+          <return />
+        </do_if>
+        <find_station_by_true_owner name="$Stations" faction="faction.player" space="player.galaxy" multiple="true" />
+        <set_value name="$Station" exact="null" />
+        <do_for_each name="$Candidate" in="$Stations">
+          <find_object_component name="$Research" macro="macro.landmarks_player_hq_01_research_macro" object="$Candidate" />
+          <do_if value="$Research.exists"><set_value name="$Station" exact="$Candidate" /><break /></do_if>
+        </do_for_each>
+        <do_if value="not $Station.exists and player.controlled.exists and player.controlled.sector.exists">
+          <set_value name="State.$ShutdownFixture" exact="table[$state='creating_station', $issued=player.age]" />
+          <create_station name="$Station" macro="macro.station_gen_factory_base_01_macro" constructionplan="'scenario2_silicon_refinery'" owner="faction.player" sector="player.controlled.sector" state="componentstate.operational" rawname="'TopManager shutdown test station'"><safepos value="player.controlled.position" min="30km" max="50km" includeplotbox="true" radius="8km" /></create_station>
+          <set_value name="State.$ShutdownFixture.$station" exact="$Station" />
+        </do_if>
+        <do_if value="not $Station.exists or not $Station.controlroom.exists">
+          <do_if value="State.$ShutdownFixture?"><set_value name="State.$ShutdownFixture.$state" exact="'station_unavailable'" /></do_if>
+          <raise_lua_event name="'TM_Empire_Probe.Result'" param="'shutdown_fixture|hq_unavailable'" />
+          <return />
+        </do_if>
+        <find_dockingbay name="$Dock" object="$Station" checkoperational="true"><match_dock storage="true" size="tag.dock_s" /></find_dockingbay>
+        <do_if value="not $Dock.exists">
+          <raise_lua_event name="'TM_Empire_Probe.Result'" param="'shutdown_fixture|dock_unavailable'" />
+          <return />
+        </do_if>
+        <do_if value="not State.$ShutdownFixture?"><set_value name="State.$ShutdownFixture" exact="table[$state='creating', $station=$Station, $issued=player.age]" /></do_if>
+        <create_ship name="$Source" macro="macro.ship_arg_s_scout_01_a_macro" dock="$Dock"><owner exact="faction.player" /><loadout><level exact="1" /></loadout><pilot actor="null" /><people><fillpercent exact="100" /><person role="service" weight="100"><select faction="faction.argon" tags="tag.service" /></person></people></create_ship>
+        <set_value name="$Template" exact="@$Source.availablepeople.{entityrole.service}.list.{1}" />
+        <set_value name="State.$ShutdownFixture.$source" exact="$Source" />
+        <do_if value="not $Source.exists or not $Template"><set_value name="State.$ShutdownFixture.$state" exact="'source_unavailable'" /><raise_lua_event name="'TM_Empire_Probe.Result'" param="'shutdown_fixture|source_unavailable'" /><return /></do_if>
+        <find_module name="$Module" object="$Station" macro="macro.tm_empire_control_arg_macro" />
+        <do_if value="not $Module.exists"><create_module name="$Module" object="$Station" macro="macro.tm_empire_control_arg_macro"><position x="0m" y="2000m" z="0m" /></create_module></do_if>
+        <set_value name="State.$ShutdownFixture.$module" exact="$Module" />
+        <do_if value="not $Module.exists or not $Module.isoperational"><set_value name="State.$ShutdownFixture.$state" exact="'module_unavailable'" /><raise_lua_event name="'TM_Empire_Probe.Result'" param="'shutdown_fixture|module_unavailable'" /><return /></do_if>
+        <set_value name="State.$ShutdownFixture.$seed" exact="$Source.people.{$Template}.seed" />
+        <assign_hired_actor actor="[$Source, $Template]" target="$Station" role="entityrole.passenger" check="true" success="$Allowed" failed="$Failure" />
+        <do_if value="not $Allowed"><set_value name="State.$ShutdownFixture.$state" exact="'native_transfer_unavailable'" /><raise_lua_event name="'TM_Empire_Probe.Result'" param="'shutdown_fixture|native_transfer_unavailable|reason=' + $Failure" /><return /></do_if>
+        <set_value name="State.$ShutdownFixture.$state" exact="'transfer_sent'" />
+        <assign_hired_actor actor="[$Source, $Template]" target="$Station" role="entityrole.passenger" success="$Sent" failed="$Failure" />
+        <do_if value="not $Sent"><set_value name="State.$ShutdownFixture.$state" exact="'transfer_unknown'" /></do_if>
+        <raise_lua_event name="'TM_Empire_Probe.Result'" param="'shutdown_fixture|transfer=' + State.$ShutdownFixture.$state + '|reason=' + $Failure + '|source=' + $Source + '|station=' + $Station + '|module=' + $Module + '|seed=' + State.$ShutdownFixture.$seed" />
+      </actions>
+    </library>
+    <cue name="ShutdownFixtureWatch" checkinterval="5s" namespace="this">
+      <conditions><check_value value="State.$ShutdownFixture? and (State.$ShutdownFixture.$state == 'transfer_sent' or State.$ShutdownFixture.$state == 'not_arrived')" /></conditions>
+      <delay exact="5s" />
+      <actions>
+        <run_actions ref="FinishShutdownFixture" />
+        <reset_cue cue="this" />
+      </actions>
+    </cue>
+    <library name="FinishShutdownFixture" purpose="run_actions" namespace="this">
+      <actions>
+        <set_value name="$Station" exact="@State.$ShutdownFixture.$station" />
+        <set_value name="$Module" exact="@State.$ShutdownFixture.$module" />
+        <do_if value="not $Station.exists or not $Module.exists"><set_value name="State.$ShutdownFixture.$state" exact="'target_lost'" /><return /></do_if>
+        <set_value name="$Governor" exact="@State.$ShutdownFixture.$governor" />
+        <do_if value="not $Governor.exists">
+          <set_value name="$Template" exact="null" />
+          <do_for_each name="$Person" in="$Station.people.list">
+            <do_if value="$Station.people.{$Person}.seed == State.$ShutdownFixture.$seed and not $Station.people.{$Person}.isintransit and not $Station.people.{$Person}.istransferscheduled"><set_value name="$Template" exact="$Person" /><break /></do_if>
+          </do_for_each>
+          <do_if value="not $Template"><return /></do_if>
+          <create_npc_from_template name="$Governor" object="$Station" template="$Template" owner="faction.player" placementobject="$Station.controlroom" required="true" />
+          <do_if value="$Governor.exists"><set_entity_role_object entity="$Governor" object="$Station" /></do_if>
+          <set_value name="State.$ShutdownFixture.$governor" exact="$Governor" />
+        </do_if>
+        <run_actions ref="md.TM_Empire_Runtime.BindGovernor" result="$Bound"><param name="Actor" value="$Governor" /><param name="Station" value="$Station" /><param name="Module" value="$Module" /></run_actions>
+        <do_if value="$Bound == 'bound'"><run_actions ref="md.TM_Empire_Runtime.RequestShutdown" result="$Shutdown"><param name="Actor" value="$Governor" /></run_actions></do_if>
+        <set_value name="State.$ShutdownFixture.$state" exact="if $Bound == 'bound' then $Shutdown else $Bound" />
+      </actions>
+    </library>
+    <cue name="ShutdownRead" instantiate="true">
+      <conditions><event_ui_triggered screen="'TM_Empire_Probe'" control="'ShutdownRead'" /></conditions>
+      <actions>
+        <set_value name="$Registry" exact="md.TM_Empire_Runtime.Registry" />
+        <set_value name="$Station" exact="@$Registry.$ShutdownStation" />
+        <set_value name="$Module" exact="@$Registry.$ShutdownModule" />
+        <set_value name="$Expansion" exact="@md.TM_Empire_Construction.Expansion.$Receipt" />
+        <set_value name="$Transfer" exact="@md.TM_Empire_Personnel.Transfer.$Receipt" />
+        <set_value name="$ClaimCount" exact="0" />
+        <set_value name="$ClaimDetails" exact="''" />
+        <do_for_each name="$Ship" in="md.TM_Empire_Runtime.OwnedClaims.$Ships">
+          <do_if value="@global.$TM_EmpireComponentRecords.$claim.{$Ship}.$manager == $Registry.$ShutdownManager">
+            <set_value name="$ClaimCount" operation="add" exact="1" />
+            <do_if value="$ClaimCount le 12">
+              <set_value name="$Claim" exact="global.$TM_EmpireComponentRecords.$claim.{$Ship}" />
+              <set_value name="$ClaimDetails" exact="$ClaimDetails + '\nshutdown_claim|ship=' + $Ship + '|state=' + @$Claim.$state + '|missing=' + @$Claim.$missing + '|issuing=' + @$Claim.$issuing + '|orders=' + @$Claim.$orders.count + '|stoporders=' + @$Claim.$stoporders.count + '|command=' + @$Ship.order.id + '|queue=' + @$Ship.orders.count + '|commandeered=' + @$Ship.iscommandeered + '|player_helm=' + ($Ship == player.controlled) + '|priority=' + @$Ship.order.haspriority + '|override=' + @$Ship.order.isoverride + '|commander_same=' + (@$Ship.commander == @$Claim.$commander)" />
+            </do_if>
+          </do_if>
+        </do_for_each>
+        <set_value name="$ReassignCount" exact="0" />
+        <do_for_each name="$Ship" in="md.TM_Empire_Runtime.StationReassignments.$Ships">
+          <do_if value="@global.$TM_EmpireComponentRecords.$station_reassignment.{$Ship}.$manager == $Registry.$ShutdownManager">
+            <set_value name="$ReassignCount" operation="add" exact="1" />
+          </do_if>
+        </do_for_each>
+        <raise_lua_event name="'TM_Empire_Probe.Result'" param="'shutdown_read|state=' + $Registry.$State + '|reason=' + @$Registry.$StopReason + '|claims=' + $ClaimCount + '|reassign=' + $ReassignCount + '|expansion=' + @$Expansion.$state + '|expansion_native=' + @$Expansion.$nativecreation + '|expansion_build=' + @$Expansion.$build.exists + '|transfer=' + @$Transfer.$state + '|transfer_reason=' + @$Transfer.$reason + '|module=' + $Module.exists + '|plan=' + @$Station.plannedconstruction.sequence.count + '|staged=' + @$Station.hasstagedconstruction + '|fixed=' + @$Station.hasfixedconstruction + '|fixture=' + @State.$ShutdownFixture.$state + '|fixture_governor=' + @State.$ShutdownFixture.$governor.exists + '|fixture_module=' + @State.$ShutdownFixture.$module.exists + $ClaimDetails" />
+      </actions>
+    </cue>
     <cue name="MiningDeliveryTrace" instantiate="true" namespace="this">
       <conditions><event_ui_triggered screen="'TM_Empire_Probe'" control="'MiningDeliveryTrace'" /></conditions>
       <actions>

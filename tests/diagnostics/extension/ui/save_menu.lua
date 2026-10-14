@@ -50,7 +50,7 @@ diagnosticSaveFilenames.save_011 = true
 diagnosticSaveFilenames.save_012 = true
 diagnosticSaveFilenames.save_013 = true
 diagnosticSaveFilenames.save_014 = true
-for i = 15, 39 do diagnosticSaveFilenames[string.format('save_%03d', i)] = true end
+for i = 15, 41 do diagnosticSaveFilenames[string.format('save_%03d', i)] = true end
 
 local function available_saves()
     local saves = GetSaveList(diagnosticSaveFilenames)

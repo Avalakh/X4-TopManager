@@ -5,7 +5,7 @@
     <t id="2">Empire Management</t>
     <t id="3">Administrative centre for a separate empire governor. Governor, automation and status tab are still under development.</t>
     <t id="10">Empire management…</t>
-    <t id="11">Release empire governor assignment</t>
+    <t id="11">Finish work and dismantle the empire management module</t>
     <t id="12">Other modules</t>
     <t id="13">No operational player-owned empire management module</t>
     <t id="14">Personnel transfer sent; awaiting confirmation</t>
@@ -22,5 +22,6 @@
     <t id="30">The employee has not arrived or is being transferred. Wait for the journey to finish.</t>
     <t id="31">The employee and their source assignment could not be confirmed. Reopen the conversation with an available employee.</t>
     <t id="32">The game's personnel system did not allow this employee to transfer to the selected station</t>
+    <t id="33">Shutdown requested</t>
   </page>
 </language>
