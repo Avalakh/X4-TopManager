@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<content id="tm_empire_diagnostics" name="Empire Management — проверка" description="Только диагностические pipes для разработки. Не входит в релиз." author="X4Project" version="1" save="false" sync="false">
+  <dependency version="900"/>
+  <dependency id="ws_2042901274" name="SirNukes Mod Support APIs"/>
+</content>

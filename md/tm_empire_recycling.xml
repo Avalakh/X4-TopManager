@@ -1,0 +1,348 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mdscript name="TM_Empire_Recycling">
+  <cues>
+    <cue name="BuildWatch" namespace="this">
+      <actions>
+        <create_group groupname="$Stores" />
+      </actions>
+      <cues>
+        <cue name="NativeRecyclingFinished" instantiate="true" namespace="this">
+          <conditions>
+            <event_build_finished group="BuildWatch.$Stores" />
+            <check_value value="@global.$TM_EmpireComponentRecords.$recycling_receipt.{event.object}.$build == event.param3" />
+          </conditions>
+          <actions>
+            <set_value name="$Receipt" exact="global.$TM_EmpireComponentRecords.$recycling_receipt.{event.object}" />
+            <do_if value="$Receipt.$state == 'queued' or $Receipt.$state == 'unknown'">
+              <set_value name="$Receipt.$state" exact="'build_finished'" />
+              <set_value name="$Receipt.$finished" exact="player.age" />
+              <set_value name="$Receipt.$reason" exact="'exact_native_recycling_build_finished'" />
+            </do_if>
+          </actions>
+        </cue>
+        <cue name="NativeRecyclingCancelled" instantiate="true" namespace="this">
+          <conditions>
+            <event_build_cancelled group="BuildWatch.$Stores" />
+            <check_value value="@global.$TM_EmpireComponentRecords.$recycling_receipt.{event.object}.$build == event.param" />
+          </conditions>
+          <actions>
+            <set_value name="global.$TM_EmpireComponentRecords.$recycling_receipt.{event.object}.$state" exact="'unknown'" />
+            <set_value name="global.$TM_EmpireComponentRecords.$recycling_receipt.{event.object}.$reason" exact="'native_recycling_build_cancelled'" />
+          </actions>
+        </cue>
+      </cues>
+    </cue>
+    <cue name="FinishedRecyclingWatch" namespace="this" checkinterval="15s">
+      <conditions>
+        <check_value value="BuildWatch.$Stores.count" />
+      </conditions>
+      <delay exact="15s" />
+      <actions>
+        <do_if value="not $Cursor?">
+          <set_value name="$Cursor" exact="1" />
+        </do_if>
+        <do_all exact="[BuildWatch.$Stores.count, 8].min">
+          <do_if value="$Cursor gt BuildWatch.$Stores.count">
+            <set_value name="$Cursor" exact="1" />
+          </do_if>
+          <set_value name="$Store" exact="BuildWatch.$Stores.{$Cursor}" />
+          <set_value name="$Cursor" operation="add" />
+          <set_value name="$Receipt" exact="@global.$TM_EmpireComponentRecords.$recycling_receipt.{$Store}" />
+          <do_if value="$Receipt and $Receipt.$state == 'build_finished'">
+            <set_value name="$Station" exact="$Receipt.$station" />
+            <do_if value="not $Station.exists or ($Station.isplayerowned and not $Station.modules.count)">
+              <set_value name="$Receipt.$state" exact="'observed'" />
+              <set_value name="$Receipt.$reason" exact="'native_recycling_finished_and_modules_removed'" />
+              <set_value name="$Receipt.$observed" exact="player.age" />
+              <do_if value="$Station.exists and $Station.isplayerowned and @global.$TM_EmpireComponentRecords.$construction_claim.{$Station}.$goal == $Receipt.$goal and @global.$TM_EmpireComponentRecords.$construction_claim.{$Station}.$build == $Receipt.$build">
+                <remove_value name="global.$TM_EmpireComponentRecords.$construction_claim.{$Station}" />
+              </do_if>
+              <remove_from_group group="BuildWatch.$Stores" object="$Store" />
+            </do_if>
+          </do_if>
+        </do_all>
+        <reset_cue cue="this" />
+      </actions>
+    </cue>
+    <library name="StepDockedShipEvacuation" purpose="run_actions" namespace="this">
+      <params>
+        <param name="ManagerCue" />
+        <param name="GoalCue" />
+        <param name="Station" />
+        <param name="Ships" />
+      </params>
+      <actions>
+        <set_value name="$Pending" exact="@$GoalCue.$tm_empire_recycling_ship" />
+        <do_if value="$Pending">
+          <set_value name="$Ship" exact="$Pending.$ship" />
+          <do_if value="$Ship.exists and $Ship.isplayerowned and not $Ship.dock.exists and not $Ship.hascontext.{$Station} and $Ship.distanceto.{$Station} gt $Station.size + 5km">
+            <do_if value="@global.$TM_EmpireComponentRecords.$claim.{$Ship}.$manager == $ManagerCue and @global.$TM_EmpireComponentRecords.$claim.{$Ship}.$goal == $GoalCue">
+              <run_actions ref="md.TM_Empire_Runtime.StopAndReleaseOwnedShip" result="$Release">
+                <param name="Ship" value="$Ship" />
+                <param name="ManagerCue" value="$ManagerCue" />
+                <param name="GoalCue" value="$GoalCue" />
+              </run_actions>
+              <do_if value="$Release != 'released'">
+                <return value="$Release" />
+              </do_if>
+            </do_if>
+            <set_value name="$GoalCue.$tm_empire_recycling_ship_result" exact="table[$state='observed', $ship=$Ship, $order=$Pending.$order, $observed=player.age]" />
+            <remove_value name="$GoalCue.$tm_empire_recycling_ship" />
+            <return value="'ship_evacuated'" />
+          </do_if>
+          <do_if value="not $Ship.exists or not $Pending.$order.exists">
+            <set_value name="$Pending.$state" exact="'unknown'" />
+            <return value="'ship_evacuation_unconfirmed'" />
+          </do_if>
+          <return value="'ship_evacuation_pending'" />
+        </do_if>
+        <do_if value="not $GoalCue.$tm_empire_recycling_dockcursor?">
+          <set_value name="$GoalCue.$tm_empire_recycling_dockcursor" exact="1" />
+        </do_if>
+        <do_all exact="[$Ships.count, 8].min">
+          <do_if value="$GoalCue.$tm_empire_recycling_dockcursor gt $Ships.count">
+            <set_value name="$GoalCue.$tm_empire_recycling_dockcursor" exact="1" />
+          </do_if>
+          <set_value name="$Ship" exact="$Ships.{$GoalCue.$tm_empire_recycling_dockcursor}" />
+          <set_value name="$GoalCue.$tm_empire_recycling_dockcursor" operation="add" />
+          <run_actions ref="md.TM_Empire_Runtime.ClaimOwnedShip" result="$Reason">
+            <param name="Ship" value="$Ship" />
+            <param name="ManagerCue" value="$ManagerCue" />
+            <param name="GoalCue" value="$GoalCue" />
+          </run_actions>
+          <do_if value="$Reason == 'available'">
+            <create_position name="$Position" object="$Station" space="$Station.sector" min="$Station.size + 10km" max="$Station.size + 20km" />
+            <set_value name="$GoalCue.$tm_empire_recycling_ship" exact="table[$state='order_sent', $ship=$Ship, $station=$Station, $issued=player.age]" />
+            <set_value name="global.$TM_EmpireComponentRecords.$claim.{$Ship}.$issuing" exact="true" />
+            <create_order name="$Order" object="$Ship" id="'MoveGeneric'">
+              <param name="destination" value="$Station.sector" />
+              <param name="position" value="$Position" />
+              <param name="pursuetargets" value="false" />
+            </create_order>
+            <set_value name="$GoalCue.$tm_empire_recycling_ship.$order" exact="$Order" />
+            <run_actions ref="md.TM_Empire_Runtime.RecordOwnedOrder" result="$Reason">
+              <param name="Ship" value="$Ship" />
+              <param name="GoalCue" value="$GoalCue" />
+              <param name="Order" value="$Order" />
+            </run_actions>
+            <do_if value="$Reason != 'sent'">
+              <set_value name="$GoalCue.$tm_empire_recycling_ship.$state" exact="'unknown'" />
+            </do_if>
+            <return value="$Reason" />
+          </do_if>
+        </do_all>
+        <return value="'docked_ships_have_protected_orders_or_owner'" />
+      </actions>
+    </library>
+    <library name="StepFactoryRecycling" purpose="run_actions" namespace="this">
+      <params>
+        <param name="ManagerCue" />
+        <param name="GoalCue" />
+        <param name="Station" />
+      </params>
+      <actions>
+        <set_value name="$Receipt" exact="@$GoalCue.$tm_empire_recycling" />
+        <do_if value="$Receipt">
+          <do_if value="$Receipt.$station != $Station">
+            <return value="table[$state='unknown', $reason='recycling_station_identity_changed']" />
+          </do_if>
+          <do_if value="$Receipt.$state == 'build_finished'">
+            <do_if value="not $Station.exists or ($Station.isplayerowned and not $Station.modules.count)">
+              <set_value name="$Receipt.$state" exact="'observed'" />
+              <set_value name="$Receipt.$reason" exact="'native_recycling_finished_and_modules_removed'" />
+              <set_value name="$Receipt.$observed" exact="player.age" />
+              <do_if value="$Station.exists and $Station.isplayerowned and @global.$TM_EmpireComponentRecords.$construction_claim.{$Station}.$goal == $GoalCue and @global.$TM_EmpireComponentRecords.$construction_claim.{$Station}.$build == $Receipt.$build">
+                <remove_value name="global.$TM_EmpireComponentRecords.$construction_claim.{$Station}" />
+              </do_if>
+              <remove_from_group group="BuildWatch.$Stores" object="$Receipt.$storage" />
+            </do_if>
+            <return value="$Receipt" />
+          </do_if>
+          <do_if value="$Receipt.$state == 'queued'">
+            <do_if value="not $Station.exists">
+              <set_value name="$Receipt.$state" exact="'unknown'" />
+              <set_value name="$Receipt.$reason" exact="'station_missing_recycling_completion_unconfirmed'" />
+            </do_if>
+            <do_elseif value="not $Receipt.$build.exists">
+              <set_value name="$Receipt.$state" exact="'unknown'" />
+              <set_value name="$Receipt.$reason" exact="'recycling_build_missing_completion_unconfirmed'" />
+            </do_elseif>
+          </do_if>
+          <return value="$Receipt" />
+        </do_if>
+        <run_actions ref="md.TM_Empire_Runtime.CanActForGovernor" result="$Reason">
+          <param name="Actor" value="$ManagerCue.$Governor" />
+          <param name="Station" value="$ManagerCue.$GovernorStation" />
+          <param name="Module" value="$ManagerCue.$GovernorModule" />
+          <param name="ManagerCue" value="$ManagerCue" />
+        </run_actions>
+        <do_if value="$Reason != 'available'">
+          <return value="table[$state='waiting', $reason=$Reason]" />
+        </do_if>
+        <do_if value="not $Station.exists or not $Station.isplayerowned or not $Station.isoperational or not $Station.buildstorage.exists">
+          <return value="table[$state='waiting', $reason='owned_recycling_station_unavailable']" />
+        </do_if>
+        <find_module name="$GovernorModules" object="$Station" macro="macro.tm_empire_control_arg_macro" multiple="true" />
+        <do_if value="$Station == player.headquarters or $Station == $ManagerCue.$GovernorStation or $GovernorModules.count or $Station.istradestation or $Station.canequipships">
+          <return value="table[$state='waiting', $reason='recycling_station_has_protected_function']" />
+        </do_if>
+        <check_object result="$Indestructible" object="$Station">
+          <match_child class="class.module" indestructible="true" />
+        </check_object>
+        <do_if value="$Indestructible">
+          <return value="table[$state='waiting', $reason='recycling_indestructible_module']" />
+        </do_if>
+        <find_object_component name="$Production" object="$Station" class="class.production" pausedmanually="false" checkoperational="true" />
+        <do_if value="$Production.exists">
+          <return value="table[$state='waiting', $reason='recycling_active_production']" />
+        </do_if>
+        <do_for_each name="$Product" in="$Station.products.list">
+          <find_station_by_true_owner name="$Producers" faction="faction.player" space="player.galaxy" known="true" checkoperational="true" indestructible="false" multiple="true">
+            <match_products wares="$Product" />
+            <match_gate_distance object="$Station.sector" max="5" />
+          </find_station_by_true_owner>
+          <do_if value="$Producers.count le 1">
+            <return value="table[$state='waiting', $reason='recycling_last_known_producer']" />
+          </do_if>
+        </do_for_each>
+        <do_if value="not $GoalCue.$tm_empire_recycling_evacuation?">
+          <set_value name="$GoalCue.$tm_empire_recycling_evacuation" exact="table[$station=$Station, $manager=$ManagerCue, $cursor=1]" />
+        </do_if>
+        <do_if value="$Station.subordinates.count">
+          <find_station_by_true_owner name="$AssignmentTargets" faction="faction.player" space="player.galaxy" known="true" checkoperational="true" multiple="true" />
+          <do_if value="not $GoalCue.$tm_empire_recycling_evacuation.$subordinatecursor?">
+            <set_value name="$GoalCue.$tm_empire_recycling_evacuation.$subordinatecursor" exact="1" />
+            <set_value name="$GoalCue.$tm_empire_recycling_evacuation.$assignmentcursor" exact="1" />
+          </do_if>
+          <do_all exact="[$Station.subordinates.count, 4].min">
+            <do_if value="$GoalCue.$tm_empire_recycling_evacuation.$subordinatecursor gt $Station.subordinates.count">
+              <set_value name="$GoalCue.$tm_empire_recycling_evacuation.$subordinatecursor" exact="1" />
+            </do_if>
+            <set_value name="$Ship" exact="$Station.subordinates.{$GoalCue.$tm_empire_recycling_evacuation.$subordinatecursor}" />
+            <set_value name="$GoalCue.$tm_empire_recycling_evacuation.$subordinatecursor" operation="add" />
+            <do_all exact="[$AssignmentTargets.count, 8].min">
+              <do_if value="$GoalCue.$tm_empire_recycling_evacuation.$assignmentcursor gt $AssignmentTargets.count">
+                <set_value name="$GoalCue.$tm_empire_recycling_evacuation.$assignmentcursor" exact="1" />
+              </do_if>
+              <set_value name="$Target" exact="$AssignmentTargets.{$GoalCue.$tm_empire_recycling_evacuation.$assignmentcursor}" />
+              <set_value name="$GoalCue.$tm_empire_recycling_evacuation.$assignmentcursor" operation="add" />
+              <run_actions ref="md.TM_Empire_Runtime.RequestStationReassignment" result="$Reassignment">
+                <param name="ManagerCue" value="$ManagerCue" />
+                <param name="GoalCue" value="$GoalCue" />
+                <param name="Ship" value="$Ship" />
+                <param name="Source" value="$Station" />
+                <param name="Target" value="$Target" />
+              </run_actions>
+              <do_if value="$Reassignment == 'sent' or $Reassignment == 'unknown'">
+                <return value="table[$state='waiting', $reason='recycling_subordinate_assignment_' + $Reassignment]" />
+              </do_if>
+              <do_elseif value="$Reassignment == 'station_reassignment_unreconciled'">
+                <break />
+              </do_elseif>
+            </do_all>
+          </do_all>
+          <return value="table[$state='waiting', $reason='recycling_subordinate_assignment_or_manual_control_pending']" />
+        </do_if>
+        <find_object_component name="$DockedShips" object="$Station" class="class.ship" docked="true" includeobjects="true" multiple="true" />
+        <get_control_entities name="$Employees" object="$Station" />
+        <do_if value="$DockedShips.count or @$GoalCue.$tm_empire_recycling_ship">
+          <run_actions ref="StepDockedShipEvacuation" result="$Evacuation">
+            <param name="ManagerCue" value="$ManagerCue" />
+            <param name="GoalCue" value="$GoalCue" />
+            <param name="Station" value="$Station" />
+            <param name="Ships" value="$DockedShips" />
+          </run_actions>
+          <return value="table[$state='waiting', $reason=$Evacuation]" />
+        </do_if>
+        <do_if value="$Employees.count or $Station.people.count">
+          <do_if value="not $GoalCue.$tm_empire_recycling_evacuation?">
+            <set_value name="$GoalCue.$tm_empire_recycling_evacuation" exact="table[$station=$Station, $manager=$ManagerCue, $cursor=1]" />
+          </do_if>
+          <set_value name="$Transfer" exact="@md.TM_Empire_Personnel.Transfer.$Receipt" />
+          <do_if value="$Transfer.$source == $Station and ($Transfer.$state == 'sent' or $Transfer.$state == 'unknown')">
+            <run_actions ref="md.TM_Empire_Personnel.ObserveTransfer" />
+            <return value="table[$state='waiting', $reason='recycling_manager_transfer_pending']" />
+          </do_if>
+          <find_station_by_true_owner name="$Targets" faction="faction.player" space="player.galaxy" known="true" checkoperational="true" multiple="true" />
+          <do_all exact="[$Targets.count, 8].min">
+            <do_if value="$GoalCue.$tm_empire_recycling_evacuation.$cursor gt $Targets.count">
+              <set_value name="$GoalCue.$tm_empire_recycling_evacuation.$cursor" exact="1" />
+            </do_if>
+            <set_value name="$Target" exact="$Targets.{$GoalCue.$tm_empire_recycling_evacuation.$cursor}" />
+            <set_value name="$GoalCue.$tm_empire_recycling_evacuation.$cursor" operation="add" />
+            <run_actions ref="md.TM_Empire_Personnel.RelocateRecyclingManager" result="$Relocation">
+              <param name="ManagerCue" value="$ManagerCue" />
+              <param name="GoalCue" value="$GoalCue" />
+              <param name="Source" value="$Station" />
+              <param name="Target" value="$Target" />
+            </run_actions>
+            <do_if value="$Relocation == 'sent' or $Relocation == 'unknown'">
+              <return value="table[$state='waiting', $reason=$Relocation]" />
+            </do_if>
+          </do_all>
+          <set_value name="$People" exact="$Station.people.list" />
+          <find_ship_by_true_owner name="$CrewTargets" faction="faction.player" space="player.galaxy" known="true" checkoperational="true" multiple="true" />
+          <do_if value="not $GoalCue.$tm_empire_recycling_evacuation.$personcursor?">
+            <set_value name="$GoalCue.$tm_empire_recycling_evacuation.$personcursor" exact="1" />
+            <set_value name="$GoalCue.$tm_empire_recycling_evacuation.$shipcursor" exact="1" />
+          </do_if>
+          <do_all exact="[$People.count, 4].min">
+            <do_if value="$GoalCue.$tm_empire_recycling_evacuation.$personcursor gt $People.count">
+              <set_value name="$GoalCue.$tm_empire_recycling_evacuation.$personcursor" exact="1" />
+            </do_if>
+            <set_value name="$Person" exact="$People.{$GoalCue.$tm_empire_recycling_evacuation.$personcursor}" />
+            <set_value name="$GoalCue.$tm_empire_recycling_evacuation.$personcursor" operation="add" />
+            <set_value name="$Role" exact="$Station.people.{$Person}.role" />
+            <do_if value="$Role == entityrole.service or $Role == entityrole.marine">
+              <do_all exact="[$CrewTargets.count, 8].min">
+                <do_if value="$GoalCue.$tm_empire_recycling_evacuation.$shipcursor gt $CrewTargets.count">
+                  <set_value name="$GoalCue.$tm_empire_recycling_evacuation.$shipcursor" exact="1" />
+                </do_if>
+                <set_value name="$Target" exact="$CrewTargets.{$GoalCue.$tm_empire_recycling_evacuation.$shipcursor}" />
+                <set_value name="$GoalCue.$tm_empire_recycling_evacuation.$shipcursor" operation="add" />
+                <run_actions ref="md.TM_Empire_Personnel.RequestTransfer" result="$Relocation">
+                  <param name="ManagerCue" value="$ManagerCue" />
+                  <param name="GoalCue" value="$GoalCue" />
+                  <param name="Source" value="$Station" />
+                  <param name="Person" value="$Person" />
+                  <param name="Target" value="$Target" />
+                  <param name="Role" value="$Role" />
+                </run_actions>
+                <do_if value="$Relocation == 'sent' or $Relocation == 'unknown'">
+                  <return value="table[$state='waiting', $reason=$Relocation]" />
+                </do_if>
+              </do_all>
+            </do_if>
+          </do_all>
+        </do_if>
+        <do_if value="@md.TM_Empire_Personnel.Transfer.$Receipt.$source == $Station and (@md.TM_Empire_Personnel.Transfer.$Receipt.$state == 'sent' or @md.TM_Empire_Personnel.Transfer.$Receipt.$state == 'unknown')">
+          <run_actions ref="md.TM_Empire_Personnel.ObserveTransfer" />
+          <return value="table[$state='waiting', $reason='recycling_employee_arrival_unconfirmed']" />
+        </do_if>
+        <do_if value="$DockedShips.count or $Station.subordinates.count or $Employees.count or $Station.people.count">
+          <return value="table[$state='waiting', $reason='recycling_personnel_and_ships_evacuation_required']" />
+        </do_if>
+        <do_if value="@global.$TM_EmpireComponentRecords.$construction_claim.{$Station} or $Station.buildstorage.builds.queued.count or $Station.buildstorage.builds.inprogress.count">
+          <return value="table[$state='waiting', $reason='recycling_existing_construction_or_claim']" />
+        </do_if>
+        <set_value name="$GoalCue.$tm_empire_recycling" exact="table[$state='queue_sent', $manager=$ManagerCue, $goal=$GoalCue, $station=$Station, $storage=$Station.buildstorage, $issued=player.age]" />
+        <set_value name="global.$TM_EmpireComponentRecords.$recycling_receipt.{$Station.buildstorage}" exact="$GoalCue.$tm_empire_recycling" />
+        <add_to_group groupname="BuildWatch.$Stores" object="$Station.buildstorage" />
+        <set_value name="global.$TM_EmpireComponentRecords.$construction_claim.{$Station}" exact="table[$state='recycling_queue_sent', $manager=$ManagerCue, $goal=$GoalCue, $issued=player.age]" />
+        <add_build_to_recycle_station object="$Station.buildstorage" buildobject="$Station" result="$Build" />
+        <set_value name="$Receipt" exact="$GoalCue.$tm_empire_recycling" />
+        <set_value name="$Receipt.$build" exact="$Build" />
+        <set_value name="global.$TM_EmpireComponentRecords.$construction_claim.{$Station}.$build" exact="$Build" />
+        <do_if value="$Build.exists and $Build.buildobject == $Station and $Build.object == $Receipt.$storage">
+          <set_value name="$Receipt.$state" exact="'queued'" />
+          <set_value name="$Receipt.$reason" exact="'native_station_recycling_queued'" />
+        </do_if>
+        <do_else>
+          <set_value name="$Receipt.$state" exact="'unknown'" />
+          <set_value name="$Receipt.$reason" exact="'native_station_recycling_queue_unconfirmed'" />
+        </do_else>
+        <return value="$Receipt" />
+      </actions>
+    </library>
+  </cues>
+</mdscript>

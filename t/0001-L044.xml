@@ -1,0 +1,26 @@
+<?xml version='1.0' encoding='utf-8'?>
+<language id="44">
+  <page id="98761" title="Empire Management Module" descr="Empire Management Module">
+    <t id="1">Empire Management Module</t>
+    <t id="2">Empire Management</t>
+    <t id="3">Administrative centre for a separate empire governor. Governor, automation and status tab are still under development.</t>
+    <t id="10">Empire management…</t>
+    <t id="11">Release empire governor assignment</t>
+    <t id="12">Other modules</t>
+    <t id="13">No operational player-owned empire management module</t>
+    <t id="14">Personnel transfer sent; awaiting confirmation</t>
+    <t id="20">Assignment unavailable. Check ownership, module operation and personnel availability.</t>
+    <t id="21">Personnel assigned as empire governor</t>
+    <t id="22">Assignment accepted; awaiting actual arrival</t>
+    <t id="23">Assignment released; personnel remain on the station</t>
+    <t id="24">Release the current control post through the normal interface first</t>
+    <t id="25">An empire governor is already assigned</t>
+    <t id="26">Transfer outcome unconfirmed. Repeat assignment held pending reconciliation.</t>
+    <t id="27">The arriving employee does not match the assigned employee. Assignment is suspended.</t>
+    <t id="28">The employee or selected station is not owned by you</t>
+    <t id="29">The selected module is unavailable or no longer operational on your station</t>
+    <t id="30">The employee has not arrived or is being transferred. Wait for the journey to finish.</t>
+    <t id="31">The employee and their source assignment could not be confirmed. Reopen the conversation with an available employee.</t>
+    <t id="32">The game's personnel system did not allow this employee to transfer to the selected station</t>
+  </page>
+</language>

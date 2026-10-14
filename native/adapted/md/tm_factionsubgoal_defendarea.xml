@@ -1,0 +1,866 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mdscript xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" name="TM_Empire_FactionSubgoal_DefendArea" xsi:noNamespaceSchemaLocation="md.xsd">
+  <cues>
+    <cue name="Start" instantiate="true" namespace="this" version="4">
+      <conditions>
+        <event_cue_signalled />
+        <check_value value="typeof event.param == datatype.table" />
+      </conditions>
+      <actions>
+        <set_value name="$OwnerGoal" exact="event.param.$OwnerGoal" />
+        <set_value name="$TM_ManagerCue" exact="@$OwnerGoal.$TM_ManagerCue" />
+        <set_value name="$Descriptor" exact="event.param.$Descriptor" />
+        <set_value name="$OwnerStandbyShipsTable" exact="@event.param.$OwnerStandbyShipsTable" />
+        <set_value name="$PrepareEndTime" exact="event.param.$PrepareEndTime" />
+        <set_value name="$DesiredEndTime" exact="event.param.$DesiredEndTime" />
+        <set_value name="$Faction" exact="$OwnerGoal.$Faction" />
+        <set_value name="$DesiredShipStrength" exact="event.param.$DesiredShipStrength" />
+        <set_value name="$RequestStrengthAllowance" exact="event.param.$RequestStrengthAllowance" />
+        <set_value name="$FindShipSpaces" exact="event.param.$FindShipSpaces" />
+        <set_value name="$FindShipTags" exact="@event.param.$FindShipTags" />
+        <set_value name="$StagingArea" exact="@event.param.$StagingArea" />
+        <set_value name="$DefendArea" exact="event.param.$DefendArea" />
+        <set_value name="$DebugChance" exact="@event.param.$DebugChance" />
+        <set_value name="$DebugChance2" exact="@event.param.$DebugChance2" />
+        <do_if value="$DebugChance or $DebugChance2 or player.debugfilteractive.economy_verbose">
+          <include_actions ref="GenerateDebugTextWithCueID" />
+          <debug_text filter="economy_verbose" text="'#FL#;%1;Started;%2;%3;%4;%5;%6;%7;%8'.[player.age, $DebugGoalText, $DebugText, null, null, $DefendArea.$Sector.knownname, $Faction.id, @$OwnerGoal.$EnemyFaction.id]" context="false" />
+        </do_if>
+        <do_else>
+          <set_value name="$DebugText" exact="'(' + $Faction.id + ') Defend area: ' + $DefendArea.$Sector.knownname + ' ' + $DefendArea.$Sector + ' - ' + $DefendArea.$Position + ' '" />
+        </do_else>
+        <debug_text text="'triggering ' + $DebugText" chance="$DebugChance" />
+        <assert value="$FindShipSpaces.count" text="'No local areas defined to acquire ships to commandeer or order. Target: ' + $DefendArea.$Sector + ' ' + $DefendArea.$Sector.knownname + ' [Owen]'" />
+        <shuffle_list list="$FindShipSpaces" />
+        <create_group groupname="$Ships" />
+        <create_list name="$RequestedShips" />
+        <set_value name="$RequestedShipsStrength" exact="0" comment="Strength of all ships which have been requested for this subgoal, including ones finished building" />
+        <set_value name="$EvaluationResult" exact="'unknown'" />
+        <set_value name="$EvaluationDelay" exact="1ms" />
+        <set_value name="$InStandby" exact="false" />
+        <set_value name="$StrengthTable" exact="table[]" />
+        <set_value name="$RegistryTable" exact="table[]" />
+        <set_value name="$RegistryTable.$Cue" exact="this" />
+        <set_value name="$RegistryTable.$StartTime" exact="player.age" />
+        <set_value name="$RegistryTable.$DefendArea" exact="$DefendArea" />
+        <set_value name="$RegistryTable.$EvaluationResult" exact="$EvaluationResult" />
+        <set_value name="$RegistryTable.$DesiredShipStrength" exact="$DesiredShipStrength" />
+        <signal_cue_instantly cue="$OwnerGoal" param="['add_subgoal', $RegistryTable]" />
+      </actions>
+      <cues>
+        <cue name="Init" onfail="cancel">
+          <conditions>
+            <check_value value="not @$SetToShutdown" />
+          </conditions>
+          <actions>
+            <set_value name="$RegistryTable.$GenerateReportCue" exact="Generate_Report" />
+            <set_value name="$RegistryTable.$UpdateSubgoalCue" exact="Update_Sub_Goal" />
+            <set_value name="$RegistryTable.$EvaluateShipStrengthCue" exact="Evaluate_Ship_Strength" />
+            <set_value name="$RegistryTable.$IsDefendingPositionCue" exact="Is_Defending_Position" />
+            <set_value name="$RegistryTable.$EvaluateCue" exact="Force_Evaluation" />
+            <include_actions ref="SetFindShipFocusSpace" />
+          </actions>
+        </cue>
+        <cue name="Generate_Report" instantiate="true">
+          <conditions>
+            <event_cue_signalled />
+          </conditions>
+          <actions>
+            <debug_text text="'SUBGOAL (' + $EvaluationResult + ') ' + $DebugText + 'Active Ships: ' + $Ships.count + ' Requested: ' + $RequestedShips.count" context="false" />
+            <run_actions ref="md.TM_Empire_FactionLogic.EvaluateForceStrengthLib" result="this.$CurrentStrength">
+              <param name="Ships" value="$Ships" />
+            </run_actions>
+            <run_actions ref="md.TM_Empire_FactionLogic.EvaluateForceStrengthLib" result="this.$RequestedShipStrength">
+              <param name="Ships" value="$RequestedShips" />
+            </run_actions>
+            <debug_text text="'Wants strength: ' + $DesiredShipStrength + ' - Current strength: ' + this.$CurrentStrength + ' - Requested strength: ' + this.$RequestedShipStrength" context="false" />
+            <do_if value="@$DefendArea.$Invasion">
+              <debug_text text="'Defending against invasion: ' + [$DefendArea.$Invasion]" context="false" />
+            </do_if>
+            <do_elseif value="@$DefendArea.$TargetObject">
+              <debug_text text="'Target object: ' + $DefendArea.$TargetObject + ' ' + $DefendArea.$TargetObject.knownname" context="false" />
+            </do_elseif>
+            <do_if value="$Ships.count">
+              <debug_text text="'Active ships '" context="false" />
+              <do_all exact="$Ships.count" counter="$i">
+                <debug_text text="$Ships.{$i} + ' ' + $Ships.{$i}.knownname + ' ' + $Ships.{$i}.idcode" context="false" />
+              </do_all>
+            </do_if>
+            <do_if value="$RequestedShips.count">
+              <debug_text text="'Requested ships '" context="false" />
+              <do_all exact="$RequestedShips.count" counter="$i">
+                <debug_text text="$RequestedShips.{$i} + ' ' + $RequestedShips.{$i}.knownname + ' ' + $RequestedShips.{$i}.idcode" context="false" />
+              </do_all>
+            </do_if>
+          </actions>
+        </cue>
+        <cue name="Update_Sub_Goal" instantiate="true">
+          <conditions>
+            <event_cue_signalled />
+          </conditions>
+          <actions>
+            <debug_text text="$DebugText + 'Update request: ' + event.param.{1}" chance="$DebugChance" />
+            <do_if value="event.param.{1} == 'cleanup'">
+              <signal_cue_instantly cue="Cleanup" param="[false]" />
+            </do_if>
+            <do_elseif value="event.param.{1} == 'handoff'">
+              <signal_cue_instantly cue="Cleanup" param="[true]" />
+            </do_elseif>
+            <do_elseif value="event.param.{1} == 'standby'">
+              <set_value name="$InStandby" exact="true" />
+            </do_elseif>
+            <do_elseif value="event.param.{1} == 'reactivate'">
+              <assert value="$InStandby" text="$DebugText + 'subgoal was not in standby when asked to reactivate [Owen]'" break="1" />
+              <set_value name="$InStandby" exact="false" />
+              <signal_cue_instantly cue="$OwnerGoal" param="['reactivate_subgoal', $RegistryTable]" />
+            </do_elseif>
+            <do_else>
+              <assert value="event.param.{1}" text="$DebugText + 'Unknown update request [Owen]'" break="1" />
+            </do_else>
+          </actions>
+        </cue>
+        <cue name="Evaluate_Ship_Strength" instantiate="true">
+          <conditions>
+            <event_cue_signalled />
+          </conditions>
+          <actions>
+            <clear_table table="$StrengthTable" />
+            <run_actions ref="md.TM_Empire_FactionLogic.EvaluateForceStrengthLib" result="$EFS_Result">
+              <param name="Ships" value="$Ships" />
+              <param name="ResultTable" value="$StrengthTable" />
+            </run_actions>
+            <set_value name="$ForceStrength" exact="$EFS_Result" />
+            <do_if value="not @event.param.{1}">
+              <run_actions ref="md.TM_Empire_FactionLogic.EvaluateForceStrengthLib" result="$EFS_Result">
+                <param name="Ships" value="$RequestedShips" />
+                <param name="ResultTable" value="$StrengthTable" />
+              </run_actions>
+              <set_value name="$ForceStrength" operation="add" exact="$EFS_Result" />
+            </do_if>
+            <set_value name="$RegistryTable.$ShipStrength" exact="$ForceStrength" />
+          </actions>
+        </cue>
+        <cue name="Is_Defending_Position" instantiate="true">
+          <conditions>
+            <event_cue_signalled />
+          </conditions>
+          <actions>
+            <set_value name="event.param.{1}.$IsDefendingPosition" exact="false" />
+            <do_if value="event.param.{4} and $EvaluationResult != 'performing'">
+              
+            </do_if>
+            <do_elseif value="event.param.{2} == $DefendArea.$Sector and event.param.{3}.distanceto.{$DefendArea.$Position} le $DefendArea.$Range">
+              <set_value name="event.param.{1}.$IsDefendingPosition" exact="true" />
+            </do_elseif>
+          </actions>
+        </cue>
+        <cue name="Force_Evaluation" instantiate="true">
+          <conditions>
+            <event_cue_signalled />
+          </conditions>
+          <actions>
+            <set_value name="$EvaluationDelay" exact="0s" />
+            <reset_cue cue="Evaluate" />
+          </actions>
+        </cue>
+        <library name="Validate_Requested_Ships">
+          <actions>
+            <do_all exact="$RequestedShips.count" counter="$i" reverse="true">
+              <do_if value="not $RequestedShips.{$i}.isrealclass.ship">
+                <assert value="false" text="'Requested ship is no longer valid. ID: ' + $RequestedShips.{$i} + ' - It should have been removed from this list by other means. [Owen]'" break="1" />
+                <signal_cue_instantly cue="Remove_Requested_Ship" param="$RequestedShips.{$i}" />
+              </do_if>
+            </do_all>
+          </actions>
+        </library>
+        <library name="SetFindShipFocusSpace">
+          <actions>
+            <set_value name="$FindShipFocusSpace" exact="null" />
+            <do_if value="$StagingArea and $StagingArea.$Sector.exists">
+              <do_all exact="$FindShipSpaces.count" counter="$i">
+                <do_if value="$StagingArea.$Sector == $FindShipSpaces.{$i} or $StagingArea.$Sector.commoncontext.{$FindShipSpaces.{$i}}.isclass.[class.sector, class.cluster]">
+                  <set_value name="$FindShipFocusSpace" exact="$FindShipSpaces.{$i}" />
+                  <break />
+                </do_if>
+              </do_all>
+            </do_if>
+            <do_if value="not $FindShipFocusSpace">
+              <do_all exact="$FindShipSpaces.count" counter="$i">
+                <do_if value="$DefendArea.$Sector == $FindShipSpaces.{$i} or $DefendArea.$Sector.commoncontext.{$FindShipSpaces.{$i}}.isclass.[class.sector, class.cluster]">
+                  <set_value name="$FindShipFocusSpace" exact="$FindShipSpaces.{$i}" />
+                  <break />
+                </do_if>
+              </do_all>
+            </do_if>
+          </actions>
+        </library>
+        <cue name="Evaluate">
+          <delay exact="$EvaluationDelay" />
+          <actions>
+            <set_value name="$OldResult" exact="$EvaluationResult" />
+            <set_value name="$EvaluationResult" exact="'unknown'" />
+            <include_actions ref="Validate_Requested_Ships" />
+            <set_value name="$ForceStrength" exact="0" />
+            <signal_cue_instantly cue="Evaluate_Ship_Strength" comment="returns $ForceStrength" />
+            <debug_text text="$DebugText + ' wants strength of ' + $DesiredShipStrength + ' currently ' + $ForceStrength" context="false" chance="$DebugChance2" />
+            <do_if value="not $InStandby and $ForceStrength lt $DesiredShipStrength and player.age lt $PrepareEndTime">
+              <do_if value="$FindShipSpaces.count">
+                <do_if value="$OwnerStandbyShipsTable">
+                  <set_value name="this.$StandbyKeys" exact="$OwnerStandbyShipsTable.keys.sorted" />
+                  <shuffle_list list="this.$StandbyKeys" />
+                  <do_all exact="[32, this.$StandbyKeys.count].min" counter="$i" reverse="true">
+                    <set_value name="this.$StandbyShip" exact="this.$StandbyKeys.{$i}" />
+                    <run_actions ref="md.TM_Empire_Runtime.CanUseOwnedShip" result="$TM_ShipReason">
+                      <param name="Ship" value="this.$StandbyShip" />
+                      <param name="GoalCue" value="$OwnerGoal" />
+                      <param name="ManagerCue" value="@$TM_ManagerCue" />
+                    </run_actions>
+                    <do_if value="$TM_ShipReason != 'available'">
+                      <set_value name="$TM_WaitReason" exact="$TM_ShipReason" />
+                      <continue />
+                    </do_if>
+                    <do_if value="this.$StandbyShip.primarypurpose != purpose.fight">
+                      <remove_value name="this.$StandbyKeys.{$i}" />
+                      <continue />
+                    </do_if>
+                    <do_if value="$FindShipFocusSpace == this.$StandbyShip.hascontext.{$FindShipFocusSpace}">
+                      <run_actions ref="md.TM_Empire_Runtime.TransferOwnedClaim" result="$TM_ShipReason">
+                        <param name="Ship" value="this.$StandbyShip" />
+                        <param name="GoalCue" value="namespace" />
+                        <param name="ManagerCue" value="@$TM_ManagerCue" />
+                        <param name="FromGoalCue" value="$OwnerGoal" />
+                      </run_actions>
+                      <do_if value="$TM_ShipReason == 'available'">
+                        <signal_cue_instantly cue="$OwnerGoal" param="['remove_standby_ship', this.$StandbyShip, false]" />
+                        <remove_value name="this.$StandbyKeys.{$i}" />
+                        <add_to_group groupname="$Ships" object="this.$StandbyShip" />
+                        <run_actions ref="md.TM_Empire_FactionLogic.EvaluateForceStrengthLib" result="$EFS_Result">
+                          <param name="Ships" value="this.$StandbyShip" />
+                          <param name="ResultTable" value="$StrengthTable" />
+                        </run_actions>
+                        <set_value name="$ForceStrength" operation="add" exact="$EFS_Result" />
+                        <set_value name="$RegistryTable.$ShipStrength" operation="add" exact="$EFS_Result" />
+                        <debug_text text="$DebugText + ' re-purposed standby ship ' + this.$StandbyShip.knownname + ' ' + this.$StandbyShip + ' with strength ' + $EFS_Result + ' force strength is now: ' + $ForceStrength + ' - desired: '+ $DesiredShipStrength" context="false" chance="$DebugChance" />
+                        <signal_cue_instantly cue="Set_Ship_Order" param="this.$StandbyShip" />
+                        <do_if value="$ForceStrength ge $DesiredShipStrength">
+                          <break />
+                        </do_if>
+                      </do_if>
+                      <do_else>
+                        <set_value name="$TM_WaitReason" exact="$TM_ShipReason" />
+                      </do_else>
+                    </do_if>
+                  </do_all>
+                  <do_if value="$ForceStrength lt $DesiredShipStrength and this.$StandbyKeys.count">
+                    <do_all exact="[32, this.$StandbyKeys.count].min" counter="$i" reverse="true">
+                      <set_value name="this.$StandbyShip" exact="this.$StandbyKeys.{$i}" />
+                      <run_actions ref="md.TM_Empire_Runtime.CanUseOwnedShip" result="$TM_ShipReason">
+                        <param name="Ship" value="this.$StandbyShip" />
+                        <param name="GoalCue" value="$OwnerGoal" />
+                        <param name="ManagerCue" value="@$TM_ManagerCue" />
+                      </run_actions>
+                      <do_if value="$TM_ShipReason != 'available'">
+                        <set_value name="$TM_WaitReason" exact="$TM_ShipReason" />
+                        <continue />
+                      </do_if>
+                      <do_all exact="$FindShipSpaces.count" counter="$k">
+                        <do_if value="this.$StandbyShip.hascontext.{$FindShipSpaces.{$k}}">
+                          <run_actions ref="md.TM_Empire_Runtime.TransferOwnedClaim" result="$TM_ShipReason">
+                            <param name="Ship" value="this.$StandbyShip" />
+                            <param name="GoalCue" value="namespace" />
+                            <param name="ManagerCue" value="@$TM_ManagerCue" />
+                            <param name="FromGoalCue" value="$OwnerGoal" />
+                          </run_actions>
+                          <do_if value="$TM_ShipReason == 'available'">
+                            <signal_cue_instantly cue="$OwnerGoal" param="['remove_standby_ship', this.$StandbyShip, false]" />
+                            <remove_value name="this.$StandbyKeys.{$i}" />
+                            <add_to_group groupname="$Ships" object="this.$StandbyShip" />
+                            <run_actions ref="md.TM_Empire_FactionLogic.EvaluateForceStrengthLib" result="$EFS_Result">
+                              <param name="Ships" value="this.$StandbyShip" />
+                              <param name="ResultTable" value="$StrengthTable" />
+                            </run_actions>
+                            <set_value name="$ForceStrength" operation="add" exact="$EFS_Result" />
+                            <set_value name="$RegistryTable.$ShipStrength" operation="add" exact="$EFS_Result" />
+                            <debug_text text="$DebugText + ' re-purposed standby ship ' + this.$StandbyShip.knownname + ' ' + this.$StandbyShip + ' with strength ' + $EFS_Result + ' force strength is now: ' + $ForceStrength + ' - desired: '+ $DesiredShipStrength" context="false" chance="$DebugChance" />
+                            <signal_cue_instantly cue="Set_Ship_Order" param="this.$StandbyShip" />
+                            <do_if value="$ForceStrength ge $DesiredShipStrength">
+                              <break />
+                            </do_if>
+                          </do_if>
+                          <do_else>
+                            <set_value name="$TM_WaitReason" exact="$TM_ShipReason" />
+                          </do_else>
+                        </do_if>
+                      </do_all>
+                      <do_if value="$ForceStrength ge $DesiredShipStrength">
+                        <break />
+                      </do_if>
+                    </do_all>
+                  </do_if>
+                </do_if>
+                <do_all exact="$FindShipSpaces.count" counter="$i">
+                  <do_if value="not $FindShipFocusSpace">
+                    <do_if value="$i == 1">
+                      <shuffle_list list="$FindShipSpaces" />
+                    </do_if>
+                    <set_value name="this.$FindSpace" exact="$FindShipSpaces.{$i}" />
+                  </do_if>
+                  <do_elseif value="$i == 1">
+                    <set_value name="this.$FindSpace" exact="$FindShipFocusSpace" />
+                  </do_elseif>
+                  <do_else>
+                    <do_if value="$i == 2">
+                      <shuffle_list list="$FindShipSpaces" />
+                    </do_if>
+                    <do_if value="$FindShipSpaces.{$i} == $FindShipFocusSpace">
+                      <set_value name="this.$FindSpace" exact="$FindShipSpaces.{1}" />
+                    </do_if>
+                    <do_else>
+                      <set_value name="this.$FindSpace" exact="$FindShipSpaces.{$i}" />
+                    </do_else>
+                  </do_else>
+                  <find_ship_by_true_owner name="$PotentialShips" faction="$Faction" primarypurpose="purpose.fight" multiple="true" space="this.$FindSpace" known="true" />
+                  <set_value name="$NewShipCount" exact="0" />
+                  <shuffle_list list="$PotentialShips" />
+                  <do_if value="@$TM_WaitReason == 'military_ship_sample_incomplete'">
+                    <remove_value name="$TM_WaitReason" />
+                  </do_if>
+                  <do_if value="$PotentialShips.count gt 32">
+                    <set_value name="$TM_WaitReason" exact="'military_ship_sample_incomplete'" />
+                  </do_if>
+                  <do_all exact="[32, $PotentialShips.count].min" counter="$k">
+                    <set_value name="$Ship" exact="$PotentialShips.{$k}" />
+                    <do_if value="$Ships.indexof.{$Ship}">
+                      <continue />
+                    </do_if>
+                    <run_actions ref="md.TM_Empire_Runtime.CanUseOwnedShip" result="$TM_ShipReason">
+                      <param name="Ship" value="$Ship" />
+                      <param name="GoalCue" value="namespace" />
+                      <param name="ManagerCue" value="@$TM_ManagerCue" />
+                    </run_actions>
+                    <do_if value="$TM_ShipReason != 'available'">
+                      <continue />
+                    </do_if>
+                    <run_actions ref="md.TM_Empire_Runtime.ClaimOwnedShip" result="$TM_ShipReason">
+                      <param name="Ship" value="$Ship" />
+                      <param name="GoalCue" value="namespace" />
+                      <param name="ManagerCue" value="@$TM_ManagerCue" />
+                    </run_actions>
+                    <do_if value="$TM_ShipReason == 'available'">
+                      <add_to_group groupname="$Ships" object="$Ship" />
+                      <set_value name="$NewShipCount" operation="add" />
+                      <run_actions ref="md.TM_Empire_FactionLogic.EvaluateForceStrengthLib" result="$EFS_Result">
+                        <param name="Ships" value="$Ship" />
+                        <param name="ResultTable" value="$StrengthTable" />
+                      </run_actions>
+                      <set_value name="$ForceStrength" operation="add" exact="$EFS_Result" />
+                      <set_value name="$RegistryTable.$ShipStrength" operation="add" exact="$EFS_Result" />
+                      <debug_text text="$DebugText + ' commandeered ' + $Ship.knownname + ' ' + $Ship + ' with strength ' + $EFS_Result + ' force strength is now: ' + $ForceStrength + ' - desired: '+ $DesiredShipStrength" context="false" chance="$DebugChance" />
+                      <signal_cue_instantly cue="Set_Ship_Order" param="$Ship" />
+                      <do_if value="$ForceStrength ge $DesiredShipStrength">
+                        <break />
+                      </do_if>
+                    </do_if>
+                    <do_else>
+                      <set_value name="$TM_WaitReason" exact="$TM_ShipReason" />
+                    </do_else>
+                  </do_all>
+                  <debug_text text="$DebugText + 'found ' + $NewShipCount + ' ships in space: ' + this.$FindSpace.knownname" context="false" chance="if $NewShipCount then $DebugChance2 else 0" />
+                  <do_if value="$ForceStrength ge $DesiredShipStrength">
+                    <break />
+                  </do_if>
+                </do_all>
+              </do_if>
+              <debug_text text="$DebugText + $Ships.count + ' ships with force strength of ' + $ForceStrength + ' out of wanted strength ' + $DesiredShipStrength" context="false" chance="$DebugChance2" />
+              <do_if value="((not $NextJobRequestCheck? or player.age gt $NextJobRequestCheck) and [$DesiredShipStrength - $ForceStrength, $RequestStrengthAllowance - $RequestedShipsStrength].min gt 0) and not @md.TM_Empire_Purchase.Request.$Pending and player.age ge @md.TM_Empire_Purchase.Request.$NextAttempt and (@md.TM_Empire_Purchase.Request.$LastResult.$state != 'delivered' or @md.TM_Empire_Purchase.Request.$LastResult.$accepted)">
+                <signal_cue_instantly cue="md.TM_Empire_FactionLogic.Get_Military_Jobs" param="[namespace, [$DesiredShipStrength - $ForceStrength, $RequestStrengthAllowance - $RequestedShipsStrength].min, $Faction, true, $FindShipTags]" />
+                <debug_text text="$DebugText + $Suitable_Jobs.count + ' suitable jobs found'" context="false" chance="$DebugChance" />
+                <do_if value="$Suitable_Jobs.count">
+                  <set_value name="$PotentialJobMainZones" exact="[]" />
+                  <do_if value="@$StagingArea.$Sector.exists">
+                    <find_zone name="$PotentialJobMainZones" normalzone="true" space="$StagingArea.$Sector" multiple="true" />
+                  </do_if>
+                  <do_if value="not $PotentialJobMainZones.count">
+                    <find_zone name="$PotentialJobMainZones" normalzone="true" space="$DefendArea.$Sector" multiple="true" />
+                  </do_if>
+                  <do_if value="$PotentialJobMainZones.count">
+                    <do_all exact="$Suitable_Jobs.count" counter="$i">
+                      <set_value name="$NextJobRequestCheck" exact="player.age + 15s" />
+                      <set_value name="$SelectedJob" exact="$Suitable_Jobs.{$i}" />
+                      <set_value name="$JobMainZone" exact="$PotentialJobMainZones.random" />
+                      <debug_text text="$DebugText + 'Requested job ship to be created. Job ' + $SelectedJob + '; Job zone: ' + $JobMainZone + ' ' + $JobMainZone.knownname" context="false" chance="$DebugChance" />
+                      <signal_cue_instantly cue="Request_Job_Ship" param="[$SelectedJob, $JobMainZone]" />
+                      <do_if value="@md.TM_Empire_Purchase.Request.$Pending">
+                        <break />
+                      </do_if>
+                    </do_all>
+                  </do_if>
+                  <remove_value name="$PotentialJobMainZones" />
+                  <remove_value name="$SelectedJob" />
+                  <debug_text text="$DebugText + $RequestedShips.count + ' ships are currently requested'" context="false" chance="$DebugChance2" />
+                </do_if>
+                <do_else>
+                  <set_value name="$NextJobRequestCheck" exact="player.age + 2min" />
+                </do_else>
+              </do_if>
+            </do_if>
+            <set_value name="$ArrivedStrength" exact="0" />
+            <set_value name="$DistantStrength" exact="0" />
+            <set_value name="$RequestedShipStrength" exact="0" />
+            <create_list name="$ArrivedShips" />
+            <do_all exact="$Ships.count" counter="$i">
+              <set_value name="this.$InArea" exact="false" />
+              <set_value name="$Ship" exact="$Ships.{$i}" />
+              <do_if value="$OldResult == 'performing' or not @$StagingArea.$Sector.exists">
+                <do_if value="$Ship.hascontext.{$DefendArea.$Sector}">
+                  <do_if value="$Ship.distanceto.[$DefendArea.$Sector, $DefendArea.$Position] le $DefendArea.$Range + 5km">
+                    <set_value name="this.$InArea" exact="true" />
+                  </do_if>
+                </do_if>
+              </do_if>
+              <do_else>
+                <do_if value="$Ship.hascontext.{$StagingArea.$Sector}">
+                  <do_if value="$Ship.distanceto.[$StagingArea.$Sector, $StagingArea.$Position] le $StagingArea.$Range + 5km">
+                    <set_value name="this.$InArea" exact="true" />
+                  </do_if>
+                </do_if>
+              </do_else>
+              <do_if value="this.$InArea">
+                <set_value name="$ArrivedStrength" exact="$StrengthTable.{$Ship}" operation="add" />
+                <append_to_list name="$ArrivedShips" exact="$Ship" />
+              </do_if>
+              <do_else>
+                <set_value name="$DistantStrength" exact="$StrengthTable.{$Ship}" operation="add" />
+              </do_else>
+            </do_all>
+            <do_all exact="$RequestedShips.count" counter="$i">
+              <set_value name="$RequestedShipStrength" exact="$StrengthTable.{$RequestedShips.{$i}}" operation="add" />
+            </do_all>
+            <do_if value="@$DefendArea.$Invasion and not $DefendArea.$Invasion.exists">
+              <set_value name="$EvaluationResult" exact="'ending'" />
+            </do_if>
+            <do_elseif value="$DesiredEndTime and player.age gt $DesiredEndTime">
+              <do_if value="$OldResult == 'performing' or $OldResult == 'ending'">
+                <set_value name="$EvaluationResult" exact="'ending'" />
+              </do_if>
+              <do_else>
+                <set_value name="$EvaluationResult" exact="'failed'" />
+              </do_else>
+            </do_elseif>
+            <do_elseif value="$OldResult == 'performing'">
+              <set_value name="$EvaluationResult" exact="'performing'" />
+            </do_elseif>
+            <do_elseif value="$OldResult == 'failed'">
+              <set_value name="$EvaluationResult" exact="'failed'" />
+            </do_elseif>
+            <do_elseif value="$OldResult == 'unknown' or $OldResult == 'preparing'">
+              <do_if value="$ArrivedStrength ge $DesiredShipStrength">
+                <set_value name="$EvaluationResult" exact="'performing'" />
+              </do_if>
+              <do_elseif value="$ArrivedStrength + $DistantStrength ge $DesiredShipStrength and player.age lt $PrepareEndTime + 5min">
+                <set_value name="$EvaluationResult" exact="'preparing'" />
+              </do_elseif>
+              <do_elseif value="player.age lt $PrepareEndTime">
+                <set_value name="$EvaluationResult" exact="'preparing'" />
+              </do_elseif>
+              <do_else>
+                <set_value name="$EvaluationResult" exact="'failed'" />
+              </do_else>
+            </do_elseif>
+            <do_if value="not $EvaluationResult">
+              <assert value="$OldResult == 'failed'" text="$DebugText + ' Old state was ' + $OldResult + ' and state machine was unable to find a suitable new state. Defaulting to failed state [Owen]'" />
+              <set_value name="$EvaluationResult" exact="'failed'" />
+            </do_if>
+            <debug_text text="$DebugText + 'Evaluation result changed from ' + $OldResult + ' to ' + $EvaluationResult" context="false" chance="if $EvaluationResult == $OldResult then 0 else $DebugChance" />
+            <set_value name="$RegistryTable.$EvaluationResult" exact="$EvaluationResult" />
+            <assert value="$EvaluationResult != 'unknown'" text="'Subgoal is in an invalid state [Owen]'" />
+            <set_value name="$EvaluationDelay" min="17s" max="25s" />
+            <do_if value="$EvaluationResult == 'performing'">
+              <signal_cue cue="PerformStarted" check="false" />
+            </do_if>
+            <reset_cue cue="Evaluate" />
+          </actions>
+        </cue>
+        <cue name="PerformStarted">
+          <conditions>
+            <event_cue_signalled />
+          </conditions>
+        </cue>
+        <cue name="Request_Job_Ship" instantiate="true" version="1">
+          <conditions>
+            <event_cue_signalled />
+          </conditions>
+          <actions>
+            <set_value name="this.$Option" exact="event.param.{1}" />
+            <do_if value="typeof this.$Option == datatype.table">
+              <run_actions ref="md.TM_Empire_Purchase.PreparePurchase" result="this.$PurchaseState">
+                <param name="ManagerCue" value="$TM_ManagerCue" />
+                <param name="GoalCue" value="namespace" />
+                <param name="Shipyard" value="this.$Option.$shipyard" />
+                <param name="Macro" value="this.$Option.$macro" />
+                <param name="Budget" value="player.money" />
+              </run_actions>
+              <do_if value="this.$PurchaseState == 'quote_requested'">
+                <set_value name="this.$PurchaseKey" exact="md.TM_Empire_Purchase.Request.$Pending.$key" />
+              </do_if>
+              <do_else>
+                <set_value name="$TM_WaitReason" exact="this.$PurchaseState" />
+                <run_actions ref="md.TM_Empire_Runtime.RevokeGoalApprovals">
+                  <param name="CancelledCue" value="this" />
+                </run_actions>
+                <cancel_cue cue="this" />
+              </do_else>
+            </do_if>
+            <do_else>
+              <set_value name="$TM_WaitReason" exact="'invalid_purchase_option'" />
+              <run_actions ref="md.TM_Empire_Runtime.RevokeGoalApprovals">
+                <param name="CancelledCue" value="this" />
+              </run_actions>
+              <cancel_cue cue="this" />
+            </do_else>
+          </actions>
+          <cues>
+            <cue name="PurchasedShipObserved" checkinterval="15s">
+              <conditions>
+                <check_value value="parent.$PurchaseKey?" />
+              </conditions>
+              <delay exact="15s" />
+              <actions>
+                <do_if value="@md.TM_Empire_Purchase.Request.$Pending.$key == parent.$PurchaseKey and (md.TM_Empire_Purchase.Tracked.$Build? or @md.TM_Empire_Purchase.Request.$Pending.$state == 'ready')">
+                  <run_actions ref="md.TM_Empire_Purchase.CompletePurchase" result="this.$Progress" />
+                </do_if>
+                <do_if value="@md.TM_Empire_Purchase.Request.$LastResult.$key == parent.$PurchaseKey">
+                  <do_if value="md.TM_Empire_Purchase.Request.$LastResult.$state == 'delivered'">
+                    <set_value name="this.$Ship" exact="md.TM_Empire_Purchase.Request.$LastResult.$ship" />
+                    <do_if value="not $Ships.indexof.{this.$Ship}">
+                      <add_to_group groupname="$Ships" object="this.$Ship" />
+                      <run_actions ref="md.TM_Empire_FactionLogic.EvaluateForceStrengthLib" result="$EFS_Result">
+                        <param name="Ships" value="this.$Ship" />
+                        <param name="ResultTable" value="$StrengthTable" />
+                      </run_actions>
+                      <set_value name="$ForceStrength" operation="add" exact="$EFS_Result" />
+                      <set_value name="$RegistryTable.$ShipStrength" operation="add" exact="$EFS_Result" />
+                      <signal_cue_instantly cue="Set_Ship_Order" param="this.$Ship" />
+                    </do_if>
+                    <run_actions ref="md.TM_Empire_Purchase.AcknowledgeDelivery" result="$TM_DeliveryReceipt">
+                      <param name="Key" value="parent.$PurchaseKey" />
+                      <param name="GoalCue" value="namespace" />
+                      <param name="Ship" value="this.$Ship" />
+                    </run_actions>
+                  </do_if>
+                  <do_else>
+                    <set_value name="$TM_WaitReason" exact="md.TM_Empire_Purchase.Request.$LastResult.$reason" />
+                  </do_else>
+                  <run_actions ref="md.TM_Empire_Runtime.RevokeGoalApprovals">
+                    <param name="CancelledCue" value="parent" />
+                  </run_actions>
+                  <cancel_cue cue="parent" />
+                </do_if>
+                <do_else>
+                  <set_value name="$TM_WaitReason" exact="'purchase_pending_native_receipt'" />
+                  <reset_cue cue="this" />
+                </do_else>
+              </actions>
+            </cue>
+          </cues>
+        </cue>
+        <cue name="Remove_Requested_Ship">
+          <conditions>
+            <event_cue_signalled />
+          </conditions>
+          <actions>
+            <remove_from_list name="$RequestedShips" exact="event.param" />
+          </actions>
+        </cue>
+        <library name="Ship_Order_Lib">
+          <actions>
+            <do_if value="$EvaluationResult == 'performing' or not @$StagingArea.$Sector">
+              <run_actions ref="md.TM_Empire_Runtime.CanUseOwnedShip" result="$TM_ShipReason">
+                <param name="Ship" value="this.$OrderShip" />
+                <param name="GoalCue" value="namespace" />
+                <param name="ManagerCue" value="@$TM_ManagerCue" />
+              </run_actions>
+              <do_if value="$TM_ShipReason == 'available'">
+                <run_actions ref="md.TM_Empire_Runtime.ClaimOwnedShip" result="$TM_ShipReason">
+                  <param name="Ship" value="this.$OrderShip" />
+                  <param name="GoalCue" value="namespace" />
+                  <param name="ManagerCue" value="@$TM_ManagerCue" />
+                </run_actions>
+                <do_if value="$TM_ShipReason == 'available'">
+                  <set_value name="global.$TM_EmpireComponentRecords.$claim.{this.$OrderShip}.$issuing" exact="true" />
+                  <create_order name="this.$PerformingOrder" id="'ProtectPosition'" object="this.$OrderShip" default="true">
+                    <param name="destination" value="[$DefendArea.$Sector, $DefendArea.$Position]" />
+                    <param name="radius" value="$DefendArea.$Range" />
+                  </create_order>
+                  <run_actions ref="md.TM_Empire_Runtime.RecordOwnedOrder" result="$TM_OrderReceipt">
+                    <param name="Ship" value="this.$OrderShip" />
+                    <param name="GoalCue" value="namespace" />
+                    <param name="Order" value="this.$PerformingOrder" />
+                  </run_actions>
+                </do_if>
+                <do_else>
+                  <set_value name="$TM_WaitReason" exact="$TM_ShipReason" />
+                  <set_value name="this.$PerformingOrder" exact="null" />
+                </do_else>
+              </do_if>
+              <do_else>
+                <set_value name="$TM_WaitReason" exact="$TM_ShipReason" />
+                <set_value name="this.$PerformingOrder" exact="null" />
+              </do_else>
+              <find_station name="$TargetStation" space="$DefendArea.$Sector" known="true">
+                <match_distance space="$DefendArea.$Sector" value="$DefendArea.$Position" max="$DefendArea.$Range" />
+                <match_relation_of faction="$Faction" comparison="le" relation="enemy" />
+              </find_station>
+              <do_if value="$TargetStation">
+                <run_actions ref="md.TM_Empire_Runtime.CanUseOwnedShip" result="$TM_ShipReason">
+                  <param name="Ship" value="this.$OrderShip" />
+                  <param name="GoalCue" value="namespace" />
+                  <param name="ManagerCue" value="@$TM_ManagerCue" />
+                </run_actions>
+                <do_if value="$TM_ShipReason == 'available'">
+                  <run_actions ref="md.TM_Empire_Runtime.ClaimOwnedShip" result="$TM_ShipReason">
+                    <param name="Ship" value="this.$OrderShip" />
+                    <param name="GoalCue" value="namespace" />
+                    <param name="ManagerCue" value="@$TM_ManagerCue" />
+                  </run_actions>
+                  <do_if value="$TM_ShipReason == 'available'">
+                    <set_value name="global.$TM_EmpireComponentRecords.$claim.{this.$OrderShip}.$issuing" exact="true" />
+                    <create_order name="this.$PerformingOrder" id="'Attack'" object="this.$OrderShip" immediate="true">
+                      <param name="primarytarget" value="$TargetStation" />
+                    </create_order>
+                    <run_actions ref="md.TM_Empire_Runtime.RecordOwnedOrder" result="$TM_OrderReceipt">
+                      <param name="Ship" value="this.$OrderShip" />
+                      <param name="GoalCue" value="namespace" />
+                      <param name="Order" value="this.$PerformingOrder" />
+                    </run_actions>
+                  </do_if>
+                  <do_else>
+                    <set_value name="$TM_WaitReason" exact="$TM_ShipReason" />
+                    <set_value name="this.$PerformingOrder" exact="null" />
+                  </do_else>
+                </do_if>
+                <do_else>
+                  <set_value name="$TM_WaitReason" exact="$TM_ShipReason" />
+                  <set_value name="this.$PerformingOrder" exact="null" />
+                </do_else>
+              </do_if>
+            </do_if>
+            <do_else>
+              <run_actions ref="md.TM_Empire_Runtime.CanUseOwnedShip" result="$TM_ShipReason">
+                <param name="Ship" value="this.$OrderShip" />
+                <param name="GoalCue" value="namespace" />
+                <param name="ManagerCue" value="@$TM_ManagerCue" />
+              </run_actions>
+              <do_if value="$TM_ShipReason == 'available'">
+                <run_actions ref="md.TM_Empire_Runtime.ClaimOwnedShip" result="$TM_ShipReason">
+                  <param name="Ship" value="this.$OrderShip" />
+                  <param name="GoalCue" value="namespace" />
+                  <param name="ManagerCue" value="@$TM_ManagerCue" />
+                </run_actions>
+                <do_if value="$TM_ShipReason == 'available'">
+                  <set_value name="global.$TM_EmpireComponentRecords.$claim.{this.$OrderShip}.$issuing" exact="true" />
+                  <create_order name="this.$PreparingOrder" id="'ProtectPosition'" object="this.$OrderShip" default="true">
+                    <param name="destination" value="[$StagingArea.$Sector, $StagingArea.$Position]" />
+                    <param name="radius" value="$StagingArea.$Range" />
+                  </create_order>
+                  <run_actions ref="md.TM_Empire_Runtime.RecordOwnedOrder" result="$TM_OrderReceipt">
+                    <param name="Ship" value="this.$OrderShip" />
+                    <param name="GoalCue" value="namespace" />
+                    <param name="Order" value="this.$PreparingOrder" />
+                  </run_actions>
+                </do_if>
+                <do_else>
+                  <set_value name="$TM_WaitReason" exact="$TM_ShipReason" />
+                  <set_value name="this.$PreparingOrder" exact="null" />
+                </do_else>
+              </do_if>
+              <do_else>
+                <set_value name="$TM_WaitReason" exact="$TM_ShipReason" />
+                <set_value name="this.$PreparingOrder" exact="null" />
+              </do_else>
+            </do_else>
+          </actions>
+        </library>
+        <cue name="Set_Ship_Order" instantiate="true">
+          <conditions>
+            <event_cue_signalled />
+            <check_value value="event.param.exists" />
+          </conditions>
+          <actions>
+            <set_value name="this.$OrderShip" exact="event.param" />
+            <debug_text text="$DebugText + 'Attempting to find order for ' + this.$OrderShip + ' ' + this.$OrderShip.knownname" context="false" chance="$DebugChance2" />
+            <include_actions ref="Ship_Order_Lib" />
+          </actions>
+          <cues>
+            <cue name="OrderShipDestroyed">
+              <conditions>
+                <event_object_destroyed object="parent.$OrderShip" />
+              </conditions>
+              <actions>
+                <run_actions ref="md.TM_Empire_Runtime.RevokeGoalApprovals">
+                  <param name="CancelledCue" value="Set_Ship_Order" />
+                </run_actions>
+                <cancel_cue cue="Set_Ship_Order" />
+              </actions>
+            </cue>
+            <cue name="ShipChangedOwner" instantiate="true">
+              <conditions>
+                <event_object_changed_owner object="parent.$OrderShip" />
+              </conditions>
+              <actions>
+                <run_actions ref="md.TM_Empire_Runtime.ReleaseOwnedClaim" result="$TM_ShipReason">
+                  <param name="Ship" value="parent.$OrderShip" />
+                  <param name="GoalCue" value="namespace" />
+                </run_actions>
+                <remove_from_group group="$Ships" object="parent.$OrderShip" />
+                <run_actions ref="md.TM_Empire_Runtime.RevokeGoalApprovals">
+                  <param name="CancelledCue" value="Set_Ship_Order" />
+                </run_actions>
+                <cancel_cue cue="Set_Ship_Order" />
+              </actions>
+            </cue>
+            <cue name="StartPerformOrder">
+              <conditions>
+                <event_cue_completed cue="PerformStarted" />
+              </conditions>
+              <actions>
+                <do_if value="@parent.$PreparingOrder">
+                  <debug_text text="$DebugText + 'Starting perform order for ' + parent.$OrderShip + ' ' + parent.$OrderShip.knownname" context="false" chance="$DebugChance2" />
+                  <set_value name="this.$OrderShip" exact="parent.$OrderShip" />
+                  <include_actions ref="Ship_Order_Lib" />
+                  <remove_value name="this.$OrderShip" />
+                  <remove_value name="parent.$PreparingOrder" />
+                </do_if>
+              </actions>
+            </cue>
+            <cue name="ArrivedAtTargetArea" checkinterval="15s" comment="Triggers when parent.$OrderShip approaches either $StagingArea in the preparation phase or $DefendArea">
+              <conditions>
+                <check_any>
+                  <check_all>
+                    <check_value value="$EvaluationResult == 'performing' or not $StagingArea" />
+                    <check_value value="parent.$OrderShip.sector == $DefendArea.$Sector and parent.$OrderShip.distanceto.[$DefendArea.$Sector, $DefendArea.$Position] lt $DefendArea.$Range" />
+                  </check_all>
+                  <check_all>
+                    <check_value value="$EvaluationResult == 'preparing' and @$StagingArea.$Sector.exists" />
+                    <check_value value="parent.$OrderShip.sector == $StagingArea.$Sector and parent.$OrderShip.distanceto.[$StagingArea.$Sector, $StagingArea.$Position] lt $StagingArea.$Range" />
+                  </check_all>
+                </check_any>
+              </conditions>
+              <actions>
+                <do_if value="(not namespace.static.$subgoal_lastnotification?) or (player.age gt namespace.static.$subgoal_lastnotification + 180s)">
+                  <run_actions ref="md.TM_Empire_FactionLogic.Get_Faction_Situation_By_Sector" result="this.$NotificationSituation">
+                    <param name="Sector" value="$DefendArea.$Sector" />
+                    <param name="Faction" value="$Faction" />
+                  </run_actions>
+                  <do_if value="this.$NotificationSituation">
+                    <do_if value="this.$NotificationSituation == 'faction_is_war_host'">
+                      <set_value name="this.$NotificationHeadline" exact="{1015,301}" comment="War update" />
+                    </do_if>
+                    <do_elseif value="this.$NotificationSituation == 'faction_is_war_enemy'">
+                      <set_value name="this.$NotificationHeadline" exact="{1015,301}" comment="War update" />
+                    </do_elseif>
+                    <do_elseif value="this.$NotificationSituation == 'enemy_to_local_friend'">
+                      <set_value name="this.$NotificationHeadline" exact="{1015,309}" comment="Emergency update" />
+                    </do_elseif>
+                    <do_elseif value="this.$NotificationSituation == 'neutral_to_local_friend'">
+                      <set_value name="this.$NotificationHeadline" exact="{1015,308}" comment="News update" />
+                    </do_elseif>
+                    <do_if value="@this.$NotificationHeadline">
+                      <substitute_text text="$reason" source="{30004,8203}" comment="$FACTION$ mounting defence in $DESTINATION$">
+                        <replace string="'$FACTION$'" with="$Faction.name" />
+                        <replace string="'$DESTINATION$'" with="parent.$OrderShip.sector.knownname" />
+                      </substitute_text>
+                      <do_if value="md.$TM_Empire_DebuggingNotifications">
+                        <set_value name="$reason" exact="$reason + '\n' + $DebugText + ' prevstate=' + $OldResult + ' state=' + $EvaluationResult + 'faction=' + $Faction" />
+                      </do_if>
+                      <signal_cue_instantly cue="md.GenericMissions.GenericNewsLogbookEntry" param="['', this.$NotificationHeadline, $reason]" />
+                      <set_value name="namespace.static.$subgoal_lastnotification" exact="player.age" />
+                    </do_if>
+                  </do_if>
+                </do_if>
+              </actions>
+            </cue>
+          </cues>
+        </cue>
+        <cue name="Cleanup">
+          <conditions>
+            <check_any>
+              <event_cue_cancelled cue="$OwnerGoal" />
+              <event_cue_signalled />
+            </check_any>
+          </conditions>
+          <actions>
+            <do_if value="$Ships.count">
+              <do_if value="event.name == 'event_cue_signalled' and @event.param.{1} and $OwnerStandbyShipsTable and $OwnerGoal.exists">
+                <set_value name="this.$ResultFeedbackList" exact="[false]" />
+                <do_all exact="$Ships.count" counter="$i">
+                  <signal_cue_instantly cue="$OwnerGoal" param="['add_standby_ship', $Ships.{$i}, this.$ResultFeedbackList]" />
+                  <do_if value="this.$ResultFeedbackList.{1}">
+                    <set_value name="this.$ResultFeedbackList.{1}" exact="false" />
+                  </do_if>
+                  <do_else>
+                    <assert value="this.$ResultFeedbackList.{1}" text="'Attempted to add ship as a faction goal standby ship but it was rejected [Owen]'" break="1" />
+                    <run_actions ref="md.TM_Empire_Runtime.ReleaseOwnedClaim" result="$TM_ShipReason">
+                      <param name="Ship" value="$Ships.{$i}" />
+                      <param name="GoalCue" value="namespace" />
+                    </run_actions>
+                  </do_else>
+                </do_all>
+              </do_if>
+              <do_else>
+                <do_all exact="$Ships.count" counter="$i">
+                  <debug_text text="$DebugText + '%1 resuming prior orders.'.[$Ships.{$i}.knownname]" context="false" chance="$DebugChance" />
+                  <run_actions ref="md.TM_Empire_Runtime.ReleaseOwnedClaim" result="$TM_ShipReason">
+                    <param name="Ship" value="$Ships.{$i}" />
+                    <param name="GoalCue" value="namespace" />
+                  </run_actions>
+                </do_all>
+              </do_else>
+            </do_if>
+            <do_all exact="$RequestedShips.count" counter="$i">
+              <debug_text text="$DebugText + 'Removing requested ship ' + $RequestedShips.{$i} + ' ' + $RequestedShips.{$i}.knownname" context="false" chance="$DebugChance" />
+              <do_if value="$RequestedShips.{$i}.exists">
+                <set_requested_job_ship_timeout ship="$RequestedShips.{$i}" timeout="player.age" />
+              </do_if>
+              <do_else>
+                <remove_job_ship_request ship="$RequestedShips.{$i}" />
+              </do_else>
+            </do_all>
+            <do_if value="player.debugfilteractive.economy_verbose">
+              <include_actions ref="GenerateDebugTextWithCueID" />
+              <debug_text filter="economy_verbose" text="'#FL#;%1;Cleanup;%2;%3;%4;%5;%6;%7;%8'.[player.age, $DebugGoalText, $DebugText, null, null, $DefendArea.$Sector.knownname, $Faction.id, @$OwnerGoal.$EnemyFaction.id]" context="false" />
+            </do_if>
+            <do_if value="event.name != 'event_cue_cancelled'">
+              <signal_cue_instantly cue="$OwnerGoal" param="['remove_subgoal', $RegistryTable]" />
+            </do_if>
+            <run_actions ref="md.TM_Empire_Runtime.RevokeGoalApprovals">
+              <param name="CancelledCue" value="Start" />
+            </run_actions>
+            <cancel_cue cue="Start" />
+          </actions>
+        </cue>
+      </cues>
+    </cue>
+    <library name="GenerateDebugTextWithCueID">
+      <actions>
+        <set_value name="$CueInstanceString" exact="'' + [namespace]" />
+        <substitute_text source="$CueInstanceString" text="$DebugID">
+          <replace string="'md.'" with="''" />
+          <replace string="'.Start'" with="''" />
+          <replace string="'['" with="''" />
+          <replace string="']'" with="''" />
+        </substitute_text>
+        <set_value name="$DebugText" exact="'(' + $Faction.id + ') ' + $DebugID + ' in: ' + $DefendArea.$Sector.knownname + ' ' + $DefendArea.$Sector + ' '" />
+        <remove_value name="$DebugID" />
+        <set_value name="$CueInstanceString" exact="'' + [$OwnerGoal]" />
+        <substitute_text source="$CueInstanceString" text="$DebugGoalText">
+          <replace string="'md.'" with="''" />
+          <replace string="'.Start'" with="''" />
+          <replace string="'['" with="''" />
+          <replace string="']'" with="''" />
+        </substitute_text>
+        <remove_value name="$CueInstanceString" />
+      </actions>
+    </library>
+  </cues>
+</mdscript>

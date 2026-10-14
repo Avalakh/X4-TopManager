@@ -1,0 +1,352 @@
+{
+  "qualification": "staged_isolation_only",
+  "installed": false,
+  "player_runtime_enabled": false,
+  "namespace_map": {
+    "FinaliseStations": "TM_Empire_FinaliseStations",
+    "FactionGoal_Invade_Space": "TM_Empire_FactionGoal_Invade_Space",
+    "FactionSubgoal_BuildStation": "TM_Empire_FactionSubgoal_BuildStation",
+    "FactionLogic": "TM_Empire_FactionLogic",
+    "FactionLogic_StaticDefense": "TM_Empire_FactionLogic_StaticDefense",
+    "FactionLogic_Stations": "TM_Empire_FactionLogic_Stations",
+    "Job_Helper": "TM_Empire_Job_Helper",
+    "FactionLogic_Economy": "TM_Empire_FactionLogic_Economy",
+    "FactionGoal_PatrolCoordinationService": "TM_Empire_FactionGoal_PatrolCoordinationService",
+    "FactionGoal_Plunder": "TM_Empire_FactionGoal_Plunder",
+    "FactionSubgoal_Recon": "TM_Empire_FactionSubgoal_Recon",
+    "FactionSubgoal_DefendArea": "TM_Empire_FactionSubgoal_DefendArea",
+    "FactionGoal_Hold_Space": "TM_Empire_FactionGoal_Hold_Space"
+  },
+  "records": [
+    {
+      "source": "examples/x4_unpacked/md/factiongoal_hold_space.xml",
+      "source_sha256": "a19358b1bdfc0ef818336d2614e7b2033634f1207f9d716c6fe0199a0a8297df",
+      "source_md": "FactionGoal_Hold_Space",
+      "target": "native/md/tm_factiongoal_hold_space.xml",
+      "target_md": "TM_Empire_FactionGoal_Hold_Space",
+      "target_sha256": "983b05f203399fced79b61bf6457443544f540587b9dc23b7a6f8f14390cd8d1",
+      "external_boundaries": [],
+      "startup_cues": [
+        "RegisterGoal",
+        "Start"
+      ],
+      "effect_tags": {
+        "create_list": 1,
+        "create_group": 3,
+        "create_position": 6,
+        "create_factory": 2
+      },
+      "global_tables": [
+        "global.$TM_EmpireFactionGoals",
+        "global.$TM_EmpireFactionManagers"
+      ]
+    },
+    {
+      "source": "examples/x4_unpacked/md/factiongoal_invade_space.xml",
+      "source_sha256": "dc337da93934de25c9954d8c19257f1623f472f0ff309cb192af9252d2a0134e",
+      "source_md": "FactionGoal_Invade_Space",
+      "target": "native/md/tm_factiongoal_invade_space.xml",
+      "target_md": "TM_Empire_FactionGoal_Invade_Space",
+      "target_sha256": "9e0ba99e7294e5c2e37e392d12f91d26fedcdce33c42f28e97208cec11331ba5",
+      "external_boundaries": [],
+      "startup_cues": [
+        "RegisterGoal",
+        "Start"
+      ],
+      "effect_tags": {
+        "create_list": 1,
+        "create_group": 3,
+        "create_position": 3
+      },
+      "global_tables": [
+        "global.$TM_EmpireFactionGoals"
+      ]
+    },
+    {
+      "source": "examples/x4_unpacked/md/factiongoal_patrolcoordinationservice.xml",
+      "source_sha256": "600961c62bb5ca3fe8b02da11b0faa7fd8419c0df4e455488cc247949e86817a",
+      "source_md": "FactionGoal_PatrolCoordinationService",
+      "target": "native/md/tm_factiongoal_patrolcoordinationservice.xml",
+      "target_md": "TM_Empire_FactionGoal_PatrolCoordinationService",
+      "target_sha256": "9f98a0bf5044cfe53de3ef110e16cafb9bbea68b90191f8096d33a03466fb312",
+      "external_boundaries": [],
+      "startup_cues": [
+        "RegisterGoal",
+        "CentralInformationCenter",
+        "Start"
+      ],
+      "effect_tags": {
+        "create_list": 2,
+        "create_position": 2,
+        "create_group": 2,
+        "commandeer_object": 2,
+        "create_order": 6
+      },
+      "global_tables": [
+        "global.$TM_EmpireFactionGoals"
+      ]
+    },
+    {
+      "source": "examples/x4_unpacked/md/factiongoal_plunder.xml",
+      "source_sha256": "664ac622534543c7137eb6c6b422b72dc0bd2b385235995352f182604da7082d",
+      "source_md": "FactionGoal_Plunder",
+      "target": "native/md/tm_factiongoal_plunder.xml",
+      "target_md": "TM_Empire_FactionGoal_Plunder",
+      "target_sha256": "b928f0ed0063f3a2b8f6750ce1ff0a271e325f9896e491882ea7b414eaa4611c",
+      "external_boundaries": [],
+      "startup_cues": [
+        "RegisterGoal",
+        "PlunderNetwork",
+        "Start"
+      ],
+      "effect_tags": {
+        "create_list": 1,
+        "commandeer_object": 1,
+        "create_order": 1
+      },
+      "global_tables": [
+        "global.$TM_EmpireFactionGoals"
+      ]
+    },
+    {
+      "source": "examples/x4_unpacked/md/factionlogic.xml",
+      "source_sha256": "bbf5990654dc57796d48524887753d00086aa6449bca2c8e4f2f1dfda2515003",
+      "source_md": "FactionLogic",
+      "target": "native/md/tm_factionlogic.xml",
+      "target_md": "TM_Empire_FactionLogic",
+      "target_sha256": "5490356eff7f010e9f5a0478a419077e6c8898b0e5d0bf19dd7e7b80fa2d754b",
+      "external_boundaries": [
+        "LIB_Generic",
+        "NPC_FactionRepresentative",
+        "X4Ep1_War_Subscriptions"
+      ],
+      "startup_cues": [
+        "FactionSignalled",
+        "EvaluateForceStrength",
+        "Get_Military_Jobs",
+        "Get_Scout_Jobs"
+      ],
+      "effect_tags": {
+        "set_faction_mood": 2,
+        "create_group": 13,
+        "create_list": 3,
+        "remove_representative": 1,
+        "set_faction_headquarters": 2,
+        "create_representative_actor": 1,
+        "add_build_to_expand_station": 1,
+        "destroy_object": 1,
+        "create_object": 1,
+        "destroy_group": 1
+      },
+      "global_tables": [
+        "global.$TM_EmpireFactionGoals",
+        "global.$TM_EmpireFactionManagers",
+        "global.$TM_Empire_FactionsWithoutAlliedEQDocks",
+        "md.$TM_EmpireFactionData",
+        "md.$TM_Empire_Patch_RiggedAsteroidLists"
+      ]
+    },
+    {
+      "source": "examples/x4_unpacked/md/factionlogic_economy.xml",
+      "source_sha256": "9ce3072e900b4b75933983abcd5622e777c4d7fefe2a8bf7b8b8c6a52a03c934",
+      "source_md": "FactionLogic_Economy",
+      "target": "native/md/tm_factionlogic_economy.xml",
+      "target_md": "TM_Empire_FactionLogic_Economy",
+      "target_sha256": "1781fd2b421441a162a4f69cf696bdeb3ff83d3cad05a9561ef6cc65ff77c4c1",
+      "external_boundaries": [
+        "InitUniverse"
+      ],
+      "startup_cues": [
+        "Habitation_Helper",
+        "GenerateShortageData_Delay",
+        "GlobalStorageData",
+        "Debug_ProductionIssues"
+      ],
+      "effect_tags": {
+        "create_group": 2,
+        "create_construction_sequence": 2,
+        "add_build_to_expand_station": 3,
+        "destroy_object": 8,
+        "commandeer_object": 1,
+        "create_order": 12,
+        "request_job_ship": 1,
+        "create_station": 2,
+        "create_factory": 2,
+        "add_build_to_recycle_station": 1
+      },
+      "global_tables": [
+        "global.$TM_EmpireFactionManagers",
+        "global.$TM_Empire_EconLogic_NotableBuyOfferTable",
+        "global.$TM_Empire_ProductionIssues",
+        "md.$SystemTimeAtGamestart"
+      ]
+    },
+    {
+      "source": "examples/x4_unpacked/md/factionlogic_staticdefense.xml",
+      "source_sha256": "3eb3f20b2975fe3ca3372276a5ce2af1c52b1f0b473d4c80920307f3ae297264",
+      "source_md": "FactionLogic_StaticDefense",
+      "target": "native/md/tm_factionlogic_staticdefense.xml",
+      "target_md": "TM_Empire_FactionLogic_StaticDefense",
+      "target_sha256": "b780eb59b5e161371506d0917027cd510e67a057dfed507391d4026344183ccd",
+      "external_boundaries": [
+        "LIB_Generic"
+      ],
+      "startup_cues": [
+        "Debug_StrategyManager",
+        "Debug_GetStrategy",
+        "Debug_GetStrategy_Mines",
+        "Debug_RemoveDebugBeacons",
+        "Debug_AI",
+        "Debug_Jobs",
+        "Debug_Totals"
+      ],
+      "effect_tags": {
+        "create_group": 3,
+        "create_order": 2,
+        "create_position": 12,
+        "create_orientation": 1,
+        "request_job_ship": 2,
+        "create_object": 2
+      },
+      "global_tables": [
+        "md.$TM_Empire_Debug_StaticDefenseStrategy"
+      ]
+    },
+    {
+      "source": "examples/x4_unpacked/md/factionlogic_stations.xml",
+      "source_sha256": "f8810a740b9d17fdaaf9ec30782b8093a0b127c2a985b8532fb494a9459a8253",
+      "source_md": "FactionLogic_Stations",
+      "target": "native/md/tm_factionlogic_stations.xml",
+      "target_md": "TM_Empire_FactionLogic_Stations",
+      "target_sha256": "9efc27da75bbf21e81cb6fd1d5fd805b039f835a9cded6e9fb41258bc6650330",
+      "external_boundaries": [
+        "LIB_Generic"
+      ],
+      "startup_cues": [],
+      "effect_tags": {
+        "create_group": 2,
+        "create_god_station": 1,
+        "create_position": 1,
+        "create_station": 4,
+        "add_build_to_expand_station": 1
+      },
+      "global_tables": []
+    },
+    {
+      "source": "examples/x4_unpacked/md/factionsubgoal_buildstation.xml",
+      "source_sha256": "4ac95712629d844e768889bac61f74981145ba791eb9c4e6a727e65f27395bbe",
+      "source_md": "FactionSubgoal_BuildStation",
+      "target": "native/md/tm_factionsubgoal_buildstation.xml",
+      "target_md": "TM_Empire_FactionSubgoal_BuildStation",
+      "target_sha256": "0cd39dad2f316fe17327a4dbd93393b96cb15157d7c94472fcbf44b5b4d956ff",
+      "external_boundaries": [
+        "GenericMissions"
+      ],
+      "startup_cues": [
+        "Start"
+      ],
+      "effect_tags": {
+        "create_station": 1,
+        "add_build_to_expand_station": 1,
+        "destroy_object": 2
+      },
+      "global_tables": [
+        "md.$TM_Empire_DebuggingNotifications"
+      ]
+    },
+    {
+      "source": "examples/x4_unpacked/md/factionsubgoal_defendarea.xml",
+      "source_sha256": "2c4a1a037749619ac5b3546d65bba9fee6b67db435f6c9d829b9ecc0e4c8ad39",
+      "source_md": "FactionSubgoal_DefendArea",
+      "target": "native/md/tm_factionsubgoal_defendarea.xml",
+      "target_md": "TM_Empire_FactionSubgoal_DefendArea",
+      "target_sha256": "3dfb98160bf85cba7f9d80ac8adc9b691b3a048e1e9ad01299a7c3f6fe746920",
+      "external_boundaries": [
+        "GenericMissions"
+      ],
+      "startup_cues": [
+        "Start"
+      ],
+      "effect_tags": {
+        "create_group": 1,
+        "create_list": 2,
+        "create_order": 4,
+        "commandeer_object": 2,
+        "request_job_ship": 1
+      },
+      "global_tables": [
+        "md.$TM_Empire_DebuggingNotifications"
+      ]
+    },
+    {
+      "source": "examples/x4_unpacked/md/factionsubgoal_recon.xml",
+      "source_sha256": "6ec1580f3581a4f717415c4f6f722202f25277e52873692beff5c845447edf55",
+      "source_md": "FactionSubgoal_Recon",
+      "target": "native/md/tm_factionsubgoal_recon.xml",
+      "target_md": "TM_Empire_FactionSubgoal_Recon",
+      "target_sha256": "adb1ed7c87142175ec3f8f72b3b8bb3789d8db77936093bc6dd277d8a78b918f",
+      "external_boundaries": [
+        "GenericMissions"
+      ],
+      "startup_cues": [
+        "Start"
+      ],
+      "effect_tags": {
+        "create_group": 1,
+        "create_list": 2,
+        "commandeer_object": 2,
+        "request_job_ship": 1,
+        "create_order": 1,
+        "destroy_object": 1
+      },
+      "global_tables": [
+        "md.$TM_Empire_DebuggingNotifications"
+      ]
+    },
+    {
+      "source": "examples/x4_unpacked/md/finalisestations.xml",
+      "source_sha256": "a543354af3f00105ed9472d7914cc2dfed5b0b6ae7194468c86086b5eec88092",
+      "source_md": "FinaliseStations",
+      "target": "native/md/tm_finalisestations.xml",
+      "target_md": "TM_Empire_FinaliseStations",
+      "target_sha256": "8a5de484e23dd72ab0f801738902566fb1e95af3653b601c0f183f45de7e01fc",
+      "external_boundaries": [],
+      "startup_cues": [
+        "NewStation_GenerateFactory_Signal"
+      ],
+      "effect_tags": {
+        "create_construction_sequence": 6,
+        "create_list": 2,
+        "add_build_to_expand_station": 1
+      },
+      "global_tables": [
+        "md.$SystemTimeAtGamestart",
+        "md.$TM_Empire_EquipmentTable"
+      ]
+    },
+    {
+      "source": "examples/x4_unpacked/md/job_helper.xml",
+      "source_sha256": "a926f2184ec67f16db06553e990ae2ce5b439ff0496f24fec19dc5a67d23b14e",
+      "source_md": "Job_Helper",
+      "target": "native/md/tm_job_helper.xml",
+      "target_md": "TM_Empire_Job_Helper",
+      "target_sha256": "452b8cd7c92d2608a146510bcaa621ae69f375d502a70f23cdb5bcacdaf88b0c",
+      "external_boundaries": [
+        "Player_Evaluator"
+      ],
+      "startup_cues": [],
+      "effect_tags": {
+        "add_build_to_construct_ship": 1
+      },
+      "global_tables": []
+    }
+  ],
+  "dynamic_edges": {
+    "global.$FactionGoals": [
+      "FactionGoal_Hold_Space",
+      "FactionGoal_Invade_Space",
+      "FactionGoal_PatrolCoordinationService",
+      "FactionGoal_Plunder"
+    ]
+  }
+}

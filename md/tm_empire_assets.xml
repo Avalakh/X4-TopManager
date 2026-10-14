@@ -1,0 +1,420 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mdscript name="TM_Empire_Assets">
+  <cues>
+    <cue name="State" namespace="this" />
+    <cue name="Loaded" instantiate="true">
+      <conditions>
+        <check_any>
+          <event_game_started />
+          <event_game_loaded />
+        </check_any>
+      </conditions>
+      <actions>
+        <run_actions ref="md.TM_Empire_Runtime.EnsurePersonnelPrerequisites" />
+        <set_value name="State.$ObservationSession" exact="@State.$ObservationSession + 1" />
+        <run_actions ref="md.TM_Empire_Runtime.PublishAIState" />
+        <remove_value name="State.$Sources" />
+        <remove_value name="State.$Snapshot" />
+        <remove_value name="State.$ProductionEvents" />
+        <remove_value name="State.$TradeEvents" />
+        <remove_value name="State.$ServiceEvents" />
+        <remove_value name="State.$EventWindow" />
+        <remove_value name="player.entity.$tm_empire_trade_quote_request" />
+        <remove_value name="player.entity.$tm_empire_trade_quote_response" />
+        <remove_value name="State.$TradeChoices" />
+        <remove_value name="State.$ServiceStations" />
+        <remove_value name="State.$TradeChoiceCleanupAfter" />
+        <remove_value name="global.$TM_EmpireComponentRecords.$economy_history" />
+      </actions>
+    </cue>
+    <cue name="Scan" namespace="this" checkinterval="5s">
+      <conditions>
+        <check_value value="player.entity.exists" />
+      </conditions>
+      <delay exact="5s" />
+      <actions>
+        <run_actions ref="md.TM_Empire_Runtime.ValidateBinding" />
+        <set_value name="$ObservationManager" exact="@md.TM_Empire_Runtime.Registry.$ManagerCue" />
+        <do_if value="@md.TM_Empire_Runtime.Registry.$State == 'active' and $ObservationManager.exists and @$ObservationManager.$tm_empire_economy_cue.exists and State.$ObservationSession? and (@State.$RefreshManager != $ObservationManager or @State.$RefreshSession != State.$ObservationSession) and md.TM_Empire_FactionLogic_Economy.GenerateShortageData.state == cuestate.waiting and (not md.TM_Empire_FactionLogic_Economy.GlobalStorageData.$LastRunTime? or player.age gt md.TM_Empire_FactionLogic_Economy.GlobalStorageData.$LastRunTime + 15s)">
+          <set_value name="State.$RefreshManager" exact="$ObservationManager" />
+          <set_value name="State.$RefreshSession" exact="State.$ObservationSession" />
+          <signal_cue_instantly cue="md.TM_Empire_FactionLogic_Economy.GenerateShortageData" param="[faction.player]" />
+        </do_if>
+        <do_if value="@md.TM_Empire_Runtime.Registry.$Governor.exists">
+          <!-- A large scan spans ticks; never publish a mixture of authorities
+               or continue a pre-load/rollback partial scan. -->
+          <do_if value="State.$Sources? and (not State.$SourceSession? or @State.$SourceManager != $ObservationManager or State.$SourceSession != State.$ObservationSession or State.$From gt player.age)">
+            <remove_value name="State.$Sources" />
+            <remove_value name="State.$Snapshot" />
+          </do_if>
+          <do_if value="not State.$Sources? and (not State.$Snapshot? or player.age ge State.$Snapshot.$to + 1min)">
+            <run_actions ref="RetireStationEvidence" />
+            <find_station_by_true_owner name="$Stations" faction="faction.player" space="player.galaxy" multiple="true" />
+            <find_ship_by_true_owner name="$Ships" faction="faction.player" space="player.galaxy" unit="false" multiple="true" />
+            <set_value name="State.$Sources" exact="[$Stations, $Ships]" />
+            <set_value name="State.$SourceManager" exact="$ObservationManager" />
+            <set_value name="State.$SourceSession" exact="State.$ObservationSession" />
+            <do_if value="$Stations.count">
+              <do_if value="not State.$StationEvidenceOffset?">
+                <set_value name="State.$StationEvidenceOffset" exact="0" />
+              </do_if>
+              <do_else>
+                <set_value name="State.$StationEvidenceOffset" exact="(State.$StationEvidenceOffset + 32) % $Stations.count" />
+              </do_else>
+            </do_if>
+            <set_value name="State.$ListIndex" exact="1" />
+            <set_value name="State.$Index" exact="1" />
+            <set_value name="State.$From" exact="player.age" />
+            <set_value name="State.$Rows" exact="[]" />
+            <set_value name="State.$Observations" exact="[]" />
+            <set_value name="State.$StationBindings" exact="[]" />
+            <set_value name="State.$Counts" exact="table[$total=0, $station=0, $ship_s=0, $ship_m=0, $ship_l=0, $ship_xl=0, $other=0]" />
+            <set_value name="State.$States" exact="table[$waiting=0, $sent=0, $unknown=0, $excluded=0]" />
+          </do_if>
+          <do_if value="State.$Sources?">
+            <do_all exact="32">
+              <do_if value="State.$Index gt State.$Sources.{State.$ListIndex}.count">
+                <set_value name="State.$ListIndex" operation="add" exact="1" />
+                <set_value name="State.$Index" exact="1" />
+              </do_if>
+              <do_if value="State.$ListIndex gt 2">
+                <break />
+              </do_if>
+              <do_if value="State.$Index gt State.$Sources.{State.$ListIndex}.count">
+                <continue />
+              </do_if>
+              <set_value name="$Asset" exact="State.$Sources.{State.$ListIndex}.{State.$Index}" />
+              <set_value name="State.$Index" operation="add" exact="1" />
+              <do_if value="not $Asset.exists or not $Asset.isplayerowned">
+                <continue />
+              </do_if>
+              <do_if value="State.$ListIndex == 1 and State.$Observations.count lt 32 and (State.$Index - 2 + State.$Sources.{1}.count - State.$StationEvidenceOffset) % State.$Sources.{1}.count lt 32">
+                <run_actions ref="ReadStationEvidence" result="$Evidence">
+                  <param name="Station" value="$Asset" />
+                </run_actions>
+                <append_to_list name="State.$Observations" exact="$Evidence" />
+                <set_value name="$StationEmployee" exact="@$Asset.assignedcontrolentity.{controlpost.manager}" />
+                <append_to_list name="State.$StationBindings" exact="table[$station=$Asset, $employee=$StationEmployee, $seed=if $StationEmployee.exists then '' + $StationEmployee.seed else 'unknown']" />
+              </do_if>
+              <set_value name="$Kind" exact="'other'" />
+              <do_if value="State.$ListIndex == 1">
+                <set_value name="$Kind" exact="'station'" />
+              </do_if>
+              <do_elseif value="$Asset.isclass.ship_s">
+                <set_value name="$Kind" exact="'ship_s'" />
+              </do_elseif>
+              <do_elseif value="$Asset.isclass.ship_m">
+                <set_value name="$Kind" exact="'ship_m'" />
+              </do_elseif>
+              <do_elseif value="$Asset.isclass.ship_l">
+                <set_value name="$Kind" exact="'ship_l'" />
+              </do_elseif>
+              <do_elseif value="$Asset.isclass.ship_xl">
+                <set_value name="$Kind" exact="'ship_xl'" />
+              </do_elseif>
+              <set_value name="$Status" exact="'waiting'" />
+              <set_value name="$Reason" exact="'Ожидает решения управляющего империей'" />
+              <do_if value="$Asset == player.controlled">
+                <set_value name="$Status" exact="'excluded'" />
+                <set_value name="$Reason" exact="'Игрок за штурвалом'" />
+              </do_if>
+              <do_elseif value="not $Asset.isoperational">
+                <set_value name="$Status" exact="'excluded'" />
+                <set_value name="$Reason" exact="'Объект ещё не действует'" />
+              </do_elseif>
+              <do_elseif value="global.$TM_EmpireComponentRecords.$station_reassignment.{$Asset}?">
+                <set_value name="$Status" exact="'unknown'" />
+                <set_value name="$Reason" exact="'Перевод к другой станции: результат ещё не подтверждён'" />
+                <do_if value="global.$TM_EmpireComponentRecords.$station_reassignment.{$Asset}.$state == 'sent'">
+                  <set_value name="$Status" exact="'sent'" />
+                  <set_value name="$Reason" exact="'Выполняется перевод к другой станции'" />
+                </do_if>
+                <do_if value="@global.$TM_EmpireComponentRecords.$station_reassignment.{$Asset}.$target.exists">
+                  <set_value name="$Reason" exact="$Reason + ': ' + global.$TM_EmpireComponentRecords.$station_reassignment.{$Asset}.$target.knownname" />
+                </do_if>
+              </do_elseif>
+              <do_elseif value="global.$TM_EmpireComponentRecords.$claim.{$Asset}?">
+                <set_value name="$Status" exact="'unknown'" />
+                <do_if value="global.$TM_EmpireComponentRecords.$claim.{$Asset}.$state == 'sent'">
+                  <set_value name="$Status" exact="'sent'" />
+                </do_if>
+                <set_value name="$Reason" exact="'Сохранённое поручение; результат требует подтверждения'" />
+                <do_if value="$Asset.order.exists and @global.$TM_EmpireComponentRecords.$claim.{$Asset}.$orders.indexof.{$Asset.order}">
+                  <set_value name="$Reason" exact="'Поручение управляющего: ' + $Asset.order.name" />
+                  <do_if value="@global.$TM_EmpireComponentRecords.$claim.{$Asset}.$idlework == 'mining' and @$Asset.assignedaipilot.commandaction.value == commandaction.searchingresources">
+                    <set_value name="$Reason" exact="'Поручение управляющего: автодобыча; пилот ищет ресурс'" />
+                  </do_if>
+                  <do_elseif value="@global.$TM_EmpireComponentRecords.$claim.{$Asset}.$idlework == 'trade' and @$Asset.assignedaipilot.commandaction.value == commandaction.searchingtrades">
+                    <set_value name="$Reason" exact="'Поручение управляющего: автоторговля; пилот ищет сделку'" />
+                  </do_elseif>
+                  <run_actions ref="md.TM_Empire_Runtime.DescribeNativeMilitaryGoal" result="$MilitaryPurpose">
+                    <param name="GoalCue" value="@global.$TM_EmpireComponentRecords.$claim.{$Asset}.$goal" />
+                  </run_actions>
+                  <do_if value="$MilitaryPurpose">
+                    <set_value name="$Reason" exact="$Reason + '; цель: ' + $MilitaryPurpose" />
+                  </do_if>
+                  <do_if value="$Asset.commander.exists and $Asset.commander.isplayerowned">
+                    <set_value name="$Reason" exact="$Reason + '; командир: ' + $Asset.commander.knownname" />
+                  </do_if>
+                  <do_if value="@global.$TM_EmpireComponentRecords.$claim.{$Asset}.$manager != @md.TM_Empire_Runtime.Registry.$ManagerCue">
+                    <set_value name="$Reason" exact="'Поручение предыдущего назначения управляющего; ' + $Reason" />
+                  </do_if>
+                </do_if>
+                <do_elseif value="$Asset.order.exists and ($Asset.order.isoverride or $Asset.order.haspriority)">
+                  <set_value name="$Status" exact="'excluded'" />
+                  <set_value name="$Reason" exact="'Ручной или приоритетный приказ: ' + $Asset.order.name + '; управляющий не вмешивается'" />
+                </do_elseif>
+                <do_elseif value="$Asset.order.exists">
+                  <set_value name="$Status" exact="'unknown'" />
+                  <set_value name="$Reason" exact="'Действует сторонний приказ: ' + $Asset.order.name + '; прежнее поручение управляющего не переназначается'" />
+                </do_elseif>
+                <do_if value="@global.$TM_EmpireComponentRecords.$claim.{$Asset}.$stoprequested">
+                  <set_value name="$Reason" exact="'Прекращение поручения; ожидается завершение собственного приказа'" />
+                </do_if>
+              </do_elseif>
+              <do_elseif value="State.$ListIndex == 2">
+                <run_actions ref="md.TM_Empire_Runtime.HasOnlyIdleOrders" result="$OnlyIdle"><param name="Ship" value="$Asset" /></run_actions>
+                <do_if value="not $OnlyIdle">
+                <set_value name="$Status" exact="'excluded'" />
+                <set_value name="$Reason" exact="'Сохранено существующее назначение корабля'" />
+                <do_if value="$Asset.order.exists">
+                  <set_value name="$Reason" exact="$Reason + ': ' + $Asset.order.name" />
+                </do_if>
+                </do_if>
+                <do_else>
+                  <set_value name="$Reason" exact="'Простой; ожидает подбора безопасной задачи'" />
+                  <do_if value="@global.$TM_EmpireComponentRecords.$idle_work_reason.{$Asset}.$manager == @md.TM_Empire_Runtime.Registry.$ManagerCue and @global.$TM_EmpireComponentRecords.$idle_work_reason.{$Asset}.$observed ge player.age - 10min">
+                    <set_value name="$Reason" exact="global.$TM_EmpireComponentRecords.$idle_work_reason.{$Asset}.$reason" />
+                  </do_if>
+                  <do_if value="$Asset.canhavecontrolentity.{controlpost.aipilot} and not @$Asset.assignedcontrolentity.{controlpost.aipilot}.exists">
+                    <do_if value="@global.$TM_EmpireComponentRecords.$personnel_prerequisites.{$Asset}.$manager == @md.TM_Empire_Runtime.Registry.$ManagerCue">
+                      <set_value name="$Reason" exact="'Простой: нет капитана; ожидает проверенного перевода экипажа или найма'" />
+                    </do_if>
+                    <do_else>
+                      <set_value name="$Reason" exact="'Простой: нет капитана; ожидает места в очереди кадрового подбора'" />
+                    </do_else>
+                  </do_if>
+                  <do_elseif value="@$Asset.assignedcontrolentity.{controlpost.aipilot}.isintransit or @$Asset.assignedcontrolentity.{controlpost.aipilot}.istransferscheduled">
+                    <set_value name="$Reason" exact="'Ожидается прибытие капитана'" />
+                  </do_elseif>
+                  <do_elseif value="not @$Asset.sector.exists or $Asset.sector.iscontested or $Asset.sector.owner.hasrelation.enemy.{faction.player} or $Asset.hullpercentage lt 80 or $Asset.lastattacktime ge player.age - 10min">
+                    <set_value name="$Reason" exact="'Простой: местная автономная задача небезопасна; нужен другой сектор или ремонт'" />
+                  </do_elseif>
+                </do_else>
+              </do_elseif>
+              <do_elseif value="md.TM_Empire_Runtime.Registry.$State != 'active'">
+                <set_value name="$Reason" exact="'Управляющий AI ещё не запущен'" />
+              </do_elseif>
+              <set_value name="State.$Counts.$total" operation="add" exact="1" />
+              <set_value name="State.$Counts.{'$' + $Kind}" operation="add" exact="1" />
+              <set_value name="State.$States.{'$' + $Status}" operation="add" exact="1" />
+              <do_if value="State.$Rows.count lt 64">
+                <append_to_list name="State.$Rows" exact="table[$name=$Asset.knownname, $state=$Status, $reason=$Reason]" />
+              </do_if>
+            </do_all>
+            <do_if value="State.$ListIndex gt 2">
+              <set_value name="State.$Snapshot" exact="table[$from=State.$From, $to=player.age, $counts=State.$Counts, $states=State.$States, $rows=State.$Rows, $observations=State.$Observations, $bindings=State.$StationBindings, $manager=State.$SourceManager, $session=State.$SourceSession]" />
+              <remove_value name="State.$Sources" />
+              <signal_cue_instantly cue="md.TM_Empire_Runtime.Publish" />
+            </do_if>
+          </do_if>
+        </do_if>
+        <do_else>
+          <remove_value name="State.$Sources" />
+          <remove_value name="State.$Snapshot" />
+        </do_else>
+        <reset_cue cue="this" />
+      </actions>
+    </cue>
+    <library name="ValidateStationSnapshot" purpose="run_actions" namespace="this">
+      <actions>
+        <do_if value="not State.$Snapshot?"><return /></do_if>
+        <set_value name="$Invalid" exact="not State.$Snapshot.$bindings? or @State.$Snapshot.$manager != @md.TM_Empire_Runtime.Registry.$ManagerCue or @State.$Snapshot.$session != State.$ObservationSession or State.$Snapshot.$to gt player.age" />
+        <do_for_each name="$Binding" in="@State.$Snapshot.$bindings">
+          <set_value name="$Station" exact="$Binding.$station" />
+          <set_value name="$Employee" exact="@$Station.assignedcontrolentity.{controlpost.manager}" />
+          <do_if value="not $Station.exists or not $Station.isplayerowned or $Employee != $Binding.$employee or $Binding.$seed != (if $Employee.exists then '' + $Employee.seed else 'unknown')">
+            <set_value name="$Invalid" exact="true" /><break />
+          </do_if>
+        </do_for_each>
+        <do_if value="$Invalid">
+          <remove_value name="State.$Snapshot" />
+          <remove_value name="State.$Sources" />
+        </do_if>
+      </actions>
+    </library>
+    <library name="RetireStationEvidence" purpose="run_actions" namespace="this">
+      <actions>
+        <set_value name="$Records" exact="@global.$TM_EmpireComponentRecords.$economy_observation" />
+        <do_if value="not $Records">
+          <return />
+        </do_if>
+        <set_value name="$Stations" exact="$Records.keys.list" />
+        <do_if value="not $Stations.count">
+          <set_value name="State.$EvidenceRetirementOffset" exact="0" />
+          <return />
+        </do_if>
+        <set_value name="$Offset" exact="if State.$EvidenceRetirementOffset? then State.$EvidenceRetirementOffset % $Stations.count else 0" />
+        <do_all exact="[32, $Stations.count].min" counter="$Index">
+          <set_value name="$Station" exact="$Stations.{1 + ($Offset + $Index - 1) % $Stations.count}" />
+          <do_if value="not $Station.exists or not $Station.isplayerowned">
+            <remove_value name="global.$TM_EmpireComponentRecords.$economy_observation.{$Station}" />
+            <remove_value name="global.$TM_EmpireComponentRecords.$economy_history.{$Station}" />
+          </do_if>
+        </do_all>
+        <set_value name="State.$EvidenceRetirementOffset" exact="($Offset + 32) % $Stations.count" />
+      </actions>
+    </library>
+    <library name="ReadStationEvidence" purpose="run_actions">
+      <params>
+        <param name="Station" />
+      </params>
+      <actions>
+        <set_value name="$Employee" exact="@$Station.assignedcontrolentity.{controlpost.manager}" />
+        <set_value name="$Evidence" exact="table[$station=$Station.knownname, $employee=if $Employee.exists then $Employee.knownname else 'Менеджер не назначен', $state='unknown', $reason='Свежих экономических наблюдений недостаточно', $observed=player.age]" />
+        <set_value name="$Observation" exact="@global.$TM_EmpireComponentRecords.$economy_observation.{$Station}" />
+        <do_if value="$Observation and $Observation.$employee == $Employee and @$Observation.$employee_seed == (if $Employee.exists then '' + $Employee.seed else 'unknown') and $Observation.$session == State.$ObservationSession and $Observation.$manager == @md.TM_Empire_Runtime.Registry.$ManagerCue and $Observation.$observed le player.age and $Observation.$observed ge player.age - 35min">
+          <set_value name="$Evidence.$observed" exact="$Observation.$observed" />
+          <do_if value="$Observation.$delivery_interruption?">
+            <set_value name="$Evidence.$delivery_interruption" exact="$Observation.$delivery_interruption" />
+          </do_if>
+          <do_if value="$Observation.$last_attack? and $Observation.$last_attack gt 0s and $Observation.$last_attack le $Observation.$observed">
+            <set_value name="$Evidence.$external" exact="table[$last_attack=$Observation.$last_attack]" />
+            <do_if value="@$Observation.$attacker">
+              <set_value name="$Evidence.$external.$attacker" exact="$Observation.$attacker" />
+            </do_if>
+          </do_if>
+          <do_if value="$Observation.$ships? and $Observation.$ships_total? and $Observation.$ships_complete?">
+            <set_value name="$Subordinates" exact="table[$total=$Observation.$ships_total, $complete=$Observation.$ships_complete, $observed=0, $operational=0, $controlled=0]" />
+            <set_value name="$Utilization" exact="table[$complete=$Observation.$ships_complete, $sampled=0, $busy=0, $idle=0, $cargo_capacity=0, $cargo_used=0]" />
+            <do_for_each name="$Ship" in="$Observation.$ships.keys.list">
+              <set_value name="$Subordinates.$observed" operation="add" exact="1" />
+              <do_if value="$Observation.$ships.{$Ship}.$operational">
+                <set_value name="$Subordinates.$operational" operation="add" exact="1" />
+              </do_if>
+              <do_if value="$Observation.$ships.{$Ship}.$controlled">
+                <set_value name="$Subordinates.$controlled" operation="add" exact="1" />
+              </do_if>
+              <set_value name="$ShipSample" exact="$Observation.$ships.{$Ship}" />
+              <do_if value="not $ShipSample.$working? or not $ShipSample.$cargo_capacity? or not $ShipSample.$cargo_used? or $ShipSample.$cargo_used lt 0 or $ShipSample.$cargo_capacity lt $ShipSample.$cargo_used">
+                <set_value name="$Utilization.$complete" exact="false" />
+                <continue />
+              </do_if>
+              <set_value name="$Utilization.$sampled" operation="add" exact="1" />
+              <do_if value="$ShipSample.$working">
+                <set_value name="$Utilization.$busy" operation="add" exact="1" />
+              </do_if>
+              <do_else>
+                <set_value name="$Utilization.$idle" operation="add" exact="1" />
+              </do_else>
+              <set_value name="$Utilization.$cargo_capacity" operation="add" exact="$ShipSample.$cargo_capacity" />
+              <set_value name="$Utilization.$cargo_used" operation="add" exact="$ShipSample.$cargo_used" />
+            </do_for_each>
+            <set_value name="$Evidence.$subordinates" exact="$Subordinates" />
+            <do_if value="$Utilization.$sampled gt 0 or $Utilization.$complete">
+              <set_value name="$Evidence.$utilization" exact="$Utilization" />
+            </do_if>
+          </do_if>
+          <do_if value="$Observation.$restricted?">
+            <set_value name="$Evidence.$trade_restricted" exact="$Observation.$restricted" />
+          </do_if>
+          <do_if value="$Observation.$production?">
+            <set_value name="$Evidence.$production" exact="$Observation.$production" />
+          </do_if>
+          <do_if value="$Observation.$purpose?">
+            <set_value name="$Evidence.$purpose" exact="$Observation.$purpose" />
+          </do_if>
+          <set_value name="$Evidence.$problems" exact="[]" />
+          <set_value name="$Evidence.$restricted_shortages" exact="[]" />
+          <set_value name="$Evidence.$problems_complete" exact="true" />
+          <do_if value="$Observation.$stocks?">
+            <set_value name="$Evidence.$stocks" exact="[]" />
+            <set_value name="$Evidence.$stocks_complete" exact="$Observation.$stocks_complete" />
+            <do_for_each name="$Ware" in="$Observation.$stocks.keys.list">
+              <append_to_list name="$Evidence.$stocks" exact="table[$name=$Ware.name, $count=$Observation.$stocks.{$Ware}.$count, $capacity=$Observation.$stocks.{$Ware}.$capacity]" />
+            </do_for_each>
+          </do_if>
+          <do_if value="@$Observation.$tradeneed.$needed and @$Observation.$tradeneed.$complete">
+            <set_value name="$Evidence.$tradereason" exact="'Штатный Upkeep: нет подходящего торгового подчинённого станции'" />
+            <set_value name="$Evidence.$traderecommendation" exact="'Обеспечить станцию торговым кораблём; торговлю выполняет её менеджер'" />
+          </do_if>
+          <do_if value="$Observation.$miningtypes? and $Observation.$miningtypes.count">
+            <set_value name="$Evidence.$miningreason" exact="'Штатный Upkeep: не назначены шахтёры для добываемых ресурсов'" />
+            <set_value name="$Evidence.$miningrecommendation" exact="'Назначить шахтёров для: '" />
+            <do_for_each name="$Transport" in="$Observation.$miningtypes">
+              <set_value name="$Evidence.$miningrecommendation" exact="$Evidence.$miningrecommendation + (if $Transport == waretransport.solid then 'твёрдых ресурсов' else if $Transport == waretransport.liquid then 'газов' else 'другого типа ресурсов') + '; '" />
+            </do_for_each>
+          </do_if>
+          <do_if value="@$Observation.$ownaccount">
+            <set_value name="$Evidence.$money" exact="$Observation.$money" />
+            <set_value name="$Evidence.$productionmoney" exact="$Observation.$productionmoney" />
+            <do_if value="@$Observation.$underfunded and $Observation.$productionmoney gt 0">
+              <set_value name="$Evidence.$provision" exact="'insufficient_provision'" />
+              <set_value name="$Evidence.$provisionreason" exact="'Штатный Upkeep: счёт ниже 90% производственной потребности'" />
+              <set_value name="$Evidence.$recommendation" exact="'Пополнить производственный счёт на ' + (($Observation.$productionmoney - $Observation.$money) / 1Cr) + ' Cr; проверить остальные расходы отдельно'" />
+            </do_if>
+          </do_if>
+          <set_value name="$Evidence.$reason" exact="''" />
+          <do_for_each name="$Category" in="[['$InsufficientProductionWares', 'Недостаток ресурсов производства'], ['$OverflowProductionWares', 'Переполнение продукции'], ['$InsufficientWorkforceWares', 'Недостаток снабжения рабочих'], ['$InsufficientBuildWares', 'Недостаток строительных ресурсов']]">
+            <set_value name="$Problems" exact="@$Observation.$report.{$Category.{1}}" />
+            <do_if value="$Problems and $Problems.keys.count">
+              <set_value name="$Evidence.$reason" exact="$Evidence.$reason + $Category.{2} + '; '" />
+              <set_value name="$ProblemWares" exact="$Problems.keys.list" />
+              <do_if value="$ProblemWares.count gt 32">
+                <set_value name="$Evidence.$problems_complete" exact="false" />
+              </do_if>
+              <do_all exact="[32, $ProblemWares.count].min" counter="$ProblemIndex">
+                <do_if value="$Evidence.$problems.count ge 32">
+                  <set_value name="$Evidence.$problems_complete" exact="false" />
+                  <continue />
+                </do_if>
+                <append_to_list name="$Evidence.$problems" exact="table[$category=$Category.{2}, $ware=$ProblemWares.{$ProblemIndex}.name]" />
+                <do_if value="$Category.{1} == '$InsufficientProductionWares' and @$Observation.$stocks.{$ProblemWares.{$ProblemIndex}}.$owner_only">
+                  <append_to_list name="$Evidence.$restricted_shortages" exact="$ProblemWares.{$ProblemIndex}.name" />
+                </do_if>
+              </do_all>
+            </do_if>
+          </do_for_each>
+          <do_if value="$Evidence.$reason == ''">
+            <set_value name="$Evidence.$reason" exact="'Штатный отчёт не выявил дефицита или переполнения'" />
+          </do_if>
+          <do_else>
+            <set_value name="$Evidence.$reason" exact="$Evidence.$reason + 'Текущие потребности станции'" />
+          </do_else>
+          <do_if value="@$Observation.$production.$resources gt 0">
+            <set_value name="$Evidence.$reason" exact="$Evidence.$reason + '; производственные модули ждут ресурсы'" />
+          </do_if>
+          <do_if value="@$Observation.$production.$storage gt 0">
+            <set_value name="$Evidence.$reason" exact="$Evidence.$reason + '; производственные модули ждут место на складе'" />
+          </do_if>
+          <do_if value="@$Evidence.$provision">
+            <set_value name="$Evidence.$reason" exact="$Evidence.$reason + '; недостаточно производственного бюджета'" />
+          </do_if>
+          <do_if value="@$Evidence.$miningreason">
+            <set_value name="$Evidence.$reason" exact="$Evidence.$reason + '; нужны добывающие корабли'" />
+          </do_if>
+          <do_if value="@$Evidence.$tradereason"><set_value name="$Evidence.$reason" exact="$Evidence.$reason + '; нужен торговый корабль'" /></do_if>
+          <set_value name="$Evidence.$workstate" exact="'ready'" />
+          <do_if value="@$Observation.$production.$producing gt 0">
+            <set_value name="$Evidence.$workstate" exact="'working'" />
+          </do_if>
+          <do_if value="@$Observation.$production.$manual gt 0 or @$Observation.$production.$paused gt 0">
+            <set_value name="$Evidence.$workstate" exact="'paused'" />
+            <set_value name="$Evidence.$reason" exact="$Evidence.$reason + '; есть приостановленные производственные модули'" />
+          </do_if>
+          <do_if value="@$Evidence.$problems.count gt 0 or @$Evidence.$provision or @$Evidence.$miningreason or @$Evidence.$tradereason or @$Observation.$production.$resources gt 0 or @$Observation.$production.$storage gt 0">
+            <set_value name="$Evidence.$workstate" exact="'needs_attention'" />
+          </do_if>
+          <do_if value="$Observation.$production? and (not $Observation.$production.$complete or $Observation.$production.$other gt 0) and $Evidence.$workstate == 'ready'">
+            <set_value name="$Evidence.$workstate" exact="'unknown'" />
+          </do_if>
+        </do_if>
+        <do_if value="not $Employee.exists">
+          <set_value name="$Evidence.$workstate" exact="'missing_manager'" />
+          <set_value name="$Evidence.$reason" exact="'Назначить менеджера станции через штатное управление персоналом'" />
+        </do_if>
+        <return value="$Evidence" />
+      </actions>
+    </library>
+  </cues>
+</mdscript>

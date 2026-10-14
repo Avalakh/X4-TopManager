@@ -1,0 +1,11 @@
+# Пакетная приёмка модуля, двух должностей и вкладки — 6.3
+
+Control построен обычной native очередью до operational; before005/queued026/completed027 содержат отдельные строительные квитанции и SHA/CRC. Подробности: control-module-build-acceptance-20261013.md. Свойство claim наследуется исходным arg admin macro, как принято1.1/1.2; отдельный повторный тест механики захвата не добавлялся.
+
+После штатного restart и verified load027 controller68964 terminal0,7 команд. Два Control entry3/entry4 имеют operational1/same_macro1. Governor seed-9126173547698565463 сохранён; employee0x4b030 отличается от station manager0x4b02d, manager_unchanged1, governor notransit/noscheduled, runtimeactive/one manager. Новая native очередь не подменяет должность штатного менеджера и не запускает второго управляющего.
+
+Назначение/смена отдельного сотрудника через штатную кадровую границу уже приняты в installed-package-621-20261012.md, native-governor-crew-fixture-702-20261012.md и current-station-status-acceptance-20261012.md; сохранение личности/двух должностей и remote dialogue в personnel-transfer-acceptance-20261012.md. Новый код этой границы не менялся, штатный AI/диалог не испытывался повторно ради обычной стройки. Свежий load подтверждает действующую сохранённую связь двух разных сотрудников.
+
+Реальные native UI frames: tm_empire_status29/tables2/body23, empire123/tables4/body18, stats186/tables2/body86. Проекция содержит настоящие планы/ожидания/отправленные и принятые экономические задачи; текущие статусы/потребности станций без оценки/истории. Для первой неполной проекции не заявляется полнота всего имущества; typed/full counts и прокрутка приняты ранее5.5/5.6 и idle-scroll-funding-acceptance. Порядок вкладки/icon остаётся принятым пользовательским UI.
+
+Первичная control-module-load027-short-20261013.json и выжимка module-roles-ui-reopen-evidence-20261013.json. Чтение governor_roles_read здесь имеет state=null/passed0: специальный role-swap fixture в этом world не запускался, эта строка НЕ используется как успешная новая смена сотрудника. Ошибка диагностической вложенной relationto при отсутствии Threat отделена от gameplay и исправляется следующим диагностическим пакетом; она не используется как свидетельство военной проверки. Квалификация6.1/6.4/6.6 остаётся открытой.

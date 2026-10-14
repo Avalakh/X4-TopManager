@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<diff>
+  <add sel="/icons">
+    <icon name="tm_empire_status" texture="extensions\tm_empire_management\assets\textures\ui\player_info\tm_empire_status.tga" height="128" width="128"/>
+  </add>
+</diff>

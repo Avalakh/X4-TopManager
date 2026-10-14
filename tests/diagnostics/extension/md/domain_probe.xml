@@ -1,0 +1,429 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mdscript name="TM_Empire_Domain_Probe" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="md.xsd">
+  <cues>
+    <cue name="State" namespace="this"><actions><set_value name="$Ready" exact="true" /></actions></cue>
+    <cue name="Command" instantiate="true" namespace="this">
+      <conditions><event_ui_triggered screen="'TM_Empire_Probe'" control="'DomainProbe'" /></conditions>
+      <actions><run_actions ref="Execute"><param name="Phase" value="event.param3" /></run_actions></actions>
+    </cue>
+    <library name="Execute" purpose="run_actions" namespace="this">
+      <params><param name="Phase" /></params>
+      <actions>
+        <set_value name="$DiagnosticVersion" exact="'20261013p'" />
+        <do_if value="$Phase == 'market_source' or $Phase == 'market_buyer'">
+          <set_value name="$MarketStation" exact="if $Phase == 'market_source' then @State.$Surplus.$source else @State.$Surplus.$buyer" />
+          <do_if value="$MarketStation.exists and $MarketStation.isknown and @State.$Surplus.$trader.isplayerowned">
+            <set_value name="player.entity.$tm_empire_diagnostic_trade_quote" exact="table[$source=$MarketStation, $ship=State.$Surplus.$trader]" />
+          </do_if>
+          <do_else><remove_value name="player.entity.$tm_empire_diagnostic_trade_quote" /></do_else>
+        </do_if>
+        <do_if value="$Phase == 'threat_retire' and State.$Threat.$range_scene? and not State.$Threat.$range_scene.$retired?">
+          <set_value name="$Scene" exact="State.$Threat.$range_scene" />
+          <set_value name="$Enemy" exact="$Scene.$enemy" />
+          <do_if value="md.TM_Empire_Runtime.Registry.$State == 'active' and $Scene.$responses.count gt 0 and $Enemy.exists and $Enemy.isoperational and $Enemy.owner == faction.xenon and $Enemy == @State.$Threat.$enemy and $Enemy != player.controlled">
+            <set_value name="$Scene.$retired" exact="player.age" />
+            <destroy_object object="$Enemy" explosion="false" />
+          </do_if>
+        </do_if>
+        <do_if value="$Phase == 'buyer_support' and State.$Surplus? and not State.$Surplus.$native_support?">
+          <set_value name="$Buyer" exact="@State.$Surplus.$buyer" />
+          <do_if value="$Buyer.isoperational and $Buyer.owner == faction.argon and not $Buyer.isplayerowned and $Buyer.isknown and $Buyer.assignedcontrolentity.{controlpost.manager}.exists">
+            <!-- Complete the same NPC scenario initializer, not a player sale. -->
+            <set_value name="State.$Surplus.$native_support" exact="table[$issued=player.age, $money_before=$Buyer.money, $defence_before=$Buyer.defencenpc]" />
+            <do_if value="not $Buyer.defencenpc.exists">
+              <create_control_entity object="$Buyer" post="controlpost.defence"><select tags="controlpost.defence.tag" /><owner exact="$Buyer.owner" /></create_control_entity>
+            </do_if>
+            <transfer_money to="$Buyer" from="$Buyer.owner" amount="10000000Cr" />
+          </do_if>
+        </do_if>
+        <do_if value="$Phase == 'threat_distress' and State.$Threat.$range_scene? and not State.$Threat.$range_scene.$distress_seeded?">
+          <set_value name="$Scene" exact="State.$Threat.$range_scene" />
+          <set_value name="$Target" exact="$Scene.$target" />
+          <set_value name="$Enemy" exact="$Scene.$enemy" />
+          <do_if value="md.TM_Empire_Runtime.Registry.$State == 'active' and $Scene.$hits gt 0 and $Target.isplayerowned and $Target.isoperational and $Target != player.controlled and $Enemy.isoperational and $Enemy.owner == faction.xenon and $Enemy.isknown and $Enemy.distanceto.{$Target} lt 10km and faction.xenon.hasrelation.enemy.{faction.player}">
+            <!-- Seed the native distress input only. No owned orders/goals or
+                 attacker visibility are fabricated; actual response is observed. -->
+            <set_value name="$Scene.$distress_seeded" exact="player.age" />
+            <signal_objects object="player.galaxy" param="'ship_in_distress'" param2="$Target" param3="$Enemy" delay="10ms" />
+          </do_if>
+        </do_if>
+        <do_if value="$Phase == 'threat_provoke' and State.$Threat.$range_scene? and not State.$Threat.$range_scene.$provoked?">
+          <set_value name="$Scene" exact="State.$Threat.$range_scene" />
+          <set_value name="$Target" exact="$Scene.$target" />
+          <set_value name="$Enemy" exact="$Scene.$enemy" />
+          <do_if value="md.TM_Empire_Runtime.Registry.$State == 'active' and $Target.isplayerowned and $Target.isoperational and $Target != player.controlled and $Target.hullpercentage gt 50 and $Enemy.isoperational and $Enemy.owner == faction.xenon and $Enemy.assignedaipilot.exists and $Enemy.distanceto.{$Target} lt 10km and faction.xenon.hasrelation.enemy.{faction.player}">
+            <!-- Seed a real engine attack notification, not a defender order or
+                 outgoing combat result. The incoming10HP is test preparation. -->
+            <set_value name="$Scene.$provoked" exact="player.age" />
+            <set_value name="$Scene.$seeded_damage" exact="10" />
+            <set_value name="$Scene.$hull_before" exact="$Target.hullpercentage" />
+            <set_value name="$Scene.$shield_before" exact="$Target.shieldpercentage" />
+            <apply_attackstrength object="$Target" attacker="$Enemy" strength="10" />
+          </do_if>
+        </do_if>
+        <do_if value="$Phase == 'large_asset_loss' and State.$LargeAssets? and not State.$LargeAssets.$loss_issued?">
+          <set_value name="$Hull" exact="@State.$LargeAssets.$ships.{192}" />
+          <run_actions ref="md.TM_Empire_Runtime.HasOnlyIdleOrders" result="$Idle"><param name="Ship" value="$Hull" /></run_actions>
+          <do_if value="md.TM_Empire_Runtime.Registry.$State == 'active' and $Hull.isplayerowned and $Hull.isoperational and $Hull != player.controlled and not $Hull.assignedaipilot.exists and not $Hull.commander.exists and not @global.$TM_EmpireComponentRecords.$claim.{$Hull} and $Idle">
+            <set_value name="State.$LargeAssets.$loss_issued" exact="player.age" />
+            <set_value name="State.$LargeAssets.$loss_ship" exact="$Hull.idcode" />
+            <destroy_object object="$Hull" explosion="false" />
+          </do_if>
+        </do_if>
+        <do_if value="$Phase == 'large_assets' and not State.$LargeAssets?">
+          <set_value name="$Station" exact="@md.TM_Empire_Runtime.Registry.$Station" />
+          <do_if value="md.TM_Empire_Runtime.Registry.$State == 'active' and $Station.isplayerowned and $Station.isoperational and $Station.zone.exists and $Station.zone.isknown">
+            <set_value name="State.$LargeAssets" exact="table[$state='creating', $issued=player.age, $station=$Station, $ships=[]]" />
+            <!-- Deliberate test-world population: bare owned hulls, no injected
+                 orders/claims or free personnel. Product spawning is unchanged. -->
+            <do_all exact="192" counter="$Index">
+              <create_ship name="$Hull" macro="macro.ship_arg_s_trans_container_01_a_macro" zone="$Station.zone"><owner exact="faction.player" /><loadout><level exact="0" /></loadout><position object="$Station" x="5km + ($Index % 16) * 250m" y="2km" z="5km + ($Index / 16)i * 250m" /></create_ship>
+              <do_if value="$Hull.exists"><append_to_list name="State.$LargeAssets.$ships" exact="$Hull" /></do_if>
+            </do_all>
+            <set_value name="State.$LargeAssets.$state" exact="if State.$LargeAssets.$ships.count == 192 then 'prepared' else 'partial_no_replay'" />
+          </do_if>
+        </do_if>
+        <do_if value="$Phase == 'mining_resources' and not State.$MiningResources?">
+          <set_value name="$Station" exact="@md.TM_Empire_Probe.State.$MiningFixture.$station" />
+          <set_value name="$Miner" exact="@md.TM_Empire_Probe.State.$MiningFixture.$ship" />
+          <do_if value="md.TM_Empire_Runtime.Registry.$State == 'active' and $Station.isplayerowned and $Station.isoperational and $Station.sector.isknown and $Miner.isplayerowned and $Miner.isoperational and $Miner.commander == $Station and $Miner != player.controlled and $Miner.cargo.{ware.silicon}.max gt 0">
+            <!-- Native tutorial resource-area mechanism. World preparation only;
+                 neither cargo, orders, skills nor the delivery receipt are set. -->
+            <set_value name="State.$MiningResources" exact="table[$state='requested', $station=$Station, $miner=$Miner, $issued=player.age]" />
+            <create_resource_area sector="$Station.sector" yieldname="'sphere_small_silicon_veryhigh_average'" result="$Area"><position object="$Station" x="15km" /></create_resource_area>
+            <set_value name="State.$MiningResources.$area" exact="$Area" />
+            <do_if value="$Area.exists">
+              <create_object name="$Probe" macro="macro.eq_arg_resourceprobe_01_macro" sector="$Station.sector" owner="faction.player"><position object="$Station" x="15km" /></create_object>
+              <set_value name="State.$MiningResources.$probe" exact="$Probe" />
+              <do_if value="$Probe.exists"><set_known object="$Probe" known="true" /></do_if>
+              <set_value name="State.$MiningResources.$state" exact="if $Probe.exists then 'prepared' else 'probe_unavailable'" />
+            </do_if>
+            <do_else><set_value name="State.$MiningResources.$state" exact="'area_unavailable'" /></do_else>
+          </do_if>
+        </do_if>
+        <do_if value="$Phase == 'surplus_open' and State.$Surplus? and not State.$Surplus.$market_open? and State.$Surplus.$source == @md.TM_Empire_Probe.State.$MiningFixture.$station and State.$Surplus.$source.isplayerowned and State.$Surplus.$source.isoperational">
+          <!-- Test fixture only: permit a real external sale; do not inject a trade. -->
+          <set_trade_restrictions object="State.$Surplus.$source"><override ware="ware.siliconwafers" sell="freeforall" /></set_trade_restrictions>
+          <set_value name="State.$Surplus.$market_open" exact="player.age" />
+        </do_if>
+        <do_if value="$Phase == 'surplus_watch' and State.$Surplus? and not State.$Surplus.$observer_v4? and State.$Surplus.$source.isplayerowned and State.$Surplus.$buyer.exists">
+          <set_value name="State.$Surplus.$observer_v4" exact="player.age" />
+          <do_if value="not State.$Surplus.$pickups?"><set_value name="State.$Surplus.$pickups" exact="table[]" /></do_if>
+          <signal_cue cue="SurplusWatchV4" />
+        </do_if>
+        <do_if value="$Phase == 'builder_position' and not State.$BuilderPosition?">
+          <set_value name="$Receipt" exact="@md.TM_Empire_Construction.Builder.$Receipt" />
+          <set_value name="$Ship" exact="@$Receipt.$ship" />
+          <set_value name="$Station" exact="@$Receipt.$station" />
+          <do_if value="@$Receipt.$engine == 'native_hired' and @$Receipt.$state == 'sent' and @$Receipt.$paid == 50000Cr and $Ship.exists and not $Ship.isplayerowned and $Ship.hasrelation.friend.{faction.player} and $Ship != player.controlled and $Station.isplayerowned and $Station.buildstorage.buildmodule.constructionvessel == $Ship and $Ship.order.id == 'DeployToStation' and $Ship.order.$station == $Station and $Ship.pilot.exists and not $Ship.isdeployedconstructionvessel">
+            <get_building_position name="$Position" object="$Ship" construction="$Station.buildstorage" />
+            <get_safe_pos result="$SafePosition" value="$Position" radius="$Ship.safesize" zone="$Station.buildstorage.zone" ignored="$Ship" />
+            <set_value name="$StoragePosition" exact="$Station.buildstorage.position" />
+            <set_value name="$LookAt" exact="position.[$StoragePosition.x, $Position.y, $StoragePosition.z]" />
+            <create_orientation name="$Rotation" orientation="look_at" refposition="$LookAt" maxpitch="0deg"><position value="$SafePosition" /></create_orientation>
+            <set_value name="State.$BuilderPosition" exact="table[$key=$Receipt.$key, $ship=$Ship, $issued=player.age]" />
+            <warp object="$Ship" zone="$Station.buildstorage.zone"><position value="$SafePosition" /><rotation value="rotation.[$Rotation.yaw, 0, 0]" /></warp>
+            <signal_objects object="$Ship.pilot" param="'patch_build_storage_moved'" />
+          </do_if>
+        </do_if>
+        <do_if value="$Phase == 'builder_repath' and not State.$BuilderRepath?">
+          <set_value name="$Receipt" exact="@md.TM_Empire_Construction.Builder.$Receipt" />
+          <set_value name="$Ship" exact="@$Receipt.$ship" />
+          <set_value name="$Station" exact="@$Receipt.$station" />
+          <do_if value="@$Receipt.$engine == 'native_hired' and @$Receipt.$state == 'sent' and @$Receipt.$paid == 50000Cr and $Ship.exists and not $Ship.isplayerowned and $Ship.hasrelation.friend.{faction.player} and $Ship != player.controlled and $Station.isplayerowned and $Station.buildstorage.buildmodule.constructionvessel == $Ship and $Ship.order.id == 'DeployToStation' and $Ship.order.$station == $Station and $Ship.pilot.exists and not $Ship.isdeployedconstructionvessel">
+            <set_value name="State.$BuilderRepath" exact="table[$key=$Receipt.$key, $ship=$Ship, $issued=player.age]" />
+            <!-- Native movement handler recomputes its reserved destination;
+                 no deployment, replacement order or payment is injected. -->
+            <signal_objects object="$Ship.pilot" param="'patch_build_storage_moved'" />
+          </do_if>
+        </do_if>
+        <do_if value="$Phase == 'threat_range' and not State.$Threat.$range_scene?">
+          <set_value name="$Target" exact="@State.$Surplus.$trader" />
+          <set_value name="$Context" exact="@md.TM_Empire_Probe.State.$MilitaryFleet.$ships.{1}" />
+          <set_value name="$Enemy" exact="@State.$Threat.$enemy" />
+          <run_actions ref="md.TM_Empire_Runtime.HasOnlyIdleOrders" result="$Idle"><param name="Ship" value="$Target" /></run_actions>
+          <do_if value="md.TM_Empire_Runtime.Registry.$State == 'active' and State.$Threat? and $Context.isplayerowned and $Context.isoperational and $Context.zone.exists and $Context.zone.isknown and $Target.isplayerowned and $Target.isoperational and $Target.assignedaipilot.exists and $Target != player.controlled and $Target != $Context and not $Target.commander.exists and not @global.$TM_EmpireComponentRecords.$claim.{$Target} and $Idle and faction.xenon.hasrelation.enemy.{faction.player} and (not $Enemy.isoperational or ($Enemy.owner == faction.xenon and $Enemy.assignedaipilot.exists and $Enemy.orders.count le 1))">
+            <!-- Use an unchanged reference frame for BOTH ships. Only the enemy
+                 gets an attack order; native defenders must choose their work. -->
+            <set_value name="State.$Threat.$range_scene" exact="table[$issued=player.age, $context=$Context, $target=$Target, $hits=0, $responses=[]]" />
+            <warp object="$Target" zone="$Context.zone"><position object="$Context" x="40km" /></warp>
+            <do_if value="not $Enemy.isoperational">
+              <set_value name="State.$Threat.$previous_enemy" exact="$Enemy" />
+              <create_ship name="$Enemy" macro="macro.ship_xen_s_fighter_01_a_macro" zone="$Context.zone"><owner exact="faction.xenon" /><loadout><level exact="1" /></loadout><position object="$Context" x="41km" /></create_ship>
+              <create_control_entity object="$Enemy" post="controlpost.aipilot"><select faction="faction.xenon" tags="controlpost.aipilot.tag" /><owner exact="faction.xenon" /></create_control_entity>
+            </do_if>
+            <do_else><warp object="$Enemy" zone="$Context.zone"><position object="$Context" x="41km" /></warp></do_else>
+            <set_value name="State.$Threat.$enemy" exact="$Enemy" />
+            <set_value name="State.$Threat.$target" exact="$Target" />
+            <set_value name="State.$Threat.$range_scene.$enemy" exact="$Enemy" />
+            <set_known object="$Enemy" known="true" />
+            <signal_cue_instantly cue="ThreatRangeWatch" />
+            <create_order object="$Enemy" id="'Attack'" immediate="true" override="true"><param name="primarytarget" value="$Target" /><param name="pursuedistance" value="100km" /></create_order>
+          </do_if>
+        </do_if>
+        <do_if value="$Phase == 'threat_resume' and not State.$Threat.$resumed?">
+          <set_value name="$Enemy" exact="@State.$Threat.$enemy" />
+          <set_value name="$Target" exact="@State.$Threat.$target" />
+          <do_if value="$Enemy.exists and $Enemy.owner == faction.xenon and $Enemy.assignedaipilot.exists and $Target.isplayerowned and $Target.isoperational and $Target != player.controlled and $Target.zone.exists and faction.xenon.hasrelation.enemy.{faction.player} and $Enemy.orders.count le 1 and (not $Enemy.order.exists or $Enemy.order.id == 'Wait' or $Enemy.order.id == 'Patrol' or ($Enemy.order.id == 'Attack' and @$Enemy.order.$primarytarget == $Target))">
+            <set_value name="State.$Threat.$resumed" exact="player.age" />
+            <warp object="$Enemy" zone="$Target.zone"><safepos value="$Target.position" min="1km" max="2km" /></warp>
+            <create_order object="$Enemy" id="'Attack'" immediate="true"><param name="primarytarget" value="$Target" /><param name="pursuedistance" value="100km" /></create_order>
+          </do_if>
+        </do_if>
+        <do_if value="$Phase == 'threat_transport' and not State.$Threat.$transport_prepared?">
+          <set_value name="$Enemy" exact="@State.$Threat.$enemy" />
+          <set_value name="$Target" exact="@State.$Surplus.$trader" />
+          <set_value name="$EscortContext" exact="@md.TM_Empire_Probe.State.$MilitaryFleet.$ships.{1}" />
+          <run_actions ref="md.TM_Empire_Runtime.HasOnlyIdleOrders" result="$TransportIdle"><param name="Ship" value="$Target" /></run_actions>
+          <do_if value="md.TM_Empire_Runtime.Registry.$State == 'active' and $Enemy.exists and $Enemy.owner == faction.xenon and $Enemy.assignedaipilot.exists and faction.xenon.hasrelation.enemy.{faction.player} and $Enemy.orders.count le 1 and $Target.isplayerowned and $Target.isoperational and $Target.assignedaipilot.exists and $Target != player.controlled and not $Target.commander.exists and not @global.$TM_EmpireComponentRecords.$claim.{$Target} and $TransportIdle and $EscortContext.isplayerowned and $EscortContext.zone.exists and $EscortContext.zone.isknown">
+            <set_value name="State.$Threat.$transport_prepared" exact="player.age" />
+            <set_value name="State.$Threat.$target" exact="$Target" />
+            <warp object="$Target" zone="$EscortContext.zone"><safepos value="$EscortContext.position" min="3km" max="4km" /></warp>
+            <warp object="$Enemy" zone="$EscortContext.zone"><safepos value="$EscortContext.position" min="1km" max="2km" /></warp>
+            <create_order object="$Enemy" id="'Attack'" immediate="true" override="true"><param name="primarytarget" value="$Target" /><param name="pursuedistance" value="100km" /></create_order>
+          </do_if>
+        </do_if>
+        <do_if value="$Phase == 'threat_transport' and State.$Threat.$transport_prepared? and player.age gt State.$Threat.$transport_prepared + 1s and not State.$Threat.$transport_repair?">
+          <set_value name="$Target" exact="@State.$Threat.$target" />
+          <set_value name="$Enemy" exact="@State.$Threat.$enemy" />
+          <run_actions ref="md.TM_Empire_Runtime.HasOnlyIdleOrders" result="$RepairIdle"><param name="Ship" value="$Target" /></run_actions>
+          <do_if value="md.TM_Empire_Runtime.Registry.$State == 'active' and $Target == @State.$Surplus.$trader and $Target.isplayerowned and $Target.isoperational and $Target != player.controlled and not $Target.commander.exists and $Target.zone.exists and $Target.zone.isknown and $RepairIdle and not @global.$TM_EmpireComponentRecords.$claim.{$Target} and faction.xenon.hasrelation.enemy.{faction.player}">
+            <set_value name="State.$Threat.$transport_repair" exact="player.age" />
+            <do_if value="not $Enemy.isoperational">
+              <set_value name="State.$Threat.$previous_enemy" exact="$Enemy" />
+              <create_ship name="$Enemy" macro="macro.ship_xen_s_fighter_01_a_macro" zone="$Target.zone"><owner exact="faction.xenon" /><loadout><level exact="1" /></loadout><safepos value="$Target.position" min="1km" max="2km" /></create_ship>
+              <create_control_entity object="$Enemy" post="controlpost.aipilot"><select faction="faction.xenon" tags="controlpost.aipilot.tag" /><owner exact="faction.xenon" /></create_control_entity>
+              <set_value name="State.$Threat.$enemy" exact="$Enemy" />
+              <set_known object="$Enemy" known="true" />
+            </do_if>
+            <do_elseif value="$Enemy.owner == faction.xenon and $Enemy.assignedaipilot.exists and $Enemy.orders.count le 1">
+              <warp object="$Enemy" zone="$Target.zone"><safepos value="$Target.position" min="1km" max="2km" /></warp>
+            </do_elseif>
+            <do_else><return /></do_else>
+            <create_order object="$Enemy" id="'Attack'" immediate="true" override="true"><param name="primarytarget" value="$Target" /><param name="pursuedistance" value="100km" /></create_order>
+          </do_if>
+        </do_if>
+        <do_if value="$Phase == 'seta_begin' and not State.$ShortSETA? and player.controlled.isplayerowned and not player.timewarp.active and md.TM_Empire_Runtime.Registry.$State == 'active'">
+          <set_value name="State.$ShortSETA" exact="table[$state='requested', $issued=player.age, $seeded=not player.entity.inventory.{ware.inv_timewarp}.count]" />
+          <do_if value="State.$ShortSETA.$seeded"><add_inventory ware="ware.inv_timewarp" exact="1" /></do_if>
+          <set_timewarp_factor factor="6s" />
+          <toggle_timewarp />
+          <signal_cue cue="StopShortSETA" />
+        </do_if>
+        <do_if value="$Phase == 'seta_end'"><run_actions ref="EndShortSETA" /></do_if>
+        <do_if value="$Phase == 'complete_crews'">
+          <set_value name="$Ships" exact="[]" />
+          <do_if value="@State.$Surplus.$trader.exists"><append_to_list name="$Ships" exact="State.$Surplus.$trader" /></do_if>
+          <do_for_each name="$Ship" in="@md.TM_Empire_Probe.State.$MilitaryFleet.$ships"><append_to_list name="$Ships" exact="$Ship" /></do_for_each>
+          <do_for_each name="$Ship" in="$Ships">
+            <do_if value="$Ship.exists and $Ship.isplayerowned and not @$Ship.assignedaipilot.exists">
+              <create_control_entity object="$Ship" post="controlpost.aipilot"><select faction="faction.argon" tags="controlpost.aipilot.tag" /><owner exact="faction.player" /></create_control_entity>
+            </do_if>
+          </do_for_each>
+          <set_value name="$Enemy" exact="@State.$Threat.$enemy" />
+          <do_if value="$Enemy.exists and $Enemy.owner == faction.xenon and not @$Enemy.assignedaipilot.exists">
+            <create_control_entity object="$Enemy" post="controlpost.aipilot"><select faction="faction.xenon" tags="controlpost.aipilot.tag" /><owner exact="faction.xenon" /></create_control_entity>
+          </do_if>
+        </do_if>
+        <do_if value="$Phase == 'surplus_prepare' and not State.$Surplus?">
+          <set_value name="$Source" exact="@md.TM_Empire_Probe.State.$MiningFixture.$station" />
+          <do_if value="md.TM_Empire_Runtime.Registry.$State != 'active' or not $Source.isplayerowned or not $Source.isoperational or $Source.cargo.{ware.siliconwafers}.max lt 5000">
+        <raise_lua_event name="'TM_Empire_Probe.Result'" param="'domain|phase=surplus_prepare|state=context_unavailable|effects=false'" /><return />
+          </do_if>
+          <set_value name="State.$Surplus" exact="table[$state='creating', $source=$Source, $issued=player.age]" />
+          <create_station name="$Buyer" macro="macro.station_gen_factory_base_01_macro" constructionplan="'scenario2_microchip_factory'" owner="faction.argon" sector="$Source.sector" state="componentstate.operational" rawname="'TopManager surplus outlet fixture'">
+            <safepos value="$Source.position" min="10km" max="15km" includeplotbox="true" radius="5km" />
+          </create_station>
+          <set_value name="State.$Surplus.$buyer" exact="$Buyer" />
+          <create_control_entity object="$Buyer" post="controlpost.manager"><select faction="faction.argon" tags="controlpost.manager.tag" /><owner exact="faction.argon" /></create_control_entity>
+
+          <set_known object="$Buyer" known="true" />
+          <add_trade_subscription object="$Buyer" duration="30min" />
+          <add_cargo object="$Source" ware="ware.siliconwafers" exact="5000" />
+          <create_ship name="$Trader" macro="macro.ship_arg_m_trans_container_01_a_macro" zone="$Source.zone">
+            <owner exact="faction.player" /><loadout><level exact="1" /></loadout>
+            <safepos value="$Source.position" min="2km" max="3km" />
+          </create_ship>
+          <set_value name="State.$Surplus.$trader" exact="$Trader" />
+          <create_control_entity object="$Trader" post="controlpost.aipilot"><select faction="faction.argon" tags="controlpost.aipilot.tag" /><owner exact="faction.player" /></create_control_entity>
+          <set_value name="State.$Surplus.$state" exact="'prepared'" />
+          <signal_cue cue="SurplusWatch" />
+        </do_if>
+        <do_if value="$Phase == 'threat_prepare' and not State.$Threat?">
+          <set_value name="$Fleet" exact="@md.TM_Empire_Probe.State.$MilitaryFleet" />
+          <set_value name="$Target" exact="@$Fleet.$ships.{1}" />
+          <do_if value="md.TM_Empire_Runtime.Registry.$State != 'active' or not $Target.isplayerowned or not $Target.isoperational or $Target == player.controlled or not $Target.zone.exists or not faction.xenon.hasrelation.enemy.{faction.player}">
+            <raise_lua_event name="'TM_Empire_Probe.Result'" param="'domain|phase=threat_prepare|state=context_unavailable|effects=false'" /><return />
+          </do_if>
+          <set_value name="State.$Threat" exact="table[$state='creating', $target=$Target, $issued=player.age, $hull=$Target.hullpercentage]" />
+          <create_ship name="$Enemy" macro="macro.ship_xen_s_fighter_01_a_macro" zone="$Target.zone">
+            <owner exact="faction.xenon" /><loadout><level exact="1" /></loadout>
+            <safepos value="$Target.position" min="1km" max="2km" />
+          </create_ship>
+          <set_value name="State.$Threat.$enemy" exact="$Enemy" />
+          <create_control_entity object="$Enemy" post="controlpost.aipilot"><select faction="faction.xenon" tags="controlpost.aipilot.tag" /><owner exact="faction.xenon" /></create_control_entity>
+          <set_known object="$Enemy" known="true" />
+          <!-- Only the enemy receives an injected order: this prepares a real threat. -->
+          <create_order object="$Enemy" id="'Attack'" immediate="true"><param name="primarytarget" value="$Target" /><param name="pursuedistance" value="10km" /></create_order>
+          <set_value name="State.$Threat.$state" exact="'prepared'" />
+        </do_if>
+        <set_value name="$DomainDetails" exact="''" />
+        <do_if value="State.$LargeAssets?">
+          <set_value name="$Living" exact="0" />
+          <do_for_each name="$FixtureHull" in="State.$LargeAssets.$ships"><do_if value="$FixtureHull.exists and $FixtureHull.isplayerowned and $FixtureHull.isoperational"><set_value name="$Living" operation="add" exact="1" /></do_if></do_for_each>
+          <set_value name="$DomainDetails" exact="$DomainDetails + '\nlarge_assets|state=' + State.$LargeAssets.$state + '|created=' + State.$LargeAssets.$ships.count + '|issued=' + State.$LargeAssets.$issued + '|living=' + $Living + '|loss_issued=' + @State.$LargeAssets.$loss_issued + '|loss_ship=' + @State.$LargeAssets.$loss_ship + '|snapshot_from=' + @md.TM_Empire_Assets.State.$From + '|source_session=' + @md.TM_Empire_Assets.State.$SourceSession + '|list_index=' + @md.TM_Empire_Assets.State.$ListIndex + '|cursor=' + @md.TM_Empire_Assets.State.$Index + '|partial_total=' + @md.TM_Empire_Assets.State.$Counts.$total + '|snapshot_total=' + @md.TM_Empire_Assets.State.$Snapshot.$counts.$total + '|snapshot_to=' + @md.TM_Empire_Assets.State.$Snapshot.$to + '|effects=false'" />
+        </do_if>
+        <do_if value="State.$Threat.$range_scene?">
+          <set_value name="$Scene" exact="State.$Threat.$range_scene" />
+          <set_value name="$DomainDetails" exact="$DomainDetails + '\nthreat_range|issued=' + $Scene.$issued + '|hits=' + $Scene.$hits + '|first_hit=' + @$Scene.$first_hit + '|provoked=' + @$Scene.$provoked + '|seeded_incoming_damage=' + @$Scene.$seeded_damage + '|enemy_liveview=' + @$Scene.$enemy.isinliveview + '|enemy_weapons=' + @$Scene.$enemy.weapons.operational.list.count + '|enemy_dps=' + @$Scene.$enemy.dps.all + '|response_count=' + $Scene.$responses.count + '|enemy=' + @$Scene.$enemy.idcode + '|distance=' + @$Scene.$enemy.distanceto.{$Scene.$target} + '|effects=false'" />
+          <do_for_each name="$Response" in="$Scene.$responses">
+            <set_value name="$DomainDetails" exact="$DomainDetails + '\nthreat_response|ship=' + @$Response.$ship.idcode + '|observed=' + $Response.$observed + '|manager_matches=' + $Response.$manager_matches + '|goal=' + @$Response.$goal.name + '|military=' + @$Response.$military + '|confirmed=' + $Response.$confirmed + '|complete=' + $Response.$complete + '|reason=' + $Response.$reason + '|order=' + $Response.$order + '|effects=false'" />
+          </do_for_each>
+        </do_if>
+        <do_if value="typeof @State.$Surplus.$pickups == datatype.table">
+          <set_value name="$PickupShips" exact="State.$Surplus.$pickups.keys.list" />
+          <do_all exact="[8, $PickupShips.count].min" counter="$PickupIndex">
+            <set_value name="$PickupShip" exact="$PickupShips.{$PickupIndex}" />
+            <set_value name="$PickupRecord" exact="State.$Surplus.$pickups.{$PickupShip}" />
+            <set_value name="$DomainDetails" exact="$DomainDetails + '\nsurplus_pickup|ship=' + @$PickupShip.idcode + '|amount=' + @$PickupRecord.$amount + '|observed=' + @$PickupRecord.$observed + '|cargo=' + @$PickupShip.cargo.{ware.siliconwafers}.count + '|order=' + @$PickupShip.order.id + '|commander=' + @$PickupShip.commander.idcode + '|primary=' + @$PickupShip.order.$primarytarget + '|destination=' + @$PickupShip.order.$destination.idcode + '|claimed=' + @global.$TM_EmpireComponentRecords.$claim.{$PickupShip}.$state + '|effects=false'" />
+          </do_all>
+        </do_if>
+            <set_value name="$DomainDetails" exact="$DomainDetails + '|buyer_support=' + @State.$Surplus.$native_support.$issued + '|buyer_money=' + @State.$Surplus.$buyer.money + '|buyer_defence=' + @State.$Surplus.$buyer.defencenpc + '|target_computer=' + @State.$Threat.$target.assignedaipilot.isclass.computer + '|target_police=' + @State.$Threat.$target.zone.policefaction + '|target_police_relation=' + @State.$Threat.$target.relationto.{@State.$Threat.$target.zone.policefaction} + '|target_attack_response=' + @State.$Threat.$target.signal.{'attacked'}.response.id + '|distress_seeded=' + @State.$Threat.$range_scene.$distress_seeded" />
+        <raise_lua_event name="'TM_Empire_Probe.Result'" param="'domain|phase=' + $Phase + '|surplus=' + @State.$Surplus.$state + '|source=' + @State.$Surplus.$source.idcode + '|stock=' + @State.$Surplus.$source.cargo.{ware.siliconwafers}.count + '|buyer=' + @State.$Surplus.$buyer.idcode + '|buyer_stock=' + @State.$Surplus.$buyer.cargo.{ware.siliconwafers}.count + '|trader=' + @State.$Surplus.$trader.idcode + '|trader_commander=' + @State.$Surplus.$trader.commander + '|trader_order=' + @State.$Surplus.$trader.order.id + '|sale_amount=' + @State.$Surplus.$amount + '|sale_ship=' + @State.$Surplus.$seller.idcode + '|sale_observed=' + @State.$Surplus.$observed + '|threat=' + @State.$Threat.$state + '|enemy=' + @State.$Threat.$enemy.idcode + '|enemy_exists=' + @State.$Threat.$enemy.exists + '|enemy_known=' + @State.$Threat.$enemy.isknown + '|target=' + @State.$Threat.$target.idcode + '|target_order=' + @State.$Threat.$target.order.id + '|target_primary=' + @State.$Threat.$target.order.$primarytarget + '|target_hull=' + @State.$Threat.$target.hullpercentage + '|enemy_order=' + @State.$Threat.$enemy.order.id + '|enemy_primary=' + @State.$Threat.$enemy.order.$primarytarget + '|enemy_pilot=' + @State.$Threat.$enemy.assignedaipilot + '|enemy_command=' + @State.$Threat.$enemy.assignedaipilot.commandaction.value + '|enemy_resumed=' + @State.$Threat.$resumed + '|builder_repath_key=' + @State.$BuilderRepath.$key + '|builder_repath_issued=' + @State.$BuilderRepath.$issued + '|surplus_observer=' + @State.$Surplus.$observer_v2 + '|surplus_observer_v3=' + @State.$Surplus.$observer_v3 + '|pickup_count=' + @State.$Surplus.$pickups.keys.count + '|pickup_amount=' + @State.$Surplus.$pickup.$amount + '|pickup_observed=' + @State.$Surplus.$pickup.$observed + '|builder_engine=' + @md.TM_Empire_Construction.Builder.$Receipt.$engine + '|builder_paid=' + @md.TM_Empire_Construction.Builder.$Receipt.$paid + '|builder_order=' + @md.TM_Empire_Construction.Builder.$Receipt.$ship.order.id + '|builder_order_station=' + @md.TM_Empire_Construction.Builder.$Receipt.$ship.order.$station + '|builder_pilot=' + @md.TM_Empire_Construction.Builder.$Receipt.$ship.pilot + '|builder_aipilot=' + @md.TM_Empire_Construction.Builder.$Receipt.$ship.assignedaipilot + '|builder_owner=' + @md.TM_Empire_Construction.Builder.$Receipt.$ship.owner.id + '|builder_owner_argon=' + (@md.TM_Empire_Construction.Builder.$Receipt.$ship.owner == faction.argon) + '|builder_fee_matches=' + (@md.TM_Empire_Construction.Builder.$Receipt.$paid == 50000Cr) + '|builder_actual_matches=' + (@md.TM_Empire_Construction.Builder.$Receipt.$station.buildstorage.buildmodule.constructionvessel == @md.TM_Empire_Construction.Builder.$Receipt.$ship) + '|builder_station_matches=' + (@md.TM_Empire_Construction.Builder.$Receipt.$ship.order.$station == @md.TM_Empire_Construction.Builder.$Receipt.$station) + '|builder_player_helm=' + (@md.TM_Empire_Construction.Builder.$Receipt.$ship == player.controlled) + '|builder_station_owned=' + @md.TM_Empire_Construction.Builder.$Receipt.$station.isplayerowned + '|diagnostic_version=' + $DiagnosticVersion + '|seta_state=' + @State.$ShortSETA.$state + '|seta_factor=' + player.timewarp.factor + '|transport_repair=' + @State.$Threat.$transport_repair + '|source_sell_restricted=' + @State.$Surplus.$source.istraderestricted.{ware.siliconwafers} + '|sale_buyer=' + @State.$Surplus.$sale_buyer.idcode + '|sale_unitprice=' + @State.$Surplus.$sale_unitprice + '|transport_prepared=' + @State.$Threat.$transport_prepared + '|target_shield=' + @State.$Threat.$target.shieldpercentage + '|target_last_attack=' + @State.$Threat.$target.lastattacktime + '|target_attacker=' + @State.$Threat.$target.lastattacker + '|enemy_hull=' + @State.$Threat.$enemy.hullpercentage + '|enemy_shield=' + @State.$Threat.$enemy.shieldpercentage + '|enemy_last_attack=' + @State.$Threat.$enemy.lastattacktime + '|enemy_attacker=' + @State.$Threat.$enemy.lastattacker + '|enemy_attacker_idcode=' + @State.$Threat.$enemy.lastattacker.idcode + '|enemy_attacker_owner=' + @State.$Threat.$enemy.lastattacker.owner.id + '|enemy_attacker_ours=' + @State.$Threat.$enemy.lastattacker.isplayerowned + '|enemy_target_distance=' + @State.$Threat.$enemy.distanceto.{@State.$Threat.$target} + '|mining_resources=' + @State.$MiningResources.$state + '|mining_resource_area=' + @State.$MiningResources.$area + '|mining_resource_probe=' + @State.$MiningResources.$probe + '|free_world_preparation=true|own_orders_injected=false' + $DomainDetails" />
+      </actions>
+    </library>
+    <library name="EndShortSETA" purpose="run_actions">
+      <actions>
+        <do_if value="State.$ShortSETA? and State.$ShortSETA.$state != 'ended'">
+          <do_if value="player.timewarp.active"><toggle_timewarp /></do_if>
+          <set_timewarp_factor />
+          <do_if value="State.$ShortSETA.$seeded and player.entity.inventory.{ware.inv_timewarp}.count == 1"><remove_inventory ware="ware.inv_timewarp" exact="1" /></do_if>
+          <set_value name="State.$ShortSETA.$state" exact="'ended'" />
+          <set_value name="State.$ShortSETA.$ended" exact="player.age" />
+        </do_if>
+      </actions>
+    </library>
+    <cue name="StopShortSETA"><conditions><event_cue_signalled /></conditions><delay exact="12min" /><actions><run_actions ref="EndShortSETA" /></actions></cue>
+    <cue name="SurplusWatchV2" instantiate="true" namespace="this">
+      <conditions><event_cue_signalled /></conditions>
+      <actions><set_value name="$Buyer" exact="State.$Surplus.$buyer" /><set_value name="$Source" exact="State.$Surplus.$source" /></actions>
+      <cues>
+        <cue name="SurplusPickupV2" instantiate="true">
+          <conditions><event_trade_completed seller="$Source" ware="ware.siliconwafers" /><check_value value="event.param.buyer.isplayerowned and event.param.buyer.isclass.ship and event.param.transferredamount gt 0" /></conditions>
+          <actions>
+            <do_if value="State.$Surplus.$pickups.keys.count lt 32 or State.$Surplus.$pickups.{event.param.buyer}?">
+              <set_value name="State.$Surplus.$pickups.{event.param.buyer}" exact="table[$amount=event.param.transferredamount, $observed=player.age]" />
+            </do_if>
+          </actions>
+        </cue>
+        <cue name="SurplusSaleV2">
+          <conditions><event_trade_completed space="player.galaxy" ware="ware.siliconwafers" /><check_value value="event.param.seller.isplayerowned and event.param.seller.isclass.ship and event.param.buyer.isclass.station and not event.param.buyer.isplayerowned and event.param.transferredamount gt 0 and @State.$Surplus.$pickups.{event.param.seller}.$amount ge event.param.transferredamount" /></conditions>
+          <actions>
+            <set_value name="State.$Surplus.$state" exact="'observed'" />
+            <set_value name="State.$Surplus.$amount" exact="event.param.transferredamount" />
+            <set_value name="State.$Surplus.$seller" exact="event.param.seller" />
+            <set_value name="State.$Surplus.$sale_buyer" exact="event.param.buyer" />
+            <set_value name="State.$Surplus.$sale_unitprice" exact="@event.param.unitprice" />
+            <set_value name="State.$Surplus.$pickup" exact="State.$Surplus.$pickups.{event.param.seller}" />
+            <set_value name="State.$Surplus.$observed" exact="player.age" />
+          </actions>
+        </cue>
+      </cues>
+    </cue>
+    <cue name="SurplusWatchV3" instantiate="true" namespace="this">
+      <conditions><event_cue_signalled /></conditions>
+      <actions><set_value name="$Buyer" exact="State.$Surplus.$buyer" /><set_value name="$Source" exact="State.$Surplus.$source" /></actions>
+      <cues>
+        <cue name="SurplusPickupV3" instantiate="true">
+          <conditions><event_trade_completed seller="$Source" ware="ware.siliconwafers" /><check_value value="event.param.buyer.isplayerowned and event.param.buyer.isclass.ship and event.param.transferredamount gt 0" /></conditions>
+          <actions>
+            <do_if value="State.$Surplus.$pickups.keys.count lt 32 or State.$Surplus.$pickups.{event.param.buyer}?">
+              <set_value name="State.$Surplus.$pickups.{event.param.buyer}" exact="table[$amount=event.param.transferredamount, $observed=player.age]" />
+            </do_if>
+          </actions>
+        </cue>
+        <cue name="SurplusSaleV3">
+          <conditions><event_trade_completed space="player.galaxy" ware="ware.siliconwafers" /><check_value value="event.param.seller.isplayerowned and event.param.seller.isclass.ship and event.param.buyer.isclass.station and not event.param.buyer.isplayerowned and event.param.transferredamount gt 0 and @State.$Surplus.$pickups.{event.param.seller}.$amount ge event.param.transferredamount" /></conditions>
+          <actions>
+            <set_value name="State.$Surplus.$state" exact="'observed'" />
+            <set_value name="State.$Surplus.$amount" exact="event.param.transferredamount" />
+            <set_value name="State.$Surplus.$seller" exact="event.param.seller" />
+            <set_value name="State.$Surplus.$sale_buyer" exact="event.param.buyer" />
+            <set_value name="State.$Surplus.$sale_unitprice" exact="@event.param.unitprice" />
+            <set_value name="State.$Surplus.$pickup" exact="State.$Surplus.$pickups.{event.param.seller}" />
+            <set_value name="State.$Surplus.$observed" exact="player.age" />
+          </actions>
+        </cue>
+      </cues>
+    </cue>
+    <cue name="SurplusWatchV4" instantiate="true" namespace="this">
+      <conditions><event_cue_signalled /></conditions>
+      <actions><set_value name="$Buyer" exact="State.$Surplus.$buyer" /><set_value name="$Source" exact="State.$Surplus.$source" /></actions>
+      <cues>
+        <cue name="SurplusPickupV4" instantiate="true">
+          <conditions><event_trade_completed seller="$Source" ware="ware.siliconwafers" /><check_value value="event.param.buyer.isplayerowned and event.param.buyer.isclass.ship and event.param.transferredamount gt 0" /></conditions>
+          <actions>
+            <do_if value="State.$Surplus.$pickups.keys.count lt 32 or State.$Surplus.$pickups.{event.param.buyer}?">
+              <set_value name="State.$Surplus.$pickups.{event.param.buyer}" exact="table[$amount=event.param.transferredamount, $observed=player.age]" />
+            </do_if>
+          </actions>
+        </cue>
+        <cue name="SurplusSaleV4">
+          <conditions><event_trade_completed space="player.galaxy" ware="ware.siliconwafers" /><check_value value="event.param.seller.isplayerowned and event.param.seller.isclass.ship and event.param.buyer.isclass.station and not event.param.buyer.isplayerowned and event.param.transferredamount gt 0 and @State.$Surplus.$pickups.{event.param.seller}.$amount ge event.param.transferredamount" /></conditions>
+          <actions>
+            <set_value name="State.$Surplus.$state" exact="'observed'" />
+            <set_value name="State.$Surplus.$amount" exact="event.param.transferredamount" />
+            <set_value name="State.$Surplus.$seller" exact="event.param.seller" />
+            <set_value name="State.$Surplus.$sale_buyer" exact="event.param.buyer" />
+            <set_value name="State.$Surplus.$sale_unitprice" exact="@event.param.unitprice" />
+            <set_value name="State.$Surplus.$pickup" exact="State.$Surplus.$pickups.{event.param.seller}" />
+            <set_value name="State.$Surplus.$observed" exact="player.age" />
+          </actions>
+        </cue>
+      </cues>
+    </cue>
+    <cue name="ThreatRangeWatch" instantiate="true" namespace="this">
+      <conditions><event_cue_signalled /></conditions>
+      <actions><set_value name="$Scene" exact="State.$Threat.$range_scene" /></actions>
+      <cues>
+        <cue name="TransportHit" instantiate="true">
+          <conditions><event_object_attacked object="$Scene.$target" attacker="$Scene.$enemy" /></conditions>
+          <actions>
+            <set_value name="$Scene.$hits" operation="add" exact="1" />
+            <do_if value="not $Scene.$first_hit?"><set_value name="$Scene.$first_hit" exact="player.age" /></do_if>
+          </actions>
+        </cue>
+        <cue name="OwnedResponse" instantiate="true">
+          <conditions><event_object_attacked object="$Scene.$enemy" /><check_value value="event.param.isplayerowned and event.param.isclass.ship and event.param != player.controlled and $Scene.$responses.count lt 16 and (not $Scene.$response_seen? or not $Scene.$response_seen.{event.param}? or @$Scene.$response_seen.{event.param}.$goal != @global.$TM_EmpireComponentRecords.$claim.{event.param}.$goal)" /></conditions>
+          <actions>
+            <set_value name="$Ship" exact="event.param" />
+            <do_if value="not $Scene.$response_seen?"><set_value name="$Scene.$response_seen" exact="table[]" /></do_if>
+            <set_value name="$Scene.$response_seen.{$Ship}" exact="table[$goal=@global.$TM_EmpireComponentRecords.$claim.{$Ship}.$goal]" />
+            <set_value name="$Claim" exact="@global.$TM_EmpireComponentRecords.$claim.{$Ship}" />
+            <run_actions ref="md.TM_Empire_Runtime.ReadOwnedOrderEvidence" result="$Evidence"><param name="Ship" value="$Ship" /><param name="Goal" value="@$Claim.$goal" /><param name="Manager" value="@md.TM_Empire_Runtime.Registry.$ManagerCue" /></run_actions>
+            <run_actions ref="md.TM_Empire_Runtime.DescribeNativeMilitaryGoal" result="$Military"><param name="GoalCue" value="@$Claim.$goal" /></run_actions>
+            <append_to_list name="$Scene.$responses" exact="table[$ship=$Ship, $observed=player.age, $manager_matches=(@$Claim.$manager == @md.TM_Empire_Runtime.Registry.$ManagerCue), $goal=@$Claim.$goal, $military=$Military, $confirmed=$Evidence.$confirmed, $complete=$Evidence.$complete, $reason=$Evidence.$reason, $order=@$Ship.order.id]" />
+          </actions>
+        </cue>
+      </cues>
+    </cue>
+    <cue name="SurplusWatch" instantiate="true" namespace="this">
+      <conditions><event_cue_signalled /></conditions>
+      <actions><set_value name="$Buyer" exact="State.$Surplus.$buyer" /><set_value name="$Source" exact="State.$Surplus.$source" /></actions>
+      <cues>
+        <cue name="Sale">
+          <conditions><event_trade_completed buyer="$Buyer" ware="ware.siliconwafers" /><check_value value="event.param.seller.isplayerowned and event.param.transferredamount gt 0 and (event.param.seller == $Source or event.param.seller.commander == $Source)" /></conditions>
+          <actions><set_value name="State.$Surplus.$state" exact="'observed'" /><set_value name="State.$Surplus.$amount" exact="event.param.transferredamount" /><set_value name="State.$Surplus.$seller" exact="event.param.seller" /><set_value name="State.$Surplus.$observed" exact="player.age" /></actions>
+        </cue>
+      </cues>
+    </cue>
+  </cues>
+</mdscript>
+
+
+
+
+
+
+
+

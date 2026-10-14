@@ -1,0 +1,5397 @@
+{
+  "game_version_dat": "900",
+  "qualification": "static_base_comparison_only",
+  "runtime_compatibility_enabled": false,
+  "records": [
+    {
+      "path": "md/factionlogic.xml",
+      "md_name": "FactionLogic",
+      "sha256": "bbf5990654dc57796d48524887753d00086aa6449bca2c8e4f2f1dfda2515003",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "bbf5990654dc57796d48524887753d00086aa6449bca2c8e4f2f1dfda2515003",
+      "matches_installed_base": true,
+      "md_references": [
+        "crisis_xenon_khaak_combo",
+        "factiongoal_patrolcoordinationservice",
+        "factiongoal_plunder",
+        "factionlogic",
+        "factionlogic_economy",
+        "factionlogic_staticdefense",
+        "factionlogic_stations",
+        "job_helper",
+        "lib_generic",
+        "npc_factionrepresentative",
+        "setup",
+        "x4ep1_war_subscriptions"
+      ],
+      "effect_locations": {
+        "destroy_object": [
+          1395
+        ],
+        "get_suitable_job": [
+          2223,
+          2226
+        ],
+        "add_build_to_expand_station": [
+          892
+        ],
+        "set_faction_mood": [
+          336,
+          337
+        ],
+        "create_representative_actor": [
+          761
+        ]
+      },
+      "global_keys": [
+        "FactionGoals",
+        "FactionManagers",
+        "FactionsWithoutAlliedEQDocks"
+      ],
+      "libraries": [
+        "Manager",
+        "SectorNoLongerBorder",
+        "UpdateData",
+        "Purge_Outdated_Data",
+        "EvaluateForceStrengthLib",
+        "Estimated_Ship_Strength",
+        "Estimated_Ship_Strength_Lib",
+        "Get_Suitable_Jobs_Lib",
+        "Get_Faction_Situation_By_Sector"
+      ]
+    },
+    {
+      "path": "md/factionlogic_economy.xml",
+      "md_name": "FactionLogic_Economy",
+      "sha256": "9ce3072e900b4b75933983abcd5622e777c4d7fefe2a8bf7b8b8c6a52a03c934",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "9ce3072e900b4b75933983abcd5622e777c4d7fefe2a8bf7b8b8c6a52a03c934",
+      "matches_installed_base": true,
+      "md_references": [
+        "factionlogic",
+        "factionlogic_economy",
+        "finalisestations",
+        "inituniverse"
+      ],
+      "effect_locations": {
+        "create_station": [
+          3135,
+          3141
+        ],
+        "destroy_object": [
+          363,
+          380,
+          412,
+          429,
+          3478,
+          3508,
+          3537,
+          3557
+        ],
+        "request_job_ship": [
+          2113
+        ],
+        "get_suitable_job": [
+          1867,
+          2100,
+          2104,
+          2107
+        ],
+        "commandeer_object": [
+          1929
+        ],
+        "add_build_to_expand_station": [
+          129,
+          2613,
+          2808
+        ],
+        "create_order": [
+          1935,
+          1944,
+          1957,
+          1967,
+          2200,
+          2207,
+          2220,
+          2230,
+          2240,
+          3443,
+          3464,
+          3498
+        ]
+      },
+      "global_keys": [
+        "EconLogic_NotableBuyOfferTable",
+        "FactionManagers",
+        "ProductionIssues"
+      ],
+      "libraries": [
+        "UpdateSectorNeighbourTable",
+        "Check_Production_Location_Suitablility",
+        "Econ_Manager",
+        "CheckRunningActions",
+        "AggregatedReportTableHelper",
+        "SortedReportTableHelper",
+        "SectorReportTableHelper",
+        "AddProductionIssue",
+        "CleanProductionIssueForFaction",
+        "GetProductionIssue"
+      ]
+    },
+    {
+      "path": "md/factionlogic_stations.xml",
+      "md_name": "FactionLogic_Stations",
+      "sha256": "f8810a740b9d17fdaaf9ec30782b8093a0b127c2a985b8532fb494a9459a8253",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "f8810a740b9d17fdaaf9ec30782b8093a0b127c2a985b8532fb494a9459a8253",
+      "matches_installed_base": true,
+      "md_references": [
+        "factionlogic",
+        "lib_generic"
+      ],
+      "effect_locations": {
+        "create_station": [
+          501,
+          507,
+          529,
+          535
+        ],
+        "create_god_station": [
+          465
+        ],
+        "add_build_to_expand_station": [
+          547
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "Manage_Stations",
+        "Find_Location_And_Build_Station",
+        "SelectSuitableSector",
+        "GetRandomCorePosition_1"
+      ]
+    },
+    {
+      "path": "md/factionlogic_staticdefense.xml",
+      "md_name": "FactionLogic_StaticDefense",
+      "sha256": "3eb3f20b2975fe3ca3372276a5ce2af1c52b1f0b473d4c80920307f3ae297264",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "3eb3f20b2975fe3ca3372276a5ce2af1c52b1f0b473d4c80920307f3ae297264",
+      "matches_installed_base": true,
+      "md_references": [
+        "lib_generic"
+      ],
+      "effect_locations": {
+        "request_job_ship": [
+          1363,
+          1373,
+          1599
+        ],
+        "get_suitable_job": [
+          1355,
+          1358,
+          1369,
+          1595,
+          1597
+        ],
+        "create_order": [
+          284,
+          1575
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "Constants",
+        "StaticDefenseManager",
+        "AddStrategy",
+        "RemoveStrategy",
+        "PauseStrategy",
+        "RemoveInactiveLaserTowerNetworks",
+        "GetActiveLaserTowerNetworks",
+        "RemoveInactiveMinefields",
+        "GetActiveMinefields",
+        "GetIsDeployableAllowed",
+        "GetStrategy",
+        "GetName",
+        "GetDefendObject",
+        "GetTypePositionAndOrientation",
+        "GetMacrosToDeploy",
+        "FindUnobstructedPositionBetween",
+        "FindNearbyStaticDefense",
+        "FindNearbyStrategy",
+        "CreateJobShips",
+        "GetPositionsField"
+      ]
+    },
+    {
+      "path": "md/job_helper.xml",
+      "md_name": "Job_Helper",
+      "sha256": "a926f2184ec67f16db06553e990ae2ce5b439ff0496f24fec19dc5a67d23b14e",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "a926f2184ec67f16db06553e990ae2ce5b439ff0496f24fec19dc5a67d23b14e",
+      "matches_installed_base": true,
+      "md_references": [
+        "player_evaluator"
+      ],
+      "effect_locations": {
+        "get_suitable_job": [
+          246,
+          252
+        ],
+        "add_build_to_construct_ship": [
+          182
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "Manager",
+        "Fleet_Evolution",
+        "Fleet_Evolution_Conditions__Standard"
+      ]
+    },
+    {
+      "path": "md/crisis_xenon_khaak_combo.xml",
+      "md_name": "Crisis_Xenon_Khaak_Combo",
+      "sha256": "da0cb71f6afbffc961a5b4e8e55dfb884683c5aa957e126c648c9b3f47135352",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "da0cb71f6afbffc961a5b4e8e55dfb884683c5aa957e126c648c9b3f47135352",
+      "matches_installed_base": true,
+      "md_references": [
+        "cpu_ship_manager",
+        "crisis_manager",
+        "crisis_xenon_khaak_combo",
+        "lib_create_ships",
+        "lib_generic",
+        "npc_usecases",
+        "player_evaluator",
+        "story_terran_core",
+        "x4ep1_mentor_subscriptions"
+      ],
+      "effect_locations": {
+        "create_ship": [
+          431,
+          443,
+          449,
+          460,
+          470,
+          582,
+          1962
+        ],
+        "destroy_object": [
+          2030,
+          2360
+        ],
+        "create_order": [
+          741,
+          1880,
+          1975,
+          1983,
+          2255,
+          2304
+        ]
+      },
+      "global_keys": [
+        "FactionManagers",
+        "PlayerControlledGroup"
+      ],
+      "libraries": [
+        "Start",
+        "TriggerThreat_Boso_Choices",
+        "Get_Num_Active_Invasions",
+        "Get_Num_Completed_Invasions"
+      ]
+    },
+    {
+      "path": "md/factiongoal_patrolcoordinationservice.xml",
+      "md_name": "FactionGoal_PatrolCoordinationService",
+      "sha256": "600961c62bb5ca3fe8b02da11b0faa7fd8419c0df4e455488cc247949e86817a",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "600961c62bb5ca3fe8b02da11b0faa7fd8419c0df4e455488cc247949e86817a",
+      "matches_installed_base": true,
+      "md_references": [],
+      "effect_locations": {
+        "commandeer_object": [
+          533,
+          570
+        ],
+        "create_order": [
+          607,
+          617,
+          623,
+          899,
+          900,
+          905,
+          931,
+          977,
+          1000,
+          1005
+        ]
+      },
+      "global_keys": [
+        "FactionGoals"
+      ],
+      "libraries": [
+        "Evaluate",
+        "EvaluateEvent"
+      ]
+    },
+    {
+      "path": "md/factiongoal_plunder.xml",
+      "md_name": "FactionGoal_Plunder",
+      "sha256": "664ac622534543c7137eb6c6b422b72dc0bd2b385235995352f182604da7082d",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "664ac622534543c7137eb6c6b422b72dc0bd2b385235995352f182604da7082d",
+      "matches_installed_base": true,
+      "md_references": [
+        "factionlogic"
+      ],
+      "effect_locations": {
+        "commandeer_object": [
+          304
+        ],
+        "create_order": [
+          306
+        ]
+      },
+      "global_keys": [
+        "FactionGoals"
+      ],
+      "libraries": [
+        "Evaluate",
+        "EvaluateEvent"
+      ]
+    },
+    {
+      "path": "md/lib_generic.xml",
+      "md_name": "LIB_Generic",
+      "sha256": "b8215e41f2c8260fbf9e91397ac969cb8692d229094c3c8d894d20a96e4e26db",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "b8215e41f2c8260fbf9e91397ac969cb8692d229094c3c8d894d20a96e4e26db",
+      "matches_installed_base": true,
+      "md_references": [
+        "cinematiccamera",
+        "factionlogic",
+        "lib_generic",
+        "npc_instantiation"
+      ],
+      "effect_locations": {
+        "create_ship": [
+          696,
+          737,
+          747,
+          818,
+          1062,
+          1076,
+          1092
+        ],
+        "destroy_object": [
+          4765,
+          4782
+        ],
+        "create_order": [
+          762,
+          766,
+          776,
+          829,
+          834,
+          837,
+          850,
+          853,
+          863,
+          1004,
+          1009,
+          1597,
+          1982,
+          1993,
+          1998,
+          2629,
+          3159,
+          3178
+        ]
+      },
+      "global_keys": [
+        "PlayerContainerGroup",
+        "PlayerOccupiedShipGroup",
+        "PlayerShipsGroup",
+        "SuppressCommChatter"
+      ],
+      "libraries": [
+        "GenerateGenericVoiceTable",
+        "GenerateTextTable_BriefingWarning_Call",
+        "GenerateRewardText",
+        "GenerateWareTableRewardText",
+        "CalculateReputation",
+        "CalculateReputationDrop",
+        "CalculateAverageFleetValue",
+        "GenerateSkillStars",
+        "GenerateRatingStarsText",
+        "PlaceMinefield",
+        "PlaceMinefieldIndiscriminative",
+        "PlaceRiggedAsteroids",
+        "PlaceLasertowerfield",
+        "Spawn_Ship_Formation",
+        "Spawn_Attack_Wave",
+        "CreateFleetAtExitGate",
+        "CreateShipDelayed_SetCommander",
+        "CreateShipAtExitGate",
+        "SectorDifficultyBalance",
+        "FindSectorExitPoints",
+        "FindSectorEntryPoints",
+        "FindNearestObjectFromList",
+        "FindNearestStationForFaction",
+        "FindStationsForFactionByDistance",
+        "FindNearestEnemySectorForFaction",
+        "FindCrystalsNearPlayer",
+        "GetGravidarObscuringSectorPosition",
+        "FindShipMacroForCargo",
+        "DetermineCorridorForRoom",
+        "DetermineEnemyFaction",
+        "TransferShipOwnership",
+        "TransferStationOwnership",
+        "FixFactionRepresentative",
+        "CheckStationMatches",
+        "CheckShipMatches",
+        "CountEmptyEquipmentSlots",
+        "Setup_ShipGroup_Formation_v2",
+        "Setup_Ship_Turrets_HoldFire",
+        "Setup_Ship_Turrets_Defend",
+        "UncoverMap_SectorsAndGates",
+        "ToggleObjectDistance_Handler",
+        "ApproachObject_Handler",
+        "ApproachLocation_Handler",
+        "MultipleActorConversation_Handling",
+        "ForceShipHalt",
+        "WarpBetweenObjects_v2",
+        "GetPositionBetweenObjects",
+        "CreatePositionEclipticNearFar",
+        "CreatePosition_Angles",
+        "ReachedSector",
+        "LeftSector",
+        "ReachedSameSector",
+        "TakeoverStations",
+        "SetStationMinHull",
+        "SetShipMinHull",
+        "DogfightEnemyAttackManager",
+        "ObjectInvincibilityManager_CheckRequests",
+        "RequestObjectInvincibility",
+        "RequestObjectVulnerability",
+        "EntitySpacesCheck",
+        "RequestEntityDoNotScan",
+        "SetObjectOwner",
+        "SuppressChatter_AddCue",
+        "SuppressChatter_RemoveCue",
+        "SuppressCommChatter_AddCue",
+        "SuppressCommChatter_RemoveCue",
+        "Remove_Invalid_Cues_From_List",
+        "Friendly_Fire_Protection",
+        "PlayerInSpecificShip_Objective_Handler",
+        "WaitForFactionsToHaveStations",
+        "Cleanup_Mission_Interior_Call",
+        "TransportStoryPassenger",
+        "RetrieveShip",
+        "GetSectorSafety",
+        "StationSafety_Constants",
+        "DebugPositions_AddBeacon",
+        "Position_GetIsInTheWay",
+        "Shape_GetPositions",
+        "Shape_GetPositions_Cube",
+        "Shape_GetPositions_Sphere",
+        "Create_Position_On_Plane",
+        "Find_NPC_Slots_By_Group",
+        "Add_Wares_For_Module"
+      ]
+    },
+    {
+      "path": "md/npc_factionrepresentative.xml",
+      "md_name": "NPC_FactionRepresentative",
+      "sha256": "9d18f770939cf16d9f15dbdf14a4e29ffabe7f1b7ab4adbe11df942fab98fba2",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "9d18f770939cf16d9f15dbdf14a4e29ffabe7f1b7ab4adbe11df942fab98fba2",
+      "matches_installed_base": true,
+      "md_references": [
+        "diplomacy",
+        "guidance",
+        "lib_generic",
+        "playerreputation"
+      ],
+      "effect_locations": {
+        "destroy_object": [
+          192,
+          214
+        ]
+      },
+      "global_keys": [],
+      "libraries": []
+    },
+    {
+      "path": "md/setup.xml",
+      "md_name": "Setup",
+      "sha256": "3a3b0d20ffe016e09eaa415ba3024c1927dd726af43928b4b2f225eab721db8c",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "3a3b0d20ffe016e09eaa415ba3024c1927dd726af43928b4b2f225eab721db8c",
+      "matches_installed_base": true,
+      "md_references": [
+        "placedobjects",
+        "setup",
+        "story_paranid",
+        "story_research_xen_equipment",
+        "x4ep1_mentor_subscriptions"
+      ],
+      "effect_locations": {
+        "create_god_station": [
+          1207,
+          1208,
+          1209,
+          1210,
+          1211,
+          1212,
+          1213,
+          1214,
+          1215,
+          1216,
+          1217,
+          1218,
+          1219,
+          1220,
+          1221,
+          1342,
+          1343,
+          1345,
+          1346,
+          1348,
+          1349,
+          1350,
+          1351,
+          1352,
+          1353,
+          1354,
+          1355,
+          1356,
+          1357,
+          1358,
+          1359,
+          1360,
+          1361,
+          1362,
+          1363,
+          1574,
+          1575,
+          1689,
+          1690
+        ],
+        "create_ship": [
+          1488,
+          1595,
+          1610,
+          1625,
+          1640,
+          1723
+        ],
+        "destroy_object": [
+          197
+        ],
+        "add_build_to_expand_station": [
+          1151,
+          1172,
+          1176,
+          1180,
+          1184,
+          1188,
+          1442
+        ],
+        "create_order": [
+          236,
+          249,
+          279,
+          308,
+          407,
+          429,
+          734,
+          1606,
+          1737
+        ]
+      },
+      "global_keys": [
+        "BaseGameSector",
+        "IgnoredAbandonedShips",
+        "LastPlayerShip",
+        "PlayerContainerGroup",
+        "PlayerControlledGroup",
+        "PlayerOccupiedShipGroup",
+        "PlayerShipsGroup",
+        "Time_PlayerStoppedControl",
+        "Trophies",
+        "VisitorShipGroup",
+        "WaitForSignalID",
+        "smugglercoverfactions"
+      ],
+      "libraries": []
+    },
+    {
+      "path": "md/x4ep1_war_subscriptions.xml",
+      "md_name": "X4Ep1_War_Subscriptions",
+      "sha256": "97da6cbcf6e38482eabc5b79e46386089de030eb844ac569baca9628fc9f1214",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "97da6cbcf6e38482eabc5b79e46386089de030eb844ac569baca9628fc9f1214",
+      "matches_installed_base": true,
+      "md_references": [
+        "factiongoal_invade_space",
+        "genericmissions",
+        "gm_achievecoverage",
+        "gm_assassinate",
+        "gm_boardship",
+        "gm_buildstation",
+        "gm_deployinplace",
+        "gm_destroy_objects",
+        "gm_destroy_rarelyonsight",
+        "gm_find_resources",
+        "gm_getexactcrew",
+        "gm_getexactfleet",
+        "gm_largesupply",
+        "gm_repairobject",
+        "gm_sabotage",
+        "gm_scan",
+        "gm_supplyfactory",
+        "gm_support_invasion",
+        "gm_transport_passengers",
+        "lib_generic",
+        "mc_management",
+        "setup",
+        "x4ep1_war_subscriptions"
+      ],
+      "effect_locations": {
+        "create_ship": [
+          1055,
+          2725,
+          4395,
+          6058,
+          7728
+        ],
+        "destroy_object": [
+          246,
+          341,
+          2017,
+          3691,
+          5356,
+          7020
+        ],
+        "commandeer_object": [
+          16455
+        ],
+        "create_order": [
+          15267,
+          15543,
+          16459
+        ]
+      },
+      "global_keys": [
+        "FactionManagers"
+      ],
+      "libraries": [
+        "Query_War_Subscription_Status",
+        "Get_Active_War_Subscriptions",
+        "SendSubscriptionMail",
+        "Remove_Dynamic_Interior",
+        "ARG_VS_XENON_Contact_Player_Lines",
+        "ARG_VS_XENON_Can_Activate_Introduction",
+        "ARG_VS_XENON_Reinforce_Defence_Get_Submissions",
+        "ARG_VS_XENON_Reinforce_Defence_Construct_Name",
+        "ARG_VS_XENON_Reinforce_Defence_Construct_Description",
+        "ARG_VS_XENON_Reinforce_Defence_Construct_Reward",
+        "ARG_VS_XENON_Construct_Defence_Get_Submissions",
+        "ARG_VS_XENON_Construct_Defence_Construct_Name",
+        "ARG_VS_XENON_Construct_Defence_Construct_Description",
+        "ARG_VS_XENON_Construct_Defence_Construct_Reward",
+        "ARG_VS_XENON_Secure_Resources_Get_Submissions",
+        "ARG_VS_XENON_Secure_Resources_Construct_Name",
+        "ARG_VS_XENON_Secure_Resources_Construct_Description",
+        "ARG_VS_XENON_Secure_Resources_Construct_Reward",
+        "ARG_VS_XENON_Preemptive_Offensive_Get_Submissions",
+        "ARG_VS_XENON_Preemptive_Offensive_Construct_Name",
+        "ARG_VS_XENON_Preemptive_Offensive_Construct_Description",
+        "ARG_VS_XENON_Preemptive_Offensive_Construct_Reward",
+        "ARG_VS_XENON_Station_Offensive_Get_Submissions",
+        "ARG_VS_XENON_Station_Offensive_Construct_Name",
+        "ARG_VS_XENON_Station_Offensive_Construct_Description",
+        "ARG_VS_XENON_Station_Offensive_Construct_Reward",
+        "ARG_VS_XENON_Gather_Intel_Get_Submissions",
+        "ARG_VS_XENON_Gather_Intel_Construct_Name",
+        "ARG_VS_XENON_Gather_Intel_Construct_Description",
+        "ARG_VS_XENON_Gather_Intel_Construct_Reward",
+        "ARG_VS_XENON_Support_Invasion_Get_Submissions",
+        "ARG_VS_XENON_Support_Invasion_Construct_Name",
+        "ARG_VS_XENON_Support_Invasion_Construct_Description",
+        "ARG_VS_XENON_Support_Invasion_Construct_Reward",
+        "ARG_VS_HOL_Contact_Player_Lines",
+        "ARG_VS_HOL_Can_Activate_Introduction",
+        "ARG_VS_HOL_Reinforce_Defence_Get_Submissions",
+        "ARG_VS_HOL_Reinforce_Defence_Construct_Name",
+        "ARG_VS_HOL_Reinforce_Defence_Construct_Description",
+        "ARG_VS_HOL_Reinforce_Defence_Construct_Reward",
+        "ARG_VS_HOL_Construct_Defence_Get_Submissions",
+        "ARG_VS_HOL_Construct_Defence_Construct_Name",
+        "ARG_VS_HOL_Construct_Defence_Construct_Description",
+        "ARG_VS_HOL_Construct_Defence_Construct_Reward",
+        "ARG_VS_HOL_Secure_Resources_Get_Submissions",
+        "ARG_VS_HOL_Secure_Resources_Construct_Name",
+        "ARG_VS_HOL_Secure_Resources_Construct_Description",
+        "ARG_VS_HOL_Secure_Resources_Construct_Reward",
+        "ARG_VS_HOL_Preemptive_Offensive_Get_Submissions",
+        "ARG_VS_HOL_Preemptive_Offensive_Construct_Name",
+        "ARG_VS_HOL_Preemptive_Offensive_Construct_Description",
+        "ARG_VS_HOL_Preemptive_Offensive_Construct_Reward",
+        "ARG_VS_HOL_Station_Offensive_Get_Submissions",
+        "ARG_VS_HOL_Station_Offensive_Construct_Name",
+        "ARG_VS_HOL_Station_Offensive_Construct_Description",
+        "ARG_VS_HOL_Station_Offensive_Construct_Reward",
+        "ARG_VS_HOL_Gather_Intel_Get_Submissions",
+        "ARG_VS_HOL_Gather_Intel_Construct_Name",
+        "ARG_VS_HOL_Gather_Intel_Construct_Description",
+        "ARG_VS_HOL_Preemptive_Gather_Intel_Construct_Reward",
+        "ARG_VS_HOL_Support_Invasion_Get_Submissions",
+        "ARG_VS_HOL_Support_Invasion_Construct_Name",
+        "ARG_VS_HOL_Support_Invasion_Construct_Description",
+        "ARG_VS_HOL_Support_Invasion_Construct_Reward",
+        "PAR_VS_HOL_Contact_Player_Lines",
+        "PAR_VS_HOL_Can_Activate_Introduction",
+        "PAR_VS_HOL_Reinforce_Defence_Get_Submissions",
+        "PAR_VS_HOL_Reinforce_Defence_Construct_Name",
+        "PAR_VS_HOL_Reinforce_Defence_Construct_Description",
+        "PAR_VS_HOL_Reinforce_Defence_Construct_Reward",
+        "PAR_VS_HOL_Construct_Defence_Get_Submissions",
+        "PAR_VS_HOL_Construct_Defence_Construct_Name",
+        "PAR_VS_HOL_Construct_Defence_Construct_Description",
+        "PAR_VS_HOL_Construct_Defence_Construct_Reward",
+        "PAR_VS_HOL_Secure_Resources_Get_Submissions",
+        "PAR_VS_HOL_Secure_Resources_Construct_Name",
+        "PAR_VS_HOL_Secure_Resources_Construct_Description",
+        "PAR_VS_HOL_Secure_Resources_Construct_Reward",
+        "PAR_VS_HOL_Preemptive_Offensive_Get_Submissions",
+        "PAR_VS_HOL_Preemptive_Offensive_Construct_Name",
+        "PAR_VS_HOL_Preemptive_Offensive_Construct_Description",
+        "PAR_VS_HOL_Preemptive_Offensive_Construct_Reward",
+        "PAR_VS_HOL_Station_Offensive_Get_Submissions",
+        "PAR_VS_HOL_Station_Offensive_Construct_Name",
+        "PAR_VS_HOL_Station_Offensive_Construct_Description",
+        "PAR_VS_HOL_Station_Offensive_Construct_Reward",
+        "PAR_VS_HOL_Gather_Intel_Get_Submissions",
+        "PAR_VS_HOL_Gather_Intel_Construct_Name",
+        "PAR_VS_HOL_Gather_Intel_Construct_Description",
+        "PAR_VS_HOL_Gather_Intel_Construct_Reward",
+        "PAR_VS_HOL_Support_Invasion_Get_Submissions",
+        "PAR_VS_HOL_Support_Invasion_Construct_Name",
+        "PAR_VS_HOL_Support_Invasion_Construct_Description",
+        "PAR_VS_HOL_Support_Invasion_Construct_Reward",
+        "HOL_VS_ARG_Contact_Player_Lines",
+        "HOL_VS_ARG_Can_Activate_Introduction",
+        "HOL_VS_ARG_Reinforce_Defence_Get_Submissions",
+        "HOL_VS_ARG_Reinforce_Defence_Construct_Name",
+        "HOL_VS_ARG_Reinforce_Defence_Construct_Description",
+        "HOL_VS_ARG_Reinforce_Defence_Construct_Reward",
+        "HOL_VS_ARG_Construct_Defence_Get_Submissions",
+        "HOL_VS_ARG_Construct_Defence_Construct_Name",
+        "HOL_VS_ARG_Construct_Defence_Construct_Description",
+        "HOL_VS_ARG_Construct_Defence_Construct_Reward",
+        "HOL_VS_ARG_Secure_Resources_Get_Submissions",
+        "HOL_VS_ARG_Secure_Resources_Construct_Name",
+        "HOL_VS_ARG_Secure_Resources_Construct_Description",
+        "HOL_VS_ARG_Secure_Resources_Construct_Reward",
+        "HOL_VS_ARG_Preemptive_Offensive_Get_Submissions",
+        "HOL_VS_ARG_Preemptive_Offensive_Construct_Name",
+        "HOL_VS_ARG_Preemptive_Offensive_Construct_Description",
+        "HOL_VS_ARG_Preemptive_Offensive_Construct_Reward",
+        "HOL_VS_ARG_Station_Offensive_Get_Submissions",
+        "HOL_VS_ARG_Station_Offensive_Construct_Name",
+        "HOL_VS_ARG_Station_Offensive_Construct_Description",
+        "HOL_VS_ARG_Station_Offensive_Construct_Reward",
+        "HOL_VS_ARG_Gather_Intel_Get_Submissions",
+        "HOL_VS_ARG_Gather_Intel_Construct_Name",
+        "HOL_VS_ARG_Gather_Intel_Construct_Description",
+        "HOL_VS_ARG_Gather_Intel_Construct_Reward",
+        "HOL_VS_ARG_Support_Invasion_Get_Submissions",
+        "HOL_VS_ARG_Support_Invasion_Construct_Name",
+        "HOL_VS_ARG_Support_Invasion_Construct_Description",
+        "HOL_VS_ARG_Support_Invasion_Construct_Reward",
+        "HOL_VS_PAR_Contact_Player_Lines",
+        "HOL_VS_PAR_Can_Activate_Introduction",
+        "HOL_VS_PAR_Reinforce_Defence_Get_Submissions",
+        "HOL_VS_PAR_Reinforce_Defence_Construct_Name",
+        "HOL_VS_PAR_Reinforce_Defence_Construct_Description",
+        "HOL_VS_PAR_Reinforce_Defence_Construct_Reward",
+        "HOL_VS_PAR_Construct_Defence_Get_Submissions",
+        "HOL_VS_PAR_Construct_Defence_Construct_Name",
+        "HOL_VS_PAR_Construct_Defence_Construct_Description",
+        "HOL_VS_PAR_Construct_Defence_Construct_Reward",
+        "HOL_VS_PAR_Secure_Resources_Get_Submissions",
+        "HOL_VS_PAR_Secure_Resources_Construct_Name",
+        "HOL_VS_PAR_Secure_Resources_Construct_Description",
+        "HOL_VS_PAR_Secure_Resources_Construct_Reward",
+        "HOL_VS_PAR_Preemptive_Offensive_Get_Submissions",
+        "HOL_VS_PAR_Preemptive_Offensive_Construct_Name",
+        "HOL_VS_PAR_Preemptive_Offensive_Construct_Description",
+        "HOL_VS_PAR_Preemptive_Offensive_Construct_Reward",
+        "HOL_VS_PAR_Station_Offensive_Get_Submissions",
+        "HOL_VS_PAR_Station_Offensive_Construct_Name",
+        "HOL_VS_PAR_Station_Offensive_Construct_Description",
+        "HOL_VS_PAR_Station_Offensive_Construct_Reward",
+        "HOL_VS_PAR_Gather_Intel_Get_Submissions",
+        "HOL_VS_PAR_Gather_Intel_Construct_Name",
+        "HOL_VS_PAR_Gather_Intel_Construct_Description",
+        "HOL_VS_PAR_Gather_Intel_Construct_Reward",
+        "HOL_VS_PAR_Support_Invasion_Get_Submissions",
+        "HOL_VS_PAR_Support_Invasion_Construct_Name",
+        "HOL_VS_PAR_Support_Invasion_Construct_Description",
+        "HOL_VS_PAR_Support_Invasion_Construct_Reward",
+        "GetWarFronts",
+        "MM__Standard_GM_Event",
+        "Situation__Always",
+        "Situation__Cold_War",
+        "Situation__Contention",
+        "Situation__Invasion_Prep",
+        "Situation__Defence_Prep",
+        "Situation__Invading",
+        "Situation__Defending",
+        "Situation__Invading_Ally",
+        "Situation__Defending_Ally",
+        "Situation__Retreat",
+        "Situation__Pushback",
+        "Thread_Conditions__Common",
+        "Large_Supply__Food",
+        "Large_Supply__Ship_Construction_Tech",
+        "Achieve_Coverage__Host_Space",
+        "Achieve_Coverage__Enemy_Space",
+        "Build_Station__Allied_Space",
+        "Build_Station__Enemy_Border_Area",
+        "DeployInPlace__LaserTowers_Around_Allied_Object",
+        "DeployInPlace__Mine_Own_Entry_Point",
+        "DeployInPlace__Mine_Allied_Entry_Point",
+        "DeployInPlace__Lasertower_Own_Entry_Point",
+        "DeployInPlace__Lasertower_Allied_Entry_Point",
+        "DeployInPlace__Entry_Point_Helper",
+        "DeployInPlace__Mine_Area_Entry_Point",
+        "DeployInPlace__Lasertower_Area_Entry_Point",
+        "DeployInPlace__Area_Entry_Point_Helper",
+        "DeployInPlace__LaserTowers_In_Resource_Regions",
+        "DeployInPlace__Satellite_In_Enemy_Space",
+        "BoardShip__Standard_FindMilitaryTarget",
+        "Passenger_Transport__To_Frontline",
+        "KillShip__Standard_Lib",
+        "DestroyFleet__Standard_Lib",
+        "Find_Resources__Allied_Space_1",
+        "Find_Resources__Enemy_Space_1",
+        "RepairObject__Allied_Job_Ship",
+        "Assassinate__Enemy_S_M_Ship",
+        "Assassinate__NonAlly_S_M_Ship",
+        "Support_Invasion__Get_Invasion"
+      ]
+    },
+    {
+      "path": "md/finalisestations.xml",
+      "md_name": "FinaliseStations",
+      "sha256": "a543354af3f00105ed9472d7914cc2dfed5b0b6ae7194468c86086b5eec88092",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "a543354af3f00105ed9472d7914cc2dfed5b0b6ae7194468c86086b5eec88092",
+      "matches_installed_base": true,
+      "md_references": [],
+      "effect_locations": {
+        "destroy_object": [
+          156
+        ],
+        "add_build_to_expand_station": [
+          359,
+          1020
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "NewStation_GenerateFactory",
+        "DefaultCalculateHabitation",
+        "DefaultCalculateDocks",
+        "DefaultCalculatePiers",
+        "DefaultCalculateDefence",
+        "DefaultCalculateConnections",
+        "Apply_Loadout_To_Stations"
+      ]
+    },
+    {
+      "path": "md/inituniverse.xml",
+      "md_name": "InitUniverse",
+      "sha256": "4a8f5acb049fe6dfad2525c1d24f667f2dcbc74a26e2218d1ad1c9f6c7a97ebb",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "4a8f5acb049fe6dfad2525c1d24f667f2dcbc74a26e2218d1ad1c9f6c7a97ebb",
+      "matches_installed_base": true,
+      "md_references": [
+        "npc_shiptrader",
+        "setup"
+      ],
+      "effect_locations": {
+        "destroy_object": [
+          150
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "InitStationActions",
+        "StationExpandedActions",
+        "CreateDefenceControlEntity",
+        "CreateTradeManagerEntity",
+        "CreateEngineerEntity",
+        "CreatePilotEntity",
+        "InitAmmo",
+        "CreateShipDealerEntity"
+      ]
+    },
+    {
+      "path": "md/player_evaluator.xml",
+      "md_name": "Player_Evaluator",
+      "sha256": "25ed3023e620693910bb2bb94d322486e94d4b24b2c2ba10b87c7b60d5e48c08",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "25ed3023e620693910bb2bb94d322486e94d4b24b2c2ba10b87c7b60d5e48c08",
+      "matches_installed_base": true,
+      "md_references": [
+        "setup"
+      ],
+      "effect_locations": {},
+      "global_keys": [],
+      "libraries": [
+        "GetTotalValue",
+        "GetValueBySector",
+        "GetSectorAtPlottedValueFactor",
+        "GetMilitaryValue",
+        "GetMilitaryValueBySector"
+      ]
+    },
+    {
+      "path": "md/cpu_ship_manager.xml",
+      "md_name": "CPU_Ship_Manager",
+      "sha256": "2f8e75bbcb0dc4a447db4a079185060906a32478040082b514f89bb27457309f",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "2f8e75bbcb0dc4a447db4a079185060906a32478040082b514f89bb27457309f",
+      "matches_installed_base": true,
+      "md_references": [
+        "encounters",
+        "lib_generic",
+        "npc_usecases"
+      ],
+      "effect_locations": {
+        "create_ship": [
+          229,
+          250,
+          360
+        ],
+        "destroy_object": [
+          881,
+          892,
+          957,
+          958
+        ],
+        "create_order": [
+          266,
+          385,
+          886,
+          959
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "Manager",
+        "Get_CPU_Placement_Pos",
+        "Leave_Presentation_Cluster",
+        "Create_CPU_Defenders",
+        "Set_Defender_Lights",
+        "Set_Defender_Names"
+      ]
+    },
+    {
+      "path": "md/crisis_manager.xml",
+      "md_name": "Crisis_Manager",
+      "sha256": "d2000d22ff275f0fa5b6a907ae987dad381ad6d2c0c90f9072358669c034e82a",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "d2000d22ff275f0fa5b6a907ae987dad381ad6d2c0c90f9072358669c034e82a",
+      "matches_installed_base": true,
+      "md_references": [
+        "factionlogic",
+        "setup"
+      ],
+      "effect_locations": {},
+      "global_keys": [],
+      "libraries": [
+        "CanRequestCrisis",
+        "ThreatenCrisis",
+        "TriggerCrisis",
+        "EndCrisis",
+        "GetCrisisTriggerCount"
+      ]
+    },
+    {
+      "path": "md/lib_create_ships.xml",
+      "md_name": "LIB_Create_Ships",
+      "sha256": "c710113cf2c6060c8720da285dfa7c837f49c61858730b03593a9e9c81ff9467",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "c710113cf2c6060c8720da285dfa7c837f49c61858730b03593a9e9c81ff9467",
+      "matches_installed_base": true,
+      "md_references": [],
+      "effect_locations": {
+        "create_ship": [
+          312,
+          317,
+          322,
+          375,
+          380,
+          387,
+          392,
+          399,
+          405,
+          627,
+          634,
+          644,
+          651,
+          691,
+          724
+        ],
+        "destroy_object": [
+          425,
+          440
+        ],
+        "create_order": [
+          332
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "Start",
+        "GetDefinitionCost",
+        "SpawnShipsByDefinition"
+      ]
+    },
+    {
+      "path": "md/npc_usecases.xml",
+      "md_name": "NPC_UseCases",
+      "sha256": "e0fd0fc24a018ca76c68ab9d118194a8443b347d821cee8c47ee5893d0cfcbb0",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "e0fd0fc24a018ca76c68ab9d118194a8443b347d821cee8c47ee5893d0cfcbb0",
+      "matches_installed_base": true,
+      "md_references": [
+        "npc_usecase_definitions",
+        "npc_usecases",
+        "setup"
+      ],
+      "effect_locations": {},
+      "global_keys": [
+        "PlayerContainerGroup",
+        "PlayerOccupiedShipGroup",
+        "PlayerShipsGroup",
+        "SuppressCommChatter"
+      ],
+      "libraries": [
+        "ValidateUseCaseDef",
+        "SetupCustomUseCaseDef",
+        "GetAssignedActorCue",
+        "GetReservedActorSlotCue",
+        "UseCasePrepareStart",
+        "EvaluateScriptEntry",
+        "SelectWeightedSubEntry",
+        "DoSpeak",
+        "StopMonitorCutscene"
+      ]
+    },
+    {
+      "path": "md/x4ep1_mentor_subscription.xml",
+      "md_name": "X4Ep1_Mentor_Subscriptions",
+      "sha256": "a0de18e1f5e9cc929515904b641601b54b757af948ce35142b5e2d4cc54849f9",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "a0de18e1f5e9cc929515904b641601b54b757af948ce35142b5e2d4cc54849f9",
+      "matches_installed_base": true,
+      "md_references": [
+        "diplomacy",
+        "lib_dialog",
+        "lib_generic",
+        "npc_instantiation",
+        "npc_usecases",
+        "placedobjects",
+        "rml_buildstation",
+        "rml_deliver_fleet",
+        "rml_deliver_inventory",
+        "rml_deployinplace",
+        "rml_escort_convoy",
+        "rml_flyto",
+        "setup",
+        "signal_leaks",
+        "story_boron",
+        "story_diplomacy_intro",
+        "x4ep1_mentor_subscriptions"
+      ],
+      "effect_locations": {
+        "create_station": [
+          369,
+          429,
+          472,
+          669,
+          2978,
+          5196
+        ],
+        "create_ship": [
+          391,
+          2506,
+          2918,
+          3517,
+          3932,
+          4108,
+          4115,
+          4371,
+          4378,
+          4386,
+          4392,
+          6841,
+          6868,
+          7768
+        ],
+        "destroy_object": [
+          419,
+          546,
+          957,
+          1196,
+          1312,
+          2960,
+          2970,
+          5230,
+          7447,
+          9125
+        ],
+        "create_order": [
+          3800,
+          4123,
+          4189,
+          4275,
+          4284,
+          4500,
+          4542,
+          4585,
+          4621,
+          4628,
+          4702,
+          4708,
+          7776
+        ]
+      },
+      "global_keys": [
+        "BaseGameSector",
+        "PlayerControlledGroup",
+        "PlayerOccupiedShipGroup",
+        "Trophies"
+      ],
+      "libraries": [
+        "SetupHQ",
+        "ActivatePhase",
+        "Phase_Escape_Find_Station_Actions",
+        "RM_EngineMod_Create_Totonis",
+        "RM_ShieldMod_GetProgressBarData",
+        "RM_ShieldMod_UpdateBriefing",
+        "RM_WeaponMod_Activate_Lasertowers",
+        "RM_Venture_Update_Objectives",
+        "Check_HQ_Warp_Destination",
+        "Warp_HQ_To_Destination_Lib",
+        "HQ_Tutorial_Build",
+        "HQ_Tutorial_Build_Storage"
+      ]
+    },
+    {
+      "path": "md/cinematiccamera.xml",
+      "md_name": "CinematicCamera",
+      "sha256": "8a8fffc3f95f36df419b989315e75034633a3cd75d96424056caba06fc5f9a4f",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "8a8fffc3f95f36df419b989315e75034633a3cd75d96424056caba06fc5f9a4f",
+      "matches_installed_base": true,
+      "md_references": [
+        "cinematiccamera"
+      ],
+      "effect_locations": {},
+      "global_keys": [],
+      "libraries": [
+        "Activate_GalaxyObserver",
+        "Deactivate_GalaxyObserver",
+        "IsMilitaryObject",
+        "RegisterStartedCutscene",
+        "StopCurrentCutscene",
+        "ValidateChannel",
+        "ShowOverlay",
+        "FindPotentialObjects",
+        "GetRandomCutscene",
+        "GetNextCutscene",
+        "StationPeaceful_Check",
+        "ShipBattle_Station_Check",
+        "ShipPeaceful_Check",
+        "FighterBattle_Check",
+        "FighterBattle_Set_Primary_Attacker",
+        "Gate_Check",
+        "CapitalShip_Check",
+        "Gravidar_Check",
+        "Venture_Check"
+      ]
+    },
+    {
+      "path": "md/npc_instantiation.xml",
+      "md_name": "NPC_Instantiation",
+      "sha256": "e8037679468f314c6c146cff3abb55d936526829e6ee58f292dfd39d1bb01475",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "e8037679468f314c6c146cff3abb55d936526829e6ee58f292dfd39d1bb01475",
+      "matches_installed_base": true,
+      "md_references": [
+        "genericmissions",
+        "npc_instantiation",
+        "npc_itemtrader",
+        "npc_missions",
+        "setup",
+        "x4ep1_trade_subscriptions"
+      ],
+      "effect_locations": {
+        "destroy_object": [
+          615,
+          665,
+          2201,
+          2216,
+          2361,
+          2893,
+          3182
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "FindObjects",
+        "Add_Casino_Workers",
+        "InstantiateNPCs",
+        "CalculateNPCHiringFee",
+        "HiringFeeFromCombinedSkill",
+        "ManageInteriorRoom",
+        "NPC_Placement_Manager_Cull_Dead_Entries",
+        "PlaceNPC_UpdateLocationObjects",
+        "PlaceNPC_GetLocationObjects",
+        "PlaceNPC_CheckNPC"
+      ]
+    },
+    {
+      "path": "md/diplomacy.xml",
+      "md_name": "Diplomacy",
+      "sha256": "b18883b9ea0f4d87a88439a99315091f9163783facbc84fcbafc296288b08f71",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "b18883b9ea0f4d87a88439a99315091f9163783facbc84fcbafc296288b08f71",
+      "matches_installed_base": true,
+      "md_references": [
+        "diplomacy",
+        "guidance",
+        "lib_generic",
+        "npc_agent",
+        "npc_instantiation",
+        "npc_usecases",
+        "playerreputation",
+        "setup",
+        "story_diplomacy_intro",
+        "x4ep1_mentor_subscriptions"
+      ],
+      "effect_locations": {
+        "create_ship": [
+          264,
+          513,
+          1553
+        ],
+        "destroy_object": [
+          889,
+          2152
+        ],
+        "create_order": [
+          271,
+          523
+        ]
+      },
+      "global_keys": [
+        "DiplomaticFactions"
+      ],
+      "libraries": [
+        "Diplomacy_ActivateFactionLibrary",
+        "CostDeduction_DiplomaticAction",
+        "CostDeduction_DiplomaticEvent",
+        "Success_Evaluation",
+        "ActionDurationCalculation",
+        "Risk_EvaluateOutcome",
+        "AgentExperience_RewardEvaluation",
+        "AgentActor_CloneHandling",
+        "Determine_AgentDestinationRoom",
+        "Generate_ActionLogbookEntry",
+        "GetRelevantBlueprint",
+        "GenerateDiplomaticEvent"
+      ]
+    },
+    {
+      "path": "md/guidance.xml",
+      "md_name": "Guidance",
+      "sha256": "d33c087c4d94eacef8bdd0028595691442cd4727c996d156c45d517806c220bf",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "d33c087c4d94eacef8bdd0028595691442cd4727c996d156c45d517806c220bf",
+      "matches_installed_base": true,
+      "md_references": [],
+      "effect_locations": {},
+      "global_keys": [],
+      "libraries": []
+    },
+    {
+      "path": "md/playerreputation.xml",
+      "md_name": "PlayerReputation",
+      "sha256": "9d68b0dfbaeebd00f00e4d37d0e2203390258ad68660fee5d5a81f9834d0fd1b",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "9d68b0dfbaeebd00f00e4d37d0e2203390258ad68660fee5d5a81f9834d0fd1b",
+      "matches_installed_base": true,
+      "md_references": [
+        "diplomacy",
+        "lib_generic",
+        "playerreputation"
+      ],
+      "effect_locations": {},
+      "global_keys": [],
+      "libraries": [
+        "CalculateFactionRelation",
+        "UpdateNonPromotionLicences",
+        "UpdateInstantPromotionLicences",
+        "GiftedWares",
+        "CalculateLicences",
+        "LicencesNotificationsAndLogbook",
+        "LicencesInformPlayer"
+      ]
+    },
+    {
+      "path": "md/placedobjects.xml",
+      "md_name": "PlacedObjects",
+      "sha256": "afd29766f76e5237f0b7a023dcfa907f69aac1b645d8bd0b2142cc79a9e4a713",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "afd29766f76e5237f0b7a023dcfa907f69aac1b645d8bd0b2142cc79a9e4a713",
+      "matches_installed_base": true,
+      "md_references": [
+        "setup"
+      ],
+      "effect_locations": {
+        "create_station": [
+          177,
+          207,
+          221,
+          310
+        ],
+        "create_ship": [
+          389,
+          430,
+          446,
+          462,
+          479,
+          495,
+          511,
+          527
+        ],
+        "destroy_object": [
+          303,
+          729
+        ],
+        "create_order": [
+          394
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "Unlock_Timeline_Entry"
+      ]
+    },
+    {
+      "path": "md/story_paranid.xml",
+      "md_name": "Story_Paranid",
+      "sha256": "da297691a88f25271d5b2575dfa99d05b030b803c8801958e7ff5b3074110a9b",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "da297691a88f25271d5b2575dfa99d05b030b803c8801958e7ff5b3074110a9b",
+      "matches_installed_base": true,
+      "md_references": [
+        "diplomacy",
+        "factionlogic",
+        "genericmissions",
+        "gm_buildstation",
+        "gm_findobject",
+        "gm_getexactfleet",
+        "lib_dialog",
+        "lib_generic",
+        "npc_instantiation",
+        "rml_buildstation",
+        "rml_claimplot",
+        "rml_deliver_crew",
+        "rml_deliver_fleet",
+        "rml_deliver_inventory",
+        "rml_deliver_wares",
+        "rml_destroy_entities",
+        "rml_findobject",
+        "setup",
+        "story_diplomacy_intro",
+        "story_paranid",
+        "story_split",
+        "x4ep1_mentor_subscriptions"
+      ],
+      "effect_locations": {
+        "create_station": [
+          13818,
+          17867,
+          18132,
+          19520,
+          19978
+        ],
+        "create_ship": [
+          470,
+          2213,
+          2277,
+          2898,
+          3209,
+          5188,
+          6273,
+          6325,
+          6971,
+          7389,
+          7405,
+          7702,
+          7762,
+          8197,
+          8255,
+          10162,
+          10530,
+          10564,
+          10590,
+          10613,
+          10664,
+          10731,
+          10755,
+          10817,
+          12879,
+          12939,
+          12964,
+          14020,
+          14068,
+          14130,
+          16533,
+          16590,
+          16617,
+          16674,
+          16701,
+          16743,
+          18900,
+          18974,
+          19002,
+          19160,
+          19221
+        ],
+        "destroy_object": [
+          2797,
+          2832,
+          2920,
+          5242,
+          6350,
+          6692,
+          7554,
+          8039,
+          8705,
+          9033,
+          9877,
+          10302,
+          10305,
+          10308,
+          10311,
+          10324,
+          10374,
+          10377,
+          10380,
+          10397,
+          10403,
+          10941
+        ],
+        "get_suitable_job": [
+          19710,
+          19711,
+          19712,
+          19849,
+          19850
+        ],
+        "create_order": [
+          1131,
+          1222,
+          1249,
+          2239,
+          2259,
+          2422,
+          2529,
+          2910,
+          2955,
+          3012,
+          3218,
+          3311,
+          4872,
+          5015,
+          5046,
+          5225,
+          5506,
+          5594,
+          6206,
+          6209,
+          6224,
+          6236,
+          6288,
+          7050,
+          7090,
+          7317,
+          7429,
+          7513,
+          7728,
+          7771,
+          7818,
+          7871,
+          7968,
+          8023,
+          8265,
+          8373,
+          8380,
+          8385,
+          8523,
+          8529,
+          10548,
+          10575,
+          10602,
+          10625,
+          10682,
+          10700,
+          10747,
+          10767,
+          10826,
+          10882,
+          10910,
+          11035,
+          11043,
+          11057,
+          11092,
+          11103,
+          11119,
+          11126,
+          11183,
+          11194,
+          11203,
+          11212,
+          11223,
+          11780,
+          11798,
+          11899,
+          11922,
+          11941,
+          11948,
+          11997,
+          12013,
+          12022,
+          12031,
+          12042,
+          12404,
+          12422,
+          12819,
+          12890,
+          12956,
+          13000,
+          13043,
+          13079,
+          13133,
+          13239,
+          13248,
+          13314,
+          13345,
+          13366,
+          13381,
+          14013,
+          14033,
+          14078,
+          14086,
+          14143,
+          14153,
+          14193,
+          14198,
+          15380,
+          15387,
+          16476,
+          16544,
+          16609,
+          16628,
+          16693,
+          16713,
+          16761,
+          16919,
+          16928,
+          17265,
+          17288,
+          17334,
+          17348,
+          17362,
+          17380,
+          18917,
+          18990,
+          19013,
+          19172,
+          19238,
+          19246,
+          19254,
+          19258,
+          19567
+        ]
+      },
+      "global_keys": [
+        "BaseGameSector",
+        "IgnoredAbandonedShips",
+        "PlayerContainerGroup",
+        "smugglercoverfactions"
+      ],
+      "libraries": [
+        "Story_Reminder",
+        "Fight_Balance_Drone_Amount",
+        "Ch5_Attack_Balance",
+        "Find_Trinity_War_Targets"
+      ]
+    },
+    {
+      "path": "md/story_research_xen_equipment.xml",
+      "md_name": "Story_Research_Xen_Equipment",
+      "sha256": "cb01a648cf18fd4423914ab0f60cc1f3d878aa4428c4ed5be39b4318399bb6d9",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "cb01a648cf18fd4423914ab0f60cc1f3d878aa4428c4ed5be39b4318399bb6d9",
+      "matches_installed_base": true,
+      "md_references": [
+        "lib_dialog",
+        "x4ep1_mentor_subscriptions"
+      ],
+      "effect_locations": {},
+      "global_keys": [],
+      "libraries": []
+    },
+    {
+      "path": "md/factiongoal_invade_space.xml",
+      "md_name": "FactionGoal_Invade_Space",
+      "sha256": "dc337da93934de25c9954d8c19257f1623f472f0ff309cb192af9252d2a0134e",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "dc337da93934de25c9954d8c19257f1623f472f0ff309cb192af9252d2a0134e",
+      "matches_installed_base": true,
+      "md_references": [
+        "factiongoal_invade_space",
+        "factionsubgoal_buildstation",
+        "factionsubgoal_defendarea",
+        "factionsubgoal_recon"
+      ],
+      "effect_locations": {
+        "get_suitable_job": [
+          212
+        ]
+      },
+      "global_keys": [
+        "FactionGoals"
+      ],
+      "libraries": [
+        "EvaluateSector",
+        "Evaluate",
+        "UpdateMoodValues",
+        "EvaluateForceStrength",
+        "ProcessPhaseChange"
+      ]
+    },
+    {
+      "path": "md/genericmissions.xml",
+      "md_name": "GenericMissions",
+      "sha256": "99199bf1be71aca0a9a26bcccb7518a1f2f3cfe246633ab49469b8c9065a448d",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "99199bf1be71aca0a9a26bcccb7518a1f2f3cfe246633ab49469b8c9065a448d",
+      "matches_installed_base": true,
+      "md_references": [
+        "genericmissions",
+        "gm_assassinate",
+        "gm_barterwares",
+        "gm_boardship",
+        "gm_bringitems",
+        "gm_buildstation",
+        "gm_deployinplace",
+        "gm_destroy_objects",
+        "gm_destroy_rarelyonsight",
+        "gm_escort",
+        "gm_find_resources",
+        "gm_findobject",
+        "gm_getexactcrew",
+        "gm_killmasstraffic",
+        "gm_largesupply",
+        "gm_patrol",
+        "gm_repairobject",
+        "gm_repairsignalleaks",
+        "gm_rescue_ship",
+        "gm_retrieveitem",
+        "gm_scan",
+        "gm_supplyfactory",
+        "gm_trackship",
+        "gm_transport_passengers",
+        "gmc_assisted_task",
+        "gmc_supervised_mining",
+        "setup",
+        "story_split",
+        "x4ep1_pirates_subscriptions",
+        "x4ep1_trade_subscriptions",
+        "x4ep1_war_subscriptions"
+      ],
+      "effect_locations": {
+        "destroy_object": [
+          1510
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "RegisterMissionVariant",
+        "SelectMissionVariant",
+        "UpdateTextOffsetsTable",
+        "UpdateTextOffsetsTable_completedcounter",
+        "GetOfferType",
+        "OfferMission",
+        "SignalCleanupCue",
+        "OfferOnObject",
+        "Cleanup",
+        "Signal_Leak_Offer",
+        "Signal_Leak_Cleanup",
+        "BBSOfferHandler",
+        "BBSOfferCleanup"
+      ]
+    },
+    {
+      "path": "md/gm_achievecoverage.xml",
+      "md_name": "GM_AchieveCoverage",
+      "sha256": "8029c32559eeec694b9ad0258f14be97caa59c60c61fb8b7e1251dd5069d7333",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "8029c32559eeec694b9ad0258f14be97caa59c60c61fb8b7e1251dd5069d7333",
+      "matches_installed_base": true,
+      "md_references": [
+        "genericmissions",
+        "gm_achievecoverage",
+        "lib_generic",
+        "lib_reward_balancing",
+        "rml_achievecoverage"
+      ],
+      "effect_locations": {
+        "destroy_object": [
+          476,
+          479,
+          730,
+          733,
+          746
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "GenerateTextTable",
+        "GenerateVoiceTable",
+        "Start",
+        "CalculateResourceCost",
+        "ConfigureDifficulty"
+      ]
+    },
+    {
+      "path": "md/gm_assassinate.xml",
+      "md_name": "GM_Assassinate",
+      "sha256": "03eadd6ddd864cb8877d1851a3d3f130b7d9b313b38ccec3c099ceeb306bd9c8",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "03eadd6ddd864cb8877d1851a3d3f130b7d9b313b38ccec3c099ceeb306bd9c8",
+      "matches_installed_base": true,
+      "md_references": [
+        "genericmissions",
+        "gm_assassinate",
+        "lib_generic",
+        "lib_reward_balancing",
+        "npc_instantiation",
+        "npc_missions",
+        "rml_destroy_entities"
+      ],
+      "effect_locations": {
+        "destroy_object": [
+          796,
+          1303
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "GenerateTextTable",
+        "GenerateVoiceTable",
+        "Start",
+        "ConfigureDifficulty"
+      ]
+    },
+    {
+      "path": "md/gm_board_ship.xml",
+      "md_name": "GM_BoardShip",
+      "sha256": "94c51046c3d6f77d4401b7d26245cf6bfa6fdd38ddd807d579ae03912d105c6c",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "94c51046c3d6f77d4401b7d26245cf6bfa6fdd38ddd807d579ae03912d105c6c",
+      "matches_installed_base": true,
+      "md_references": [
+        "genericmissions",
+        "gm_boardship",
+        "lib_generic",
+        "lib_reward_balancing",
+        "rml_boardship"
+      ],
+      "effect_locations": {
+        "create_ship": [
+          584
+        ],
+        "destroy_object": [
+          623,
+          626,
+          947
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "GenerateTextTable",
+        "GenerateVoiceTable",
+        "Start",
+        "ConfigureDifficulty",
+        "Setup_DetermineEnemyFaction_OfPirates",
+        "Setup_DetermineEnemyFaction_AnyoneElse",
+        "Setup_FindEnemyShip",
+        "Setup_FindSpecShip_Merchant"
+      ]
+    },
+    {
+      "path": "md/gm_buildstation.xml",
+      "md_name": "GM_BuildStation",
+      "sha256": "29f529ec05d7bb4c7c826830a6f1514155d2bbc91024f14a2967b788d7594391",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "29f529ec05d7bb4c7c826830a6f1514155d2bbc91024f14a2967b788d7594391",
+      "matches_installed_base": true,
+      "md_references": [
+        "factionlogic_economy",
+        "genericmissions",
+        "gm_buildstation",
+        "lib_generic",
+        "lib_holomaptarget",
+        "lib_reward_balancing",
+        "rml_buildstation",
+        "rml_claimplot"
+      ],
+      "effect_locations": {
+        "destroy_object": [
+          1408,
+          1411,
+          1424
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "GenerateTextTable",
+        "ConstructRequirementsText",
+        "GeneratePlotSizeText",
+        "GenerateDestinationString",
+        "GenerateConstructsText",
+        "GenerateProductionsText",
+        "GenerateBuiltClassesText",
+        "GenerateStorageText",
+        "AssembleRequirementsText",
+        "GenerateRewardMultiplierText",
+        "GenerateVoiceTable",
+        "Start",
+        "CalculateResourceCostCr",
+        "GetMostExpensiveDefinition",
+        "GetDefPriceCr",
+        "GetMostExpensiveStoragePriceCr",
+        "Setup_BuildMilitary",
+        "Setup_Build_Station_Requirements_Defence_Platform_1",
+        "Setup_Build_Station_Requirements_Defence_Platform_2",
+        "Setup_Build_Station_Requirements_Defence_Platform_3",
+        "Setup_BuildFactory",
+        "Setup_BuildInstallation",
+        "RegisterMission",
+        "GetIsOkToOfferMission",
+        "GetMissionOffersInSector",
+        "CleanMissionRegistry"
+      ]
+    },
+    {
+      "path": "md/gm_deployinplace.xml",
+      "md_name": "GM_DeployInPlace",
+      "sha256": "4ab9a1ec107d86658b7c96fe31d1b533bef5456ab8de76f834d38220126d77c6",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "4ab9a1ec107d86658b7c96fe31d1b533bef5456ab8de76f834d38220126d77c6",
+      "matches_installed_base": true,
+      "md_references": [
+        "genericmissions",
+        "gm_deployinplace",
+        "gmc_dynamic",
+        "lib_generic",
+        "lib_reward_balancing",
+        "npc_instantiation",
+        "npc_missions",
+        "rml_deployinplace"
+      ],
+      "effect_locations": {
+        "destroy_object": [
+          600,
+          603,
+          861,
+          864,
+          877,
+          1773
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "GenerateTextTable",
+        "GenerateVoiceTable",
+        "Start",
+        "ConfigureDifficulty",
+        "RandomizeMissionFaction",
+        "FindStationUnfriendly",
+        "Dynamic_Mission_Eval"
+      ]
+    },
+    {
+      "path": "md/gm_destroy_objects.xml",
+      "md_name": "GM_Destroy_Objects",
+      "sha256": "9b71feecbce185bd49f765621e6da6d0c797673d38f4b9dff563884efa253c12",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "9b71feecbce185bd49f765621e6da6d0c797673d38f4b9dff563884efa253c12",
+      "matches_installed_base": true,
+      "md_references": [
+        "genericmissions",
+        "gm_destroy_objects",
+        "lib_generic",
+        "lib_holomaptarget",
+        "lib_reward_balancing",
+        "npc_instantiation",
+        "npc_missions",
+        "rml_destroy_components"
+      ],
+      "effect_locations": {
+        "create_ship": [
+          626
+        ],
+        "destroy_object": [
+          649,
+          652,
+          688,
+          691,
+          949,
+          1089,
+          1092,
+          1101,
+          2585
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "GenerateTextTable",
+        "GenerateVoiceTable",
+        "Start",
+        "ConfigureDifficulty",
+        "FindNearbyZones",
+        "FindStationFriendly",
+        "FindStationFriendlyNonPirate",
+        "FindStationForFaction",
+        "FindLasertowers",
+        "FindMinefield",
+        "FindRiggedAsteroids",
+        "FindMinefieldOrRiggedAsteroids"
+      ]
+    },
+    {
+      "path": "md/gm_destroy_rarelyonsight.xml",
+      "md_name": "GM_Destroy_RarelyOnSight",
+      "sha256": "3b2d3d2198a0c01696583959c1dabde3b5120aa49d508252bd70fcaff30bb14e",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "3b2d3d2198a0c01696583959c1dabde3b5120aa49d508252bd70fcaff30bb14e",
+      "matches_installed_base": true,
+      "md_references": [
+        "genericmissions",
+        "gm_destroy_rarelyonsight",
+        "lib_generic",
+        "lib_holomaptarget",
+        "lib_reward_balancing",
+        "rml_destroy_rarelyonsight"
+      ],
+      "effect_locations": {
+        "create_ship": [
+          616,
+          649
+        ],
+        "destroy_object": [
+          675,
+          1024,
+          1027,
+          1040
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "GenerateTextTable",
+        "GenerateVoiceTable",
+        "Start",
+        "ConfigureDifficulty",
+        "Setup_Military",
+        "Setup_Merchant",
+        "Setup_Criminal"
+      ]
+    },
+    {
+      "path": "md/gm_find_resources.xml",
+      "md_name": "GM_Find_Resources",
+      "sha256": "d60416a4dcac0d357858629a48ee6f80456e6b914115cf211bbd5820b3c8944d",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "d60416a4dcac0d357858629a48ee6f80456e6b914115cf211bbd5820b3c8944d",
+      "matches_installed_base": true,
+      "md_references": [
+        "genericmissions",
+        "gm_find_resources",
+        "lib_generic",
+        "lib_holomaptarget",
+        "lib_reward_balancing",
+        "rml_find_resources"
+      ],
+      "effect_locations": {
+        "destroy_object": [
+          823,
+          826,
+          839
+        ],
+        "create_order": [
+          844
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "GenerateTextTable",
+        "GenerateVoiceTable",
+        "Start",
+        "Check_Space",
+        "CalculateResourceCost"
+      ]
+    },
+    {
+      "path": "md/gm_getexactcrew.xml",
+      "md_name": "GM_GetExactCrew",
+      "sha256": "a5976fcd177f5454bc90b60fda2907e669eb8c5fab30e75fb1495611d73cdf3c",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "a5976fcd177f5454bc90b60fda2907e669eb8c5fab30e75fb1495611d73cdf3c",
+      "matches_installed_base": true,
+      "md_references": [
+        "genericmissions",
+        "gm_getexactcrew",
+        "lib_generic",
+        "lib_holomaptarget",
+        "lib_reward_balancing",
+        "npc_instantiation",
+        "rml_deliver_crew"
+      ],
+      "effect_locations": {
+        "destroy_object": [
+          820,
+          823,
+          836
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "GenerateTextTable",
+        "GetNPCSkillText",
+        "GenerateVoiceTable",
+        "Start",
+        "ResourceCostLibrary",
+        "ConfigureDifficulty",
+        "DetermineDestinationStation",
+        "Get_Exact_Crew_Pilots",
+        "Get_Exact_Crew_Engineers",
+        "Get_Exact_Crew_Managers",
+        "Get_Exact_Crew_Marines"
+      ]
+    },
+    {
+      "path": "md/gm_getexactfleet.xml",
+      "md_name": "GM_GetExactFleet",
+      "sha256": "b9bf4f383a9cfe2f190f11af5ce156ef1893b48318ed59014c7737d12eb7dcf9",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "b9bf4f383a9cfe2f190f11af5ce156ef1893b48318ed59014c7737d12eb7dcf9",
+      "matches_installed_base": true,
+      "md_references": [
+        "genericmissions",
+        "gm_getexactfleet",
+        "lib_generic",
+        "lib_reward_balancing",
+        "rml_deliver_fleet"
+      ],
+      "effect_locations": {
+        "create_ship": [
+          718,
+          733
+        ],
+        "destroy_object": [
+          756,
+          788,
+          791,
+          1052,
+          1055,
+          1068
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "GenerateTextTable",
+        "ConstructFleetRequirementsText",
+        "AppendInstructions",
+        "AppendRewardDetails",
+        "GenerateRewardMultiplierText",
+        "GenerateVoiceTable",
+        "Start",
+        "CalculateResourceCostCr"
+      ]
+    },
+    {
+      "path": "md/gm_largesupply.xml",
+      "md_name": "GM_LargeSupply",
+      "sha256": "0b8183ba543189748ce97fbbd4ee482361ec667f04af4311b9345b73c9160b6f",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "0b8183ba543189748ce97fbbd4ee482361ec667f04af4311b9345b73c9160b6f",
+      "matches_installed_base": true,
+      "md_references": [
+        "genericmissions",
+        "gm_largesupply",
+        "lib_generic",
+        "lib_reward_balancing",
+        "rml_largesupply",
+        "x4ep1_war_subscriptions"
+      ],
+      "effect_locations": {
+        "destroy_object": [
+          542,
+          792,
+          795,
+          808
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "GenerateTextTable",
+        "GenerateVoiceTable",
+        "Start"
+      ]
+    },
+    {
+      "path": "md/gm_repairobject.xml",
+      "md_name": "GM_RepairObject",
+      "sha256": "8a0834165c014ce1533a8911904e063be0594afa77f2e21d368f66807d030a89",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "8a0834165c014ce1533a8911904e063be0594afa77f2e21d368f66807d030a89",
+      "matches_installed_base": true,
+      "md_references": [
+        "genericmissions",
+        "gm_repairobject",
+        "gmc_dynamic",
+        "lib_generic",
+        "lib_reward_balancing",
+        "npc_instantiation",
+        "npc_missions",
+        "rml_repairobject"
+      ],
+      "effect_locations": {
+        "destroy_object": [
+          541,
+          837,
+          840,
+          853,
+          1388
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "GenerateTextTable",
+        "GenerateVoiceTable",
+        "Start",
+        "RepairObject_SetupSatellites",
+        "Dynamic_Mission_Eval"
+      ]
+    },
+    {
+      "path": "md/gm_sabotage.xml",
+      "md_name": "GM_Sabotage",
+      "sha256": "07c16517740e8e0732057b00a8cdbd5b951a7b5d101b92b10164af4454e6e121",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "07c16517740e8e0732057b00a8cdbd5b951a7b5d101b92b10164af4454e6e121",
+      "matches_installed_base": true,
+      "md_references": [
+        "genericmissions",
+        "gm_sabotage",
+        "lib_generic",
+        "lib_reward_balancing",
+        "rml_sabotage"
+      ],
+      "effect_locations": {
+        "destroy_object": [
+          449,
+          767,
+          770,
+          783
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "GenerateTextTable",
+        "GenerateVoiceTable",
+        "Start",
+        "Sabotage__Standard_Station_Lib",
+        "Sabotage__Standard_Ship_Lib"
+      ]
+    },
+    {
+      "path": "md/gm_scan.xml",
+      "md_name": "GM_Scan",
+      "sha256": "c79790afd2071c64353ec290042284ebe0c5aefbbe3bc355874078a42004fdb9",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "c79790afd2071c64353ec290042284ebe0c5aefbbe3bc355874078a42004fdb9",
+      "matches_installed_base": true,
+      "md_references": [
+        "genericmissions",
+        "gm_scan",
+        "lib_generic",
+        "lib_reward_balancing",
+        "npc_instantiation",
+        "npc_missions",
+        "rml_flyto",
+        "rml_scan"
+      ],
+      "effect_locations": {
+        "destroy_object": [
+          938,
+          1706
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "GenerateTextTable",
+        "GenerateVoiceTable",
+        "Start",
+        "Scan__High_Security_Enemy_Ship",
+        "Scan__High_Security_Enemy_Station",
+        "Scan__High_Security_Enemy_Module",
+        "Scan__Random_NPC",
+        "Scan__Enemy_Ship_ID_Code"
+      ]
+    },
+    {
+      "path": "md/gm_supplyfactory.xml",
+      "md_name": "GM_SupplyFactory",
+      "sha256": "8830b2299ed487b04bc3b954375578feaefbfa7440b4a21a4547bef458ca1aff",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "8830b2299ed487b04bc3b954375578feaefbfa7440b4a21a4547bef458ca1aff",
+      "matches_installed_base": true,
+      "md_references": [
+        "genericmissions",
+        "gm_supplyfactory",
+        "lib_generic",
+        "lib_reward_balancing",
+        "rml_supplyfactory"
+      ],
+      "effect_locations": {
+        "destroy_object": [
+          765,
+          768,
+          781
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "GenerateTextTable",
+        "GenerateVoiceTable",
+        "Start",
+        "ConfigureDifficulty",
+        "SupplyFactory_FriendlyFactory"
+      ]
+    },
+    {
+      "path": "md/gm_support_invasion.xml",
+      "md_name": "GM_Support_Invasion",
+      "sha256": "5da7ce38dd069e0a717efa831bdcd250d6989c8a14b2f819e71915560cb86505",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "5da7ce38dd069e0a717efa831bdcd250d6989c8a14b2f819e71915560cb86505",
+      "matches_installed_base": true,
+      "md_references": [
+        "factiongoal_invade_space",
+        "genericmissions",
+        "gm_support_invasion",
+        "lib_generic",
+        "lib_holomaptarget",
+        "lib_reward_balancing",
+        "rml_support_invasion"
+      ],
+      "effect_locations": {
+        "destroy_object": [
+          795,
+          798,
+          811
+        ],
+        "create_order": [
+          815,
+          820
+        ]
+      },
+      "global_keys": [
+        "FactionManagers"
+      ],
+      "libraries": [
+        "GenerateTextTable",
+        "GenerateVoiceTable",
+        "Start"
+      ]
+    },
+    {
+      "path": "md/gm_transport_passengers.xml",
+      "md_name": "GM_Transport_Passengers",
+      "sha256": "e148a40de33746f90b4cf168c45c4389b8596585a077411b9a6681e81e5245f9",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "e148a40de33746f90b4cf168c45c4389b8596585a077411b9a6681e81e5245f9",
+      "matches_installed_base": true,
+      "md_references": [
+        "genericmissions",
+        "gm_transport_passengers",
+        "lib_create_enemies",
+        "lib_generic",
+        "lib_holomaptarget",
+        "lib_reward_balancing",
+        "npc_instantiation",
+        "npc_missions",
+        "rml_transport_passengers"
+      ],
+      "effect_locations": {
+        "destroy_object": [
+          1158,
+          1533,
+          2007,
+          3064,
+          3441
+        ],
+        "create_order": [
+          1673
+        ]
+      },
+      "global_keys": [
+        "PlayerContainerGroup"
+      ],
+      "libraries": [
+        "GenerateTextTable",
+        "GenerateVoiceTable",
+        "Start",
+        "StartIsValid",
+        "PlaceLeadPassenger_Placement",
+        "ConfigureDifficulty"
+      ]
+    },
+    {
+      "path": "md/mc_management.xml",
+      "md_name": "MC_Management",
+      "sha256": "df944725c99895800b64ccaa3531ed5d2e896b441fd877c88d326e22f6e497fe",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "df944725c99895800b64ccaa3531ed5d2e896b441fd877c88d326e22f6e497fe",
+      "matches_installed_base": true,
+      "md_references": [
+        "lib_generic",
+        "rml_collect_crates",
+        "rml_destroy_entities"
+      ],
+      "effect_locations": {
+        "create_ship": [
+          653,
+          670,
+          772
+        ],
+        "create_order": [
+          780
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "PopulateSubmissionPlan_RandomMissions",
+        "Thread_Manager_Trigger_Next_Submission"
+      ]
+    },
+    {
+      "path": "md/npc_shiptrader.xml",
+      "md_name": "NPC_Shiptrader",
+      "sha256": "a7ee4adad8f12a142cd954cfe6f4a67917bb502dd0f39f75bb2af4461a97cfde",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "a7ee4adad8f12a142cd954cfe6f4a67917bb502dd0f39f75bb2af4461a97cfde",
+      "matches_installed_base": true,
+      "md_references": [
+        "conversations"
+      ],
+      "effect_locations": {
+        "destroy_object": [
+          196
+        ],
+        "create_order": [
+          159,
+          188
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "SellShipActions"
+      ]
+    },
+    {
+      "path": "md/encounters.xml",
+      "md_name": "Encounters",
+      "sha256": "a7cfb56241f774a33495967ba49daf02bc0cc4d8d5d9b82b5c1c77201548bd4e",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "a7cfb56241f774a33495967ba49daf02bc0cc4d8d5d9b82b5c1c77201548bd4e",
+      "matches_installed_base": true,
+      "md_references": [
+        "setup"
+      ],
+      "effect_locations": {
+        "create_order": [
+          301,
+          432,
+          903,
+          1020,
+          1137,
+          1254
+        ]
+      },
+      "global_keys": [
+        "PlayerContainerGroup"
+      ],
+      "libraries": [
+        "SelectEncounterManagement",
+        "Standard_WarpShips",
+        "ShipCleanup"
+      ]
+    },
+    {
+      "path": "md/npc_usecase_definitions.xml",
+      "md_name": "NPC_UseCase_Definitions",
+      "sha256": "26df8026f56e1eb8cbe5c8830d3f7fe0fe664e38587fe70f621c093781515e60",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "26df8026f56e1eb8cbe5c8830d3f7fe0fe664e38587fe70f621c093781515e60",
+      "matches_installed_base": true,
+      "md_references": [],
+      "effect_locations": {},
+      "global_keys": [],
+      "libraries": [
+        "AddUseCaseDefs"
+      ]
+    },
+    {
+      "path": "md/lib_dialog.xml",
+      "md_name": "LIB_Dialog",
+      "sha256": "75a7db3c400d1a573fc652fc4e6e89a80edb6b2dc876d77875d7829b52bef1af",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "75a7db3c400d1a573fc652fc4e6e89a80edb6b2dc876d77875d7829b52bef1af",
+      "matches_installed_base": true,
+      "md_references": [
+        "lib_dialog",
+        "lib_generic",
+        "npc_usecases"
+      ],
+      "effect_locations": {},
+      "global_keys": [],
+      "libraries": [
+        "StartAsCustomUseCase",
+        "Speak_Actors",
+        "Speak_Actor",
+        "Speak_Actors_Run",
+        "Speak_Actor_Run"
+      ]
+    },
+    {
+      "path": "md/rml_buildstation.xml",
+      "md_name": "RML_BuildStation",
+      "sha256": "ee3f33fae05eff4243f06da68427898b773a9784882bd403f7147f171cbc1ebf",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "ee3f33fae05eff4243f06da68427898b773a9784882bd403f7147f171cbc1ebf",
+      "matches_installed_base": true,
+      "md_references": [
+        "lib_generic",
+        "rml_claimplot"
+      ],
+      "effect_locations": {
+        "create_ship": [
+          324
+        ],
+        "destroy_object": [
+          352,
+          354,
+          364,
+          366
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "GenerateVoiceTable",
+        "BuildStation",
+        "Debug_ModuleState",
+        "Set_ValidStations",
+        "CheckStations",
+        "TransferStation",
+        "UpdateBriefingObjective",
+        "UpdateBriefingObjective_BuyPlot",
+        "UpdateBriefingObjective_ExtendPlot"
+      ]
+    },
+    {
+      "path": "md/rml_deliver_fleet.xml",
+      "md_name": "RML_Deliver_Fleet",
+      "sha256": "e0d6a97bd31407ef11b9c6fb62197cefa73561a39da5656f790ecb67608f4392",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "e0d6a97bd31407ef11b9c6fb62197cefa73561a39da5656f790ecb67608f4392",
+      "matches_installed_base": true,
+      "md_references": [
+        "lib_generic"
+      ],
+      "effect_locations": {
+        "create_ship": [
+          251,
+          332,
+          343
+        ],
+        "create_order": [
+          841,
+          847
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "GenerateVoiceTable",
+        "GenerateLoadoutLib",
+        "DeliverFleet",
+        "CheckShips"
+      ]
+    },
+    {
+      "path": "md/rml_deliver_inventory.xml",
+      "md_name": "RML_Deliver_Inventory",
+      "sha256": "30000a757a9654fa0bf79d75986746b6d74f36059842386c245fe3614418e389",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "30000a757a9654fa0bf79d75986746b6d74f36059842386c245fe3614418e389",
+      "matches_installed_base": true,
+      "md_references": [
+        "npc_instantiation",
+        "npc_missions",
+        "rml_deliver_inventory",
+        "x4ep1_mentor_subscriptions"
+      ],
+      "effect_locations": {},
+      "global_keys": [],
+      "libraries": [
+        "Deliver_Inventory",
+        "PlaceNPC",
+        "CheckFinishedWares"
+      ]
+    },
+    {
+      "path": "md/rml_deployinplace.xml",
+      "md_name": "RML_DeployInPlace",
+      "sha256": "4f838ede9f971aa1046015f8723fe0ab3b92e505f82072876df8fb9989216317",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "4f838ede9f971aa1046015f8723fe0ab3b92e505f82072876df8fb9989216317",
+      "matches_installed_base": true,
+      "md_references": [
+        "factionlogic"
+      ],
+      "effect_locations": {},
+      "global_keys": [],
+      "libraries": [
+        "DeployInPlace",
+        "CheckMissionStatusBase"
+      ]
+    },
+    {
+      "path": "md/rml_escort_convoy.xml",
+      "md_name": "RML_Escort_Convoy",
+      "sha256": "7306afcd70ee32a0a8445860cd874f6f9b083db061db143184cf9f1ea65b80fb",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "7306afcd70ee32a0a8445860cd874f6f9b083db061db143184cf9f1ea65b80fb",
+      "matches_installed_base": true,
+      "md_references": [
+        "rml_protect_object"
+      ],
+      "effect_locations": {},
+      "global_keys": [],
+      "libraries": [
+        "RMLEscortConvoy"
+      ]
+    },
+    {
+      "path": "md/rml_flyto.xml",
+      "md_name": "RML_FlyTo",
+      "sha256": "d04330a8f24bdd695a349ee93aa630720e7e70c710e4bf30f6f5a914ecbcc9d4",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "d04330a8f24bdd695a349ee93aa630720e7e70c710e4bf30f6f5a914ecbcc9d4",
+      "matches_installed_base": true,
+      "md_references": [],
+      "effect_locations": {},
+      "global_keys": [],
+      "libraries": [
+        "FlyTo"
+      ]
+    },
+    {
+      "path": "md/signal_leaks.xml",
+      "md_name": "Signal_Leaks",
+      "sha256": "d1f792ad317c807ab5253c0550e65f8e41aef8db8c93549ec57aedc5403a7a75",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "d1f792ad317c807ab5253c0550e65f8e41aef8db8c93549ec57aedc5403a7a75",
+      "matches_installed_base": true,
+      "md_references": [
+        "genericmissions",
+        "gm_assassinate",
+        "gm_boardship",
+        "gm_bringitems",
+        "gm_destroy_rarelyonsight",
+        "gm_hackpanel",
+        "gm_prisonbreak",
+        "gm_sabotage",
+        "gm_transport_passengers",
+        "setup",
+        "signal_leaks",
+        "x4ep1_mentor_subscriptions"
+      ],
+      "effect_locations": {
+        "destroy_object": [
+          71,
+          190,
+          197,
+          341,
+          353,
+          451,
+          698,
+          778,
+          800,
+          836,
+          1523
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "GetLeakSlots",
+        "CreateLeak",
+        "CalculateLeakCounts",
+        "HackPanel__Standard_Station_Lib"
+      ]
+    },
+    {
+      "path": "md/story_diplomacy_intro.xml",
+      "md_name": "Story_Diplomacy_Intro",
+      "sha256": "cec1de9d80415c3cf64d6faf02bd433f6bb414c50f713c1aab885170be8e4985",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "cec1de9d80415c3cf64d6faf02bd433f6bb414c50f713c1aab885170be8e4985",
+      "matches_installed_base": true,
+      "md_references": [
+        "boarding",
+        "lib_dialog",
+        "lib_generic",
+        "npc_instantiation",
+        "npc_usecases",
+        "rml_collect_inventory",
+        "rml_deliver_wares",
+        "rml_deployinplace",
+        "rml_destroy_components",
+        "rml_follow_object",
+        "rml_patrol",
+        "setup",
+        "signal_leaks",
+        "story_paranid",
+        "x4ep1_mentor_subscriptions"
+      ],
+      "effect_locations": {
+        "create_station": [
+          193,
+          2671,
+          6308,
+          7359
+        ],
+        "create_ship": [
+          791,
+          1540,
+          1639,
+          1646,
+          1652,
+          2987,
+          2993,
+          3581,
+          4400,
+          4777,
+          4792,
+          4888,
+          4899,
+          4951,
+          6783,
+          6867,
+          6881,
+          7115,
+          8267,
+          8370,
+          8542,
+          8690
+        ],
+        "destroy_object": [
+          625,
+          3303,
+          3524,
+          4186,
+          4432,
+          6409,
+          6816,
+          7558,
+          8096,
+          8294,
+          8385,
+          8392,
+          8694,
+          8721,
+          9617,
+          9632,
+          9660
+        ],
+        "request_job_ship": [
+          4933
+        ],
+        "add_build_to_expand_station": [
+          7401
+        ],
+        "create_order": [
+          162,
+          1556,
+          1668,
+          3041,
+          3048,
+          3686,
+          3689,
+          4813,
+          4911,
+          4965,
+          5079,
+          5101,
+          5224,
+          5402,
+          5409,
+          5459,
+          5472,
+          5506,
+          5667,
+          6895,
+          6899,
+          6908,
+          7127,
+          7201,
+          7218,
+          7320,
+          8376,
+          8527,
+          8549
+        ]
+      },
+      "global_keys": [
+        "BaseGameSector"
+      ],
+      "libraries": [
+        "Create_Reen_Office",
+        "Create_Dal_Ship",
+        "Pt2_Reen_Conv_Player_Options",
+        "Pt2_Dal_Conv_Player_Options",
+        "Pt2_Create_Backup_ScalePlate_Station",
+        "Pt4_Target_Killed_Actions",
+        "Pt4_Player_Encounter_Phase_2_Options",
+        "SetDalDefaultHQLocation",
+        "Find_Hatikvah_Station"
+      ]
+    },
+    {
+      "path": "md/npc_itemtrader.xml",
+      "md_name": "NPC_Itemtrader",
+      "sha256": "8a7dfb929de8082d9caa9265e618766eff74968674d9414dc6b12d99f0b578e7",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "8a7dfb929de8082d9caa9265e618766eff74968674d9414dc6b12d99f0b578e7",
+      "matches_installed_base": true,
+      "md_references": [],
+      "effect_locations": {
+        "destroy_object": [
+          84,
+          120
+        ]
+      },
+      "global_keys": [],
+      "libraries": []
+    },
+    {
+      "path": "md/npc_missions.xml",
+      "md_name": "NPC_Missions",
+      "sha256": "58f4dda71b2b1a8781702f57841475f7808fbb50eb2cb879a5a19a19395823bd",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "58f4dda71b2b1a8781702f57841475f7808fbb50eb2cb879a5a19a19395823bd",
+      "matches_installed_base": true,
+      "md_references": [
+        "gm_assassinate",
+        "gm_deployinplace",
+        "gm_destroy_objects",
+        "gm_patrol",
+        "gm_repairobject",
+        "gm_repairsignalleaks",
+        "gm_retrieveitem",
+        "gm_scan",
+        "npc_instantiation",
+        "setup"
+      ],
+      "effect_locations": {
+        "destroy_object": [
+          128,
+          145,
+          411,
+          456,
+          659,
+          688
+        ]
+      },
+      "global_keys": [],
+      "libraries": []
+    },
+    {
+      "path": "md/x4ep1_trade_subscriptions.xml",
+      "md_name": "X4Ep1_Trade_Subscriptions",
+      "sha256": "1da8ea712bb236d9fcbad1e9929f2dd2244aa76966a59125d80c9f5407d3562d",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "1da8ea712bb236d9fcbad1e9929f2dd2244aa76966a59125d80c9f5407d3562d",
+      "matches_installed_base": true,
+      "md_references": [
+        "genericmissions",
+        "gm_achievecoverage",
+        "gm_bringitems",
+        "gm_deployinplace",
+        "gm_destroy_objects",
+        "gm_find_resources",
+        "gm_findobject",
+        "gm_getexactfleet",
+        "gm_hackpanel",
+        "gm_repairobject",
+        "gm_rescue_ship",
+        "gm_rescue_ship_2",
+        "gm_rescue_ship_lib",
+        "gmc_assisted_task",
+        "gmc_retrieve_dead_drop",
+        "lib_generic",
+        "mc_management",
+        "setup",
+        "signal_leaks",
+        "x4ep1_trade_subscriptions",
+        "x4ep1_war_subscriptions"
+      ],
+      "effect_locations": {
+        "destroy_object": [
+          51,
+          149,
+          1447
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "Remove_Dynamic_Interior",
+        "ANTIGONE_GUILD_Contact_Player_Lines",
+        "ANTIGONE_GUILD_Can_Join_Subscription",
+        "ANTIGONE_GUILD_Remove_Obstacles_Get_Submissions",
+        "ANTIGONE_GUILD_Remove_Obstacles_Construct_Name",
+        "ANTIGONE_GUILD_Remove_Obstacles_Construct_Description",
+        "ANTIGONE_GUILD_Remove_Obstacles_Construct_Reward",
+        "ANTIGONE_GUILD_Increase_Portfolio_Get_Submissions",
+        "ANTIGONE_GUILD_Increase_Portfolio_Construct_Name",
+        "ANTIGONE_GUILD_Increase_Portfolio_Construct_Description",
+        "ANTIGONE_GUILD_Increase_Portfolio_Construct_Reward",
+        "ANTIGONE_GUILD_Help_Trade_Operation_Get_Submissions",
+        "ANTIGONE_GUILD_Help_Trade_Operation_Construct_Name",
+        "ANTIGONE_GUILD_Help_Trade_Operation_Construct_Description",
+        "ANTIGONE_GUILD_Help_Trade_Operation_Construct_Reward",
+        "ANTIGONE_GUILD_Price_Dumping_Get_Submissions",
+        "ANTIGONE_GUILD_Price_Dumping_Construct_Name",
+        "ANTIGONE_GUILD_Price_Dumping_Construct_Description",
+        "ANTIGONE_GUILD_Price_Dumping_Construct_Reward",
+        "ANTIGONE_GUILD_Setup_Satellites_Get_Submissions",
+        "ANTIGONE_GUILD_Setup_Satellites_Construct_Name",
+        "ANTIGONE_GUILD_Setup_Satellites_Construct_Description",
+        "ANTIGONE_GUILD_Setup_Satellites_Construct_Reward",
+        "ANTIGONE_GUILD_Maintain_Satellites_Get_Submissions",
+        "ANTIGONE_GUILD_Maintain_Satellites_Construct_Name",
+        "ANTIGONE_GUILD_Maintain_Satellites_Construct_Description",
+        "ANTIGONE_GUILD_Maintain_Satellites_Construct_Reward",
+        "ANTIGONE_GUILD_Danger_Area_Get_Submissions",
+        "ANTIGONE_GUILD_Danger_Area_Construct_Name",
+        "ANTIGONE_GUILD_Danger_Area_Construct_Description",
+        "ANTIGONE_GUILD_Danger_Area_Construct_Reward",
+        "TELADI_GUILD_Contact_Player_Lines",
+        "TELADI_GUILD_Can_Join_Subscription",
+        "TELADI_GUILD_Remove_Obstacles_Get_Submissions",
+        "TELADI_GUILD_Remove_Obstacles_Construct_Name",
+        "TELADI_GUILD_Remove_Obstacles_Construct_Description",
+        "TELADI_GUILD_Remove_Obstacles_Construct_Reward",
+        "TELADI_GUILD_Increase_Portfolio_Get_Submissions",
+        "TELADI_GUILD_Increase_Portfolio_Construct_Name",
+        "TELADI_GUILD_Increase_Portfolio_Construct_Description",
+        "TELADI_GUILD_Increase_Portfolio_Construct_Reward",
+        "TELADI_GUILD_Help_Trade_Operation_Get_Submissions",
+        "TELADI_GUILD_Help_Trade_Operation_Construct_Name",
+        "TELADI_GUILD_Help_Trade_Operation_Construct_Description",
+        "TELADI_GUILD_Help_Trade_Operation_Construct_Reward",
+        "TELADI_GUILD_Price_Dumping_Get_Submissions",
+        "TELADI_GUILD_Price_Dumping_Construct_Name",
+        "TELADI_GUILD_Price_Dumping_Construct_Description",
+        "TELADI_GUILD_Price_Dumping_Construct_Reward",
+        "TELADI_GUILD_Setup_Satellites_Get_Submissions",
+        "TELADI_GUILD_Setup_Satellites_Construct_Name",
+        "TELADI_GUILD_Setup_Satellites_Construct_Description",
+        "TELADI_GUILD_Setup_Satellites_Construct_Reward",
+        "TELADI_GUILD_Maintain_Satellites_Get_Submissions",
+        "TELADI_GUILD_Maintain_Satellites_Construct_Name",
+        "TELADI_GUILD_Maintain_Satellites_Construct_Description",
+        "TELADI_GUILD_Maintain_Satellites_Construct_Reward",
+        "TELADI_GUILD_Danger_Area_Get_Submissions",
+        "TELADI_GUILD_Danger_Area_Construct_Name",
+        "TELADI_GUILD_Danger_Area_Construct_Description",
+        "TELADI_GUILD_Danger_Area_Construct_Reward",
+        "Situation__Always",
+        "Situation__Dangerous_Area",
+        "MM__Standard_GM_Event",
+        "Find_Resources__Allied_Space_1",
+        "Find_Resources__Enemy_Space_1",
+        "DeployInPlace__Satellite_In_Host_Space",
+        "DeployInPlace__LaserTowers_Around_Allied_Object",
+        "Achieve_Coverage__Competitor_Space",
+        "RepairObject_SetupDataLeaks",
+        "Rescue_Ship__FindNearbyStation"
+      ]
+    },
+    {
+      "path": "md/npc_agent.xml",
+      "md_name": "NPC_Agent",
+      "sha256": "cffbc115c17533a80b710d208ac172666be1607d91a6c224382405e62d03fde1",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "cffbc115c17533a80b710d208ac172666be1607d91a6c224382405e62d03fde1",
+      "matches_installed_base": true,
+      "md_references": [
+        "diplomacy",
+        "npc_instantiation",
+        "story_diplomacy_intro",
+        "x4ep1_mentor_subscriptions"
+      ],
+      "effect_locations": {},
+      "global_keys": [],
+      "libraries": [
+        "HelperLibrary_HireAgent"
+      ]
+    },
+    {
+      "path": "md/gm_find_object.xml",
+      "md_name": "GM_FindObject",
+      "sha256": "5280e5da9f059e2f238f69e3150fd8b8181764084357e9aa62eb0403c003ca7b",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "5280e5da9f059e2f238f69e3150fd8b8181764084357e9aa62eb0403c003ca7b",
+      "matches_installed_base": true,
+      "md_references": [
+        "genericmissions",
+        "gm_findobject",
+        "gmc_dynamic",
+        "lib_generic",
+        "lib_reward_balancing",
+        "rml_deliver_inventory",
+        "rml_findobject"
+      ],
+      "effect_locations": {
+        "destroy_object": [
+          565,
+          935,
+          938,
+          952,
+          966
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "GenerateTextTable",
+        "GenerateVoiceTable",
+        "Start",
+        "MissionSuccessful",
+        "ConfigureDifficulty",
+        "Setup_SetupCrates_Normal",
+        "Setup_SetupCrates_TradeGoods",
+        "Setup_SetupCrates_Medical",
+        "Setup_SetupCrates_Illegal",
+        "Setup_SpawnLocation",
+        "Setup_DangerousSpawnLocation",
+        "Setup_SpawnCrates_Call",
+        "Setup_SpawnCrates",
+        "Dynamic_Mission_Eval"
+      ]
+    },
+    {
+      "path": "md/rml_claimplot.xml",
+      "md_name": "RML_ClaimPlot",
+      "sha256": "ad63aefc2ca11bf82193f5cb9998de45c4f7be0c80b4927f77fc9ae429624913",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "ad63aefc2ca11bf82193f5cb9998de45c4f7be0c80b4927f77fc9ae429624913",
+      "matches_installed_base": true,
+      "md_references": [],
+      "effect_locations": {},
+      "global_keys": [],
+      "libraries": [
+        "ClaimPlot",
+        "CheckPlotConstraints_Location",
+        "CheckPlotConstraints_Dimensions",
+        "Update_Briefing_ClaimPlot"
+      ]
+    },
+    {
+      "path": "md/rml_deliver_crew.xml",
+      "md_name": "RML_Deliver_Crew",
+      "sha256": "dc9e3a149cec9b2a2880e9fbe13b699a33b9b1fe678134669ca322432441cfb9",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "dc9e3a149cec9b2a2880e9fbe13b699a33b9b1fe678134669ca322432441cfb9",
+      "matches_installed_base": true,
+      "md_references": [],
+      "effect_locations": {},
+      "global_keys": [],
+      "libraries": [
+        "DeliverCrew",
+        "NpcMeetsRequirements"
+      ]
+    },
+    {
+      "path": "md/rml_deliver_wares.xml",
+      "md_name": "RML_Deliver_Wares",
+      "sha256": "c047223a73263dd75e36d0e42e050e2b01cff5fa4c80146ff9c0e2c6049c90e7",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "c047223a73263dd75e36d0e42e050e2b01cff5fa4c80146ff9c0e2c6049c90e7",
+      "matches_installed_base": true,
+      "md_references": [],
+      "effect_locations": {},
+      "global_keys": [],
+      "libraries": [
+        "DeliverWares"
+      ]
+    },
+    {
+      "path": "md/rml_destroy_entities.xml",
+      "md_name": "RML_Destroy_Entities",
+      "sha256": "bb1d687cf4df126d88d90dd4fa1d29b00e6c6db9a180df23666e4151f224612f",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "bb1d687cf4df126d88d90dd4fa1d29b00e6c6db9a180df23666e4151f224612f",
+      "matches_installed_base": true,
+      "md_references": [],
+      "effect_locations": {},
+      "global_keys": [],
+      "libraries": [
+        "PopulateTargetGroups",
+        "DestroyEntities"
+      ]
+    },
+    {
+      "path": "md/rml_find_object.xml",
+      "md_name": "RML_FindObject",
+      "sha256": "f8736877cdbef8eca033c133bafa34589db581a0d411fb5c9a79f08eb2ef4043",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "f8736877cdbef8eca033c133bafa34589db581a0d411fb5c9a79f08eb2ef4043",
+      "matches_installed_base": true,
+      "md_references": [
+        "lib_generic"
+      ],
+      "effect_locations": {},
+      "global_keys": [],
+      "libraries": [
+        "FindObject"
+      ]
+    },
+    {
+      "path": "md/factionsubgoal_buildstation.xml",
+      "md_name": "FactionSubgoal_BuildStation",
+      "sha256": "4ac95712629d844e768889bac61f74981145ba791eb9c4e6a727e65f27395bbe",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "4ac95712629d844e768889bac61f74981145ba791eb9c4e6a727e65f27395bbe",
+      "matches_installed_base": true,
+      "md_references": [
+        "factionlogic",
+        "genericmissions"
+      ],
+      "effect_locations": {
+        "create_station": [
+          202
+        ],
+        "destroy_object": [
+          474,
+          475
+        ],
+        "add_build_to_expand_station": [
+          211
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "ProcessNewPhaseRequest",
+        "GenerateDebugTextWithCueID"
+      ]
+    },
+    {
+      "path": "md/factionsubgoal_defendarea.xml",
+      "md_name": "FactionSubgoal_DefendArea",
+      "sha256": "2c4a1a037749619ac5b3546d65bba9fee6b67db435f6c9d829b9ecc0e4c8ad39",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "2c4a1a037749619ac5b3546d65bba9fee6b67db435f6c9d829b9ecc0e4c8ad39",
+      "matches_installed_base": true,
+      "md_references": [
+        "factionlogic",
+        "genericmissions"
+      ],
+      "effect_locations": {
+        "request_job_ship": [
+          580
+        ],
+        "commandeer_object": [
+          418,
+          625
+        ],
+        "create_order": [
+          106,
+          680,
+          691,
+          698
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "Validate_Requested_Ships",
+        "SetFindShipFocusSpace",
+        "Ship_Order_Lib",
+        "GenerateDebugTextWithCueID"
+      ]
+    },
+    {
+      "path": "md/factionsubgoal_recon.xml",
+      "md_name": "FactionSubgoal_Recon",
+      "sha256": "6ec1580f3581a4f717415c4f6f722202f25277e52873692beff5c845447edf55",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "6ec1580f3581a4f717415c4f6f722202f25277e52873692beff5c845447edf55",
+      "matches_installed_base": true,
+      "md_references": [
+        "factionlogic",
+        "genericmissions"
+      ],
+      "effect_locations": {
+        "destroy_object": [
+          562
+        ],
+        "request_job_ship": [
+          393
+        ],
+        "commandeer_object": [
+          279,
+          437
+        ],
+        "create_order": [
+          540
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "Validate_Requested_Ships",
+        "SetFindShipFocusSpace",
+        "GenerateDebugTextWithCueID"
+      ]
+    },
+    {
+      "path": "md/gm_barterwares.xml",
+      "md_name": "GM_BarterWares",
+      "sha256": "5d2b2e82e78a328b78b91a36414bbd0fae6a93d7133395d3c130c8cf4cc69e14",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "5d2b2e82e78a328b78b91a36414bbd0fae6a93d7133395d3c130c8cf4cc69e14",
+      "matches_installed_base": true,
+      "md_references": [
+        "genericmissions",
+        "gm_barterwares",
+        "lib_generic",
+        "lib_reward_balancing",
+        "rml_barterwares",
+        "story_timelines_epilogue"
+      ],
+      "effect_locations": {
+        "create_ship": [
+          2256,
+          2404
+        ],
+        "destroy_object": [
+          971,
+          974,
+          995,
+          1004
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "GenerateTextTable",
+        "GenerateVoiceTable",
+        "Start",
+        "GetWaresToReceive",
+        "GetWaresToGive",
+        "UpdateObjectives",
+        "ConfigureDifficulty",
+        "GetOrConfirmReturnMultiplier",
+        "GetOrConfirmWareDatasToReceiveGive",
+        "GetPriceWaresToReceive",
+        "GetPriceWaresToGive",
+        "GetBarterDescriptionText",
+        "GetBarteringShips"
+      ]
+    },
+    {
+      "path": "md/gm_bringitems.xml",
+      "md_name": "GM_BringItems",
+      "sha256": "23559c26498432eae16191f186aa6554564145bdcc16b44cce0568650e932471",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "23559c26498432eae16191f186aa6554564145bdcc16b44cce0568650e932471",
+      "matches_installed_base": true,
+      "md_references": [
+        "genericmissions",
+        "gm_bringitems",
+        "gmc_dynamic",
+        "lib_generic",
+        "lib_reward_balancing",
+        "rml_deliver_inventory"
+      ],
+      "effect_locations": {
+        "destroy_object": [
+          1122,
+          1125
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "GenerateTextTable",
+        "GenerateVoiceTable",
+        "Start",
+        "Setup_Production_MiningEquipment",
+        "Setup_Production_Explosives",
+        "Setup_Production_Spices",
+        "Setup_Production_WaterPurification",
+        "Setup_Production_Herbices",
+        "Setup_ExquisiteFood",
+        "CalculateResourceCost",
+        "Dynamic_Mission_Eval"
+      ]
+    },
+    {
+      "path": "md/gm_escort.xml",
+      "md_name": "GM_Escort",
+      "sha256": "dae8c68a816a8210262cbce1be2ec554ac4601ac75dbc78d30fcdf2a86b427b1",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "dae8c68a816a8210262cbce1be2ec554ac4601ac75dbc78d30fcdf2a86b427b1",
+      "matches_installed_base": true,
+      "md_references": [
+        "genericmissions",
+        "gm_escort",
+        "lib_generic",
+        "lib_reward_balancing",
+        "rml_escort",
+        "rml_flyto"
+      ],
+      "effect_locations": {
+        "create_ship": [
+          493,
+          662,
+          685,
+          762,
+          776,
+          784,
+          825,
+          841
+        ],
+        "destroy_object": [
+          525,
+          528,
+          1119,
+          1122,
+          1135
+        ],
+        "create_order": [
+          697,
+          706,
+          851,
+          876,
+          978,
+          1081,
+          1096,
+          1105
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "GenerateTextTable",
+        "GenerateVoiceTable",
+        "Start"
+      ]
+    },
+    {
+      "path": "md/gm_killmasstraffic.xml",
+      "md_name": "GM_KillMasstraffic",
+      "sha256": "9f991fbf1e33196f5b56eac48086a7279316d7fdf34508ec99a5acd161e61e20",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "9f991fbf1e33196f5b56eac48086a7279316d7fdf34508ec99a5acd161e61e20",
+      "matches_installed_base": true,
+      "md_references": [
+        "genericmissions",
+        "gm_killmasstraffic",
+        "lib_generic",
+        "lib_reward_balancing",
+        "rml_flyto",
+        "rml_repeat_customevent"
+      ],
+      "effect_locations": {
+        "create_ship": [
+          473
+        ],
+        "destroy_object": [
+          496,
+          895,
+          898,
+          911
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "GenerateTextTable",
+        "GenerateVoiceTable",
+        "Start",
+        "ConfigureDifficultyCivilian",
+        "ConfigureDifficultyCriminal",
+        "Setup_FindCivilianStation"
+      ]
+    },
+    {
+      "path": "md/gm_patrol.xml",
+      "md_name": "GM_Patrol",
+      "sha256": "2439a56a237842deb76af59cbeb8586b08626d514b2ff5a71296451d197e37af",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "2439a56a237842deb76af59cbeb8586b08626d514b2ff5a71296451d197e37af",
+      "matches_installed_base": true,
+      "md_references": [
+        "genericmissions",
+        "gm_patrol",
+        "lib_generic",
+        "lib_reward_balancing",
+        "npc_instantiation",
+        "npc_missions",
+        "rml_patrol"
+      ],
+      "effect_locations": {
+        "destroy_object": [
+          1131,
+          1134,
+          1147,
+          1955,
+          2286
+        ],
+        "commandeer_object": [
+          803,
+          856,
+          951
+        ],
+        "create_order": [
+          818,
+          826,
+          837,
+          846,
+          861,
+          873,
+          953,
+          963,
+          968
+        ]
+      },
+      "global_keys": [
+        "PlayerControlledGroup"
+      ],
+      "libraries": [
+        "GenerateTextTable",
+        "GenerateVoiceTable",
+        "Start"
+      ]
+    },
+    {
+      "path": "md/gm_repairsignalleaks.xml",
+      "md_name": "GM_RepairSignalLeaks",
+      "sha256": "4fc8292572ccc804ee1d55ba3f96c60b30c125281c40b244d5e533ae1ff3312b",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "4fc8292572ccc804ee1d55ba3f96c60b30c125281c40b244d5e533ae1ff3312b",
+      "matches_installed_base": true,
+      "md_references": [
+        "genericmissions",
+        "gm_repairsignalleaks",
+        "lib_generic",
+        "lib_reward_balancing",
+        "npc_instantiation",
+        "npc_missions",
+        "rml_repairsignalleaks",
+        "signal_leaks"
+      ],
+      "effect_locations": {
+        "create_station": [
+          510
+        ],
+        "destroy_object": [
+          535,
+          538,
+          810,
+          813,
+          826,
+          1380
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "GenerateTextTable",
+        "GenerateVoiceTable",
+        "Start",
+        "GenerateBriefingObjectiveText",
+        "ConfigureDifficulty",
+        "Setup_FindCivilianStation"
+      ]
+    },
+    {
+      "path": "md/gm_rescue_ship.xml",
+      "md_name": "GM_Rescue_Ship",
+      "sha256": "a49930f02c8869658557131b36df5ada0b80ab31f97f40c684dd0b57f7a5c800",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "a49930f02c8869658557131b36df5ada0b80ab31f97f40c684dd0b57f7a5c800",
+      "matches_installed_base": true,
+      "md_references": [
+        "genericmissions",
+        "gm_rescue_ship",
+        "gm_rescue_ship_lib",
+        "gmc_dynamic",
+        "lib_generic",
+        "lib_reward_balancing",
+        "rml_rescueship"
+      ],
+      "effect_locations": {
+        "destroy_object": [
+          568,
+          572,
+          886,
+          889,
+          902,
+          949
+        ],
+        "create_order": [
+          703,
+          944
+        ]
+      },
+      "global_keys": [
+        "EmergentMissionObjects"
+      ],
+      "libraries": [
+        "GenerateTextTable",
+        "GenerateVoiceTable",
+        "Start",
+        "ConfigureDifficulty",
+        "Dynamic_Mission_Eval"
+      ]
+    },
+    {
+      "path": "md/gm_retrieveitem.xml",
+      "md_name": "GM_RetrieveItem",
+      "sha256": "5edfe352403dab25604b1e25dec402a5ad7c836820ef5ab7bfae649b9cd73591",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "5edfe352403dab25604b1e25dec402a5ad7c836820ef5ab7bfae649b9cd73591",
+      "matches_installed_base": true,
+      "md_references": [
+        "genericmissions",
+        "gm_retrieveitem",
+        "lib_generic",
+        "lib_reward_balancing",
+        "npc_instantiation",
+        "npc_missions",
+        "rml_deliver_inventory",
+        "rml_retrieveitem"
+      ],
+      "effect_locations": {
+        "destroy_object": [
+          531,
+          914,
+          1519
+        ],
+        "commandeer_object": [
+          1185,
+          1408
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "GenerateTextTable",
+        "GenerateVoiceTable",
+        "Start",
+        "MissionSuccessful",
+        "Setup_FindTargetShip",
+        "ConfigureDifficulty"
+      ]
+    },
+    {
+      "path": "md/gm_trackship.xml",
+      "md_name": "GM_TrackShip",
+      "sha256": "ca85b50a4c9540c7eb91c845090fa3a3005747038b0992c84503e731aae8808e",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "ca85b50a4c9540c7eb91c845090fa3a3005747038b0992c84503e731aae8808e",
+      "matches_installed_base": true,
+      "md_references": [
+        "genericmissions",
+        "gm_trackship",
+        "lib_generic",
+        "lib_reward_balancing",
+        "rml_trackship"
+      ],
+      "effect_locations": {
+        "destroy_object": [
+          767
+        ],
+        "commandeer_object": [
+          603
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "GenerateTextTable",
+        "GenerateVoiceTable",
+        "Start",
+        "ConfigureDifficulty",
+        "Setup_FindSmuggler",
+        "Setup_FindTrader",
+        "Setup_FindEnemyShip"
+      ]
+    },
+    {
+      "path": "md/gmc_assisted_task.xml",
+      "md_name": "GMC_Assisted_Task",
+      "sha256": "410f6e360c2bbbf6be0bea50c67915db25a02f537c837ac99c7e6d5565c28b68",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "410f6e360c2bbbf6be0bea50c67915db25a02f537c837ac99c7e6d5565c28b68",
+      "matches_installed_base": true,
+      "md_references": [
+        "genericmissions",
+        "gm_find_resources",
+        "gmc_assisted_task",
+        "lib_generic",
+        "lib_reward_balancing",
+        "npc_instantiation",
+        "npc_missions",
+        "rml_deliver_inventory",
+        "rml_find_resources",
+        "rml_harvest_resources",
+        "rml_transport_passengers_v2"
+      ],
+      "effect_locations": {
+        "destroy_object": [
+          1516,
+          1519
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "GenerateTextTable",
+        "GenerateVoiceTable",
+        "Start",
+        "CalculateResourceCost"
+      ]
+    },
+    {
+      "path": "md/gmc_supervised_mining.xml",
+      "md_name": "GMC_Supervised_Mining",
+      "sha256": "695620afe9e549c31f9d6f552c6021ef855a7855ceb2350426ad79280e11a5ec",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "695620afe9e549c31f9d6f552c6021ef855a7855ceb2350426ad79280e11a5ec",
+      "matches_installed_base": true,
+      "md_references": [
+        "genericmissions",
+        "gm_find_resources",
+        "gmc_supervised_mining",
+        "lib_dialog",
+        "lib_generic",
+        "lib_reward_balancing",
+        "rml_find_resources"
+      ],
+      "effect_locations": {
+        "create_ship": [
+          714,
+          727,
+          1056,
+          1072
+        ],
+        "destroy_object": [
+          1295,
+          1298
+        ],
+        "commandeer_object": [
+          696
+        ],
+        "create_order": [
+          750,
+          827,
+          954,
+          957,
+          1082,
+          1110,
+          1115,
+          1120,
+          1125,
+          1129,
+          1276
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "GenerateTextTable",
+        "GenerateVoiceTable",
+        "Start"
+      ]
+    },
+    {
+      "path": "md/x4ep1_pirates_subscriptions.xml",
+      "md_name": "X4Ep1_Pirates_Subscriptions",
+      "sha256": "124e4c9e99b6b781d99e8ecc98ead9cf269d687f11547c5377bb4c90b0928514",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "124e4c9e99b6b781d99e8ecc98ead9cf269d687f11547c5377bb4c90b0928514",
+      "matches_installed_base": true,
+      "md_references": [
+        "genericmissions",
+        "gm_assassinate",
+        "gm_boardship",
+        "gm_bringitems",
+        "gm_deployinplace",
+        "gm_destroy_objects",
+        "gm_getexactcrew",
+        "gm_hackpanel",
+        "gm_killmasstraffic",
+        "gm_retrieveitem",
+        "gm_supplyfactory",
+        "gm_trackship",
+        "gm_transport_passengers",
+        "lib_generic",
+        "mc_management",
+        "setup",
+        "x4ep1_pirates_subscriptions"
+      ],
+      "effect_locations": {
+        "destroy_object": [
+          50,
+          134
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "Remove_Dynamic_Interior",
+        "SCALEPLATE_PIRATES_Contact_Player_Lines",
+        "SCALEPLATE_PIRATES_Can_Join_Subscription",
+        "SCALEPLATE_PIRATES_Targetted_Individual_Get_Submissions",
+        "SCALEPLATE_PIRATES_Targetted_Individual_Construct_Name",
+        "SCALEPLATE_PIRATES_Targetted_Individual_Construct_Description",
+        "SCALEPLATE_PIRATES_Targetted_Individual_Construct_Reward",
+        "SCALEPLATE_PIRATES_Boarding_Operations_Get_Submissions",
+        "SCALEPLATE_PIRATES_Boarding_Operations_Construct_Name",
+        "SCALEPLATE_PIRATES_Boarding_Operations_Construct_Description",
+        "SCALEPLATE_PIRATES_Boarding_Operations_Construct_Reward",
+        "SCALEPLATE_PIRATES_Undermine_Opponent_Get_Submissions",
+        "SCALEPLATE_PIRATES_Undermine_Opponent_Construct_Name",
+        "SCALEPLATE_PIRATES_Undermine_Opponent_Construct_Description",
+        "SCALEPLATE_PIRATES_Undermine_Opponent_Construct_Reward",
+        "SCALEPLATE_PIRATES_Danger_Area_Get_Submissions",
+        "SCALEPLATE_PIRATES_Danger_Area_Construct_Name",
+        "SCALEPLATE_PIRATES_Danger_Area_Construct_Description",
+        "SCALEPLATE_PIRATES_Danger_Area_Construct_Reward",
+        "SCALEPLATE_PIRATES_Drug_Cartel_Get_Submissions",
+        "SCALEPLATE_PIRATES_Drug_Cartel_Construct_Name",
+        "SCALEPLATE_PIRATES_Drug_Cartel_Construct_Description",
+        "SCALEPLATE_PIRATES_Drug_Cartel_Construct_Reward",
+        "Situation__Always",
+        "MM_GM_Event",
+        "Assassinate__Enemy_S_M_Ship"
+      ]
+    },
+    {
+      "path": "md/lib_reward_balancing.xml",
+      "md_name": "LIB_Reward_Balancing",
+      "sha256": "dfa612d692dab0f1201e328d40714d9f90e4a8ec6f59a1652a73b504094b0b38",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "dfa612d692dab0f1201e328d40714d9f90e4a8ec6f59a1652a73b504094b0b38",
+      "matches_installed_base": true,
+      "md_references": [],
+      "effect_locations": {},
+      "global_keys": [],
+      "libraries": [
+        "GetValue_Credits",
+        "GetValue_Notoriety",
+        "Allocate_RewardWeight",
+        "Apply_RewardMultiplier",
+        "DetermineAdditionalReward",
+        "Apply_TimeBonusCr",
+        "TimeBonusCr_Max",
+        "Get_Suitable_Mod_Part"
+      ]
+    },
+    {
+      "path": "md/rml_achievecoverage.xml",
+      "md_name": "RML_AchieveCoverage",
+      "sha256": "15a89816ae407398b4dc4529365c81b952e1d37dfbf064c6cb5a20c7fc961979",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "15a89816ae407398b4dc4529365c81b952e1d37dfbf064c6cb5a20c7fc961979",
+      "matches_installed_base": true,
+      "md_references": [],
+      "effect_locations": {},
+      "global_keys": [],
+      "libraries": [
+        "AchieveCoverage"
+      ]
+    },
+    {
+      "path": "md/rml_board_ship.xml",
+      "md_name": "RML_BoardShip",
+      "sha256": "b45a66f20297bf3e2434ec5c3bf8254ea0d46a9d6a0e674f3cfb300c54f6ea8e",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "b45a66f20297bf3e2434ec5c3bf8254ea0d46a9d6a0e674f3cfb300c54f6ea8e",
+      "matches_installed_base": true,
+      "md_references": [
+        "lib_generic"
+      ],
+      "effect_locations": {
+        "create_ship": [
+          120
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "BoardShip"
+      ]
+    },
+    {
+      "path": "md/lib_holomaptarget.xml",
+      "md_name": "LIB_HolomapTarget",
+      "sha256": "888c8e370bd749662bb0649b28091e746e7e1a597a2764a119e9e353e36b087a",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "888c8e370bd749662bb0649b28091e746e7e1a597a2764a119e9e353e36b087a",
+      "matches_installed_base": true,
+      "md_references": [],
+      "effect_locations": {},
+      "global_keys": [],
+      "libraries": [
+        "Start",
+        "AddComponentPath"
+      ]
+    },
+    {
+      "path": "md/gmc_dynamic.xml",
+      "md_name": "GMC_Dynamic",
+      "sha256": "42a65f4314cd28eff9c85ec1bb174a5f70ec9fdcb11407f1146f9443b1719b7a",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "42a65f4314cd28eff9c85ec1bb174a5f70ec9fdcb11407f1146f9443b1719b7a",
+      "matches_installed_base": true,
+      "md_references": [
+        "gm_ambush",
+        "gm_bringitems",
+        "gm_deployinplace",
+        "gm_findobject",
+        "gm_repairobject",
+        "gm_rescue_ship",
+        "setup"
+      ],
+      "effect_locations": {
+        "commandeer_object": [
+          765
+        ],
+        "create_order": [
+          768
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "Mission_Prison_Setup",
+        "Mission_Prison_EntryCompleted",
+        "Mission_Prison_MidCompleted",
+        "Mission_FetchItem_Setup",
+        "Start",
+        "Room_Crate_Item_To_Bar_Twice__Eval",
+        "Rescue_Ship_From_Minefield_Twice__Eval",
+        "Find_Object_Twice__Eval",
+        "Deploy_Object_Twice__Eval",
+        "Repair_Object_Twice__Eval",
+        "Ambush_Player_Once__Eval",
+        "ProcessInstructions",
+        "ProcessInstruction_Internal",
+        "Initialise_ChainDefinitionTable",
+        "Get_Branch_Sources",
+        "Set_Up_Outcome_Branches",
+        "Generate_NPC_Creation_Helper",
+        "Process_NPC_Creation_Helper",
+        "Generate_Interior_Creation_Helper",
+        "Process_Interior_Creation_Helper",
+        "Incoming_Message_Helper",
+        "Process_Incoming_Message_Helper"
+      ]
+    },
+    {
+      "path": "md/rml_destroy_components.xml",
+      "md_name": "RML_Destroy_Components",
+      "sha256": "9ccac897b3a5a5acae3318e0404b0a250e13b18c00e7bb886604931224149c33",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "9ccac897b3a5a5acae3318e0404b0a250e13b18c00e7bb886604931224149c33",
+      "matches_installed_base": true,
+      "md_references": [],
+      "effect_locations": {},
+      "global_keys": [],
+      "libraries": [
+        "DestroyComponents",
+        "EvaluateAndEnd"
+      ]
+    },
+    {
+      "path": "md/rml_destroy_rarelyonsight.xml",
+      "md_name": "RML_Destroy_RarelyOnSight",
+      "sha256": "44c8f5f9db68cdd23fcec04b76897fc3e01537e0718b9f71cea29b3f09389e7f",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "44c8f5f9db68cdd23fcec04b76897fc3e01537e0718b9f71cea29b3f09389e7f",
+      "matches_installed_base": true,
+      "md_references": [
+        "lib_generic"
+      ],
+      "effect_locations": {
+        "create_ship": [
+          113
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "DestroyRarelyOnSight"
+      ]
+    },
+    {
+      "path": "md/rml_find_resources.xml",
+      "md_name": "RML_Find_Resources",
+      "sha256": "4416053406acc0db5c8aac351068757d009d64ff5489048fdcf90882cbdddac5",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "4416053406acc0db5c8aac351068757d009d64ff5489048fdcf90882cbdddac5",
+      "matches_installed_base": true,
+      "md_references": [
+        "lib_generic"
+      ],
+      "effect_locations": {},
+      "global_keys": [],
+      "libraries": [
+        "FindResources"
+      ]
+    },
+    {
+      "path": "md/rml_largesupply.xml",
+      "md_name": "RML_LargeSupply",
+      "sha256": "cedaf9a5b5836e8d674facfaee41cb177dbf63dcfba12e9ef6d551511ff4bad9",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "cedaf9a5b5836e8d674facfaee41cb177dbf63dcfba12e9ef6d551511ff4bad9",
+      "matches_installed_base": true,
+      "md_references": [],
+      "effect_locations": {
+        "create_ship": [
+          87
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "LargeSupply"
+      ]
+    },
+    {
+      "path": "md/rml_repairobject.xml",
+      "md_name": "RML_RepairObject",
+      "sha256": "e1a9c36feaf4a0bda4c22136160e4cb250983fc760279d1c6d87bb2d0ca07ebe",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "e1a9c36feaf4a0bda4c22136160e4cb250983fc760279d1c6d87bb2d0ca07ebe",
+      "matches_installed_base": true,
+      "md_references": [],
+      "effect_locations": {
+        "commandeer_object": [
+          289
+        ],
+        "create_order": [
+          290
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "RepairObject"
+      ]
+    },
+    {
+      "path": "md/rml_sabotage.xml",
+      "md_name": "RML_Sabotage",
+      "sha256": "66f3f7ca8c6e4b50df2fa55171e7d18603db19b75a599c5277ccd4d33cc7cdb6",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "66f3f7ca8c6e4b50df2fa55171e7d18603db19b75a599c5277ccd4d33cc7cdb6",
+      "matches_installed_base": true,
+      "md_references": [],
+      "effect_locations": {},
+      "global_keys": [],
+      "libraries": [
+        "Sabotage"
+      ]
+    },
+    {
+      "path": "md/rml_scan.xml",
+      "md_name": "RML_Scan",
+      "sha256": "6add7769e06cc53eacbd3d7db4ded756e4de8dda43c9ea2953027892e9c47b0f",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "6add7769e06cc53eacbd3d7db4ded756e4de8dda43c9ea2953027892e9c47b0f",
+      "matches_installed_base": true,
+      "md_references": [],
+      "effect_locations": {
+        "destroy_object": [
+          185
+        ]
+      },
+      "global_keys": [
+        "PlayerControlledGroup"
+      ],
+      "libraries": [
+        "Scan"
+      ]
+    },
+    {
+      "path": "md/rml_supplyfactory.xml",
+      "md_name": "RML_SupplyFactory",
+      "sha256": "5c300278a1f7002b6cb503703389bd0998843c63bbbcd6a8c80bee11dceea268",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "5c300278a1f7002b6cb503703389bd0998843c63bbbcd6a8c80bee11dceea268",
+      "matches_installed_base": true,
+      "md_references": [],
+      "effect_locations": {},
+      "global_keys": [],
+      "libraries": [
+        "SupplyFactory",
+        "GenerateSupplyWareList"
+      ]
+    },
+    {
+      "path": "md/rml_support_invasion.xml",
+      "md_name": "RML_Support_Invasion",
+      "sha256": "e86145e77b083ed7cfc32d261d0b6ac51c04d55686c62bfaa54438eed8ffe19e",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "e86145e77b083ed7cfc32d261d0b6ac51c04d55686c62bfaa54438eed8ffe19e",
+      "matches_installed_base": true,
+      "md_references": [
+        "rml_destroy_components",
+        "rml_patrol"
+      ],
+      "effect_locations": {},
+      "global_keys": [],
+      "libraries": [
+        "SupportInvasion"
+      ]
+    },
+    {
+      "path": "md/lib_create_enemies.xml",
+      "md_name": "LIB_Create_Enemies",
+      "sha256": "48585456cae809d558d84004d2156a56a3b36a21a42293e730951296358696ce",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "48585456cae809d558d84004d2156a56a3b36a21a42293e730951296358696ce",
+      "matches_installed_base": true,
+      "md_references": [
+        "lib_create_enemies",
+        "lib_create_ships",
+        "lib_factions",
+        "lib_reward_balancing"
+      ],
+      "effect_locations": {},
+      "global_keys": [],
+      "libraries": [
+        "Start"
+      ]
+    },
+    {
+      "path": "md/rml_transport_passengers.xml",
+      "md_name": "RML_Transport_Passengers",
+      "sha256": "48f18bb1f39d371a5bdbbd344757f30d1c342f479b6498a77b326af1f1ae1677",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "48f18bb1f39d371a5bdbbd344757f30d1c342f479b6498a77b326af1f1ae1677",
+      "matches_installed_base": true,
+      "md_references": [],
+      "effect_locations": {},
+      "global_keys": [],
+      "libraries": [
+        "TransportPassengers"
+      ]
+    },
+    {
+      "path": "md/rml_collect_crates.xml",
+      "md_name": "RML_Collect_Crates",
+      "sha256": "3ff70b11449ddc61230727cb4f610920ae696eb9094f487eaeed6f8d732bf3aa",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "3ff70b11449ddc61230727cb4f610920ae696eb9094f487eaeed6f8d732bf3aa",
+      "matches_installed_base": true,
+      "md_references": [
+        "rml_destroy_components"
+      ],
+      "effect_locations": {},
+      "global_keys": [],
+      "libraries": [
+        "CollectCrates",
+        "FindCrates"
+      ]
+    },
+    {
+      "path": "md/conversations.xml",
+      "md_name": "Conversations",
+      "sha256": "783985423dca953c0d41e993939eff68b10712401ae1525c90624607765db345",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "783985423dca953c0d41e993939eff68b10712401ae1525c90624607765db345",
+      "matches_installed_base": true,
+      "md_references": [
+        "guidance",
+        "notifications",
+        "npc_shiptrader"
+      ],
+      "effect_locations": {
+        "create_ship": [
+          1536
+        ],
+        "create_order": [
+          624,
+          644,
+          680,
+          700,
+          1026,
+          1036
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "Greeting",
+        "Greeting_NPCTemplate",
+        "InstancedNPCTransferTimes_RequestInstancing",
+        "InstancedNPCTransferTimes_RegisterTime",
+        "LaunchCrewTransferPod_CreateLaunchData"
+      ]
+    },
+    {
+      "path": "md/rml_protect_object.xml",
+      "md_name": "RML_Protect_Object",
+      "sha256": "268f7dabe5c423ce4bbe94634bbdf69663965ff930843a572464674ffccccb0c",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "268f7dabe5c423ce4bbe94634bbdf69663965ff930843a572464674ffccccb0c",
+      "matches_installed_base": true,
+      "md_references": [
+        "rml_flyto"
+      ],
+      "effect_locations": {},
+      "global_keys": [],
+      "libraries": [
+        "ProtectObject"
+      ]
+    },
+    {
+      "path": "md/gm_hackpanel.xml",
+      "md_name": "GM_HackPanel",
+      "sha256": "259278aae09f658167d01e4c66a7021b6dbe280985e2517b71936ca9e949672a",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "259278aae09f658167d01e4c66a7021b6dbe280985e2517b71936ca9e949672a",
+      "matches_installed_base": true,
+      "md_references": [
+        "genericmissions",
+        "gm_hackpanel",
+        "lib_generic",
+        "lib_holomaptarget",
+        "lib_reward_balancing",
+        "rml_hack_object"
+      ],
+      "effect_locations": {
+        "destroy_object": [
+          530,
+          810,
+          813,
+          826
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "GenerateTextTable",
+        "GenerateVoiceTable",
+        "Start",
+        "CalculateResourceCost"
+      ]
+    },
+    {
+      "path": "md/gm_prisonbreak.xml",
+      "md_name": "GM_PrisonBreak",
+      "sha256": "b273610ed229b61c89c61e96a548a6adec70ea03d587f4a8f6229916702d2042",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "b273610ed229b61c89c61e96a548a6adec70ea03d587f4a8f6229916702d2042",
+      "matches_installed_base": true,
+      "md_references": [
+        "genericmissions",
+        "gm_prisonbreak",
+        "lib_generic",
+        "lib_reward_balancing",
+        "rml_collect_inventory",
+        "rml_craft_item"
+      ],
+      "effect_locations": {
+        "destroy_object": [
+          853,
+          856
+        ]
+      },
+      "global_keys": [
+        "PlayerControlledGroup"
+      ],
+      "libraries": [
+        "GenerateTextTable",
+        "GenerateVoiceTable",
+        "Start"
+      ]
+    },
+    {
+      "path": "md/boarding.xml",
+      "md_name": "Boarding",
+      "sha256": "c3811f36723031eb21f1f9c4dc93a6953c75104a6b8a0288392922a291a331b7",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "c3811f36723031eb21f1f9c4dc93a6953c75104a6b8a0288392922a291a331b7",
+      "matches_installed_base": true,
+      "md_references": [],
+      "effect_locations": {
+        "create_ship": [
+          614
+        ],
+        "destroy_object": [
+          631,
+          677,
+          1527,
+          1579,
+          2687,
+          2702
+        ],
+        "create_order": [
+          2698,
+          2739
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "Phase_Approach_Player_Ship_Handler_Check",
+        "Reevaluate_Defending_Teams",
+        "Reevaluate_Attacking_Teams",
+        "Get_Marine_Launching_Ship",
+        "Get_Marine_Related_Ship",
+        "Get_Random_Marine",
+        "Get_Random_Pod_Marine",
+        "Speak__Prepare_Boarding_Pods",
+        "Speak__Damage_Turrets",
+        "Speak__Damage_Hull",
+        "Speak__Target_Destroyed",
+        "Speak__Launch_Pods",
+        "Speak__Pods_In_Flight",
+        "Speak__Pod_Hit",
+        "Speak__Pod_Destroyed",
+        "Speak__Pod_Arrived",
+        "Speak__Pod_Infiltration_Start",
+        "Speak__Pod_Infiltration_Ending",
+        "Speak__Breach",
+        "Speak__First_Engagement",
+        "Speak__Fight_First_Attacker_Killed",
+        "Speak__Fight_Neutral_Combat",
+        "Speak__Fight_Bad_Situation",
+        "Speak__Fight_Dire_Situation",
+        "Speak__Fight_Good_Situation",
+        "Speak__Fight_Very_Good_Situation",
+        "Speak__Success"
+      ]
+    },
+    {
+      "path": "md/rml_collect_inventory.xml",
+      "md_name": "RML_Collect_Inventory",
+      "sha256": "e049fba31aa7d49ddf9e42ae691abbacd476ae5b43bf815bd1fb058baf1a818c",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "e049fba31aa7d49ddf9e42ae691abbacd476ae5b43bf815bd1fb058baf1a818c",
+      "matches_installed_base": true,
+      "md_references": [],
+      "effect_locations": {},
+      "global_keys": [],
+      "libraries": [
+        "CollectInventory"
+      ]
+    },
+    {
+      "path": "md/rml_follow_object.xml",
+      "md_name": "RML_Follow_Object",
+      "sha256": "d9959d1e3835d3164e46c3a66e5f1474000cd1fd02845105b3c009eba58c1965",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "d9959d1e3835d3164e46c3a66e5f1474000cd1fd02845105b3c009eba58c1965",
+      "matches_installed_base": true,
+      "md_references": [],
+      "effect_locations": {},
+      "global_keys": [],
+      "libraries": [
+        "FollowObject"
+      ]
+    },
+    {
+      "path": "md/rml_patrol.xml",
+      "md_name": "RML_Patrol",
+      "sha256": "0793e1f404a440fb1a67360020501ada0b7907fd4ce32638714d4c59867ff6b5",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "0793e1f404a440fb1a67360020501ada0b7907fd4ce32638714d4c59867ff6b5",
+      "matches_installed_base": true,
+      "md_references": [
+        "rml_flyto"
+      ],
+      "effect_locations": {},
+      "global_keys": [],
+      "libraries": [
+        "Patrol"
+      ]
+    },
+    {
+      "path": "md/gm_rescue_ship_2.xml",
+      "md_name": "GM_Rescue_Ship_2",
+      "sha256": "d101d517395151616a89d2331a4d7b83c3a7ff575254fde26b514348e21bfb04",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "d101d517395151616a89d2331a4d7b83c3a7ff575254fde26b514348e21bfb04",
+      "matches_installed_base": true,
+      "md_references": [
+        "genericmissions",
+        "gm_rescue_ship",
+        "gm_rescue_ship_2",
+        "lib_generic",
+        "lib_reward_balancing",
+        "rml_rescueship_2"
+      ],
+      "effect_locations": {
+        "destroy_object": [
+          561,
+          824,
+          1030,
+          1033,
+          1046,
+          1119
+        ],
+        "create_order": [
+          715,
+          880,
+          962,
+          973
+        ]
+      },
+      "global_keys": [
+        "IgnoredAbandonedShips"
+      ],
+      "libraries": [
+        "GenerateTextTable",
+        "GenerateVoiceTable",
+        "Start",
+        "ConfigureDifficulty"
+      ]
+    },
+    {
+      "path": "md/gm_rescue_ship_lib.xml",
+      "md_name": "GM_Rescue_Ship_Lib",
+      "sha256": "b540b6f14613a2cf30780d3f925f9c79b61d7400695b5a34190e292aa7f88e71",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "b540b6f14613a2cf30780d3f925f9c79b61d7400695b5a34190e292aa7f88e71",
+      "matches_installed_base": true,
+      "md_references": [
+        "gm_rescue_ship_lib"
+      ],
+      "effect_locations": {
+        "create_ship": [
+          80,
+          90,
+          111
+        ],
+        "create_order": [
+          105
+        ]
+      },
+      "global_keys": [
+        "IgnoredAbandonedShips"
+      ],
+      "libraries": [
+        "SpawnMines_Call",
+        "SpawnMines",
+        "SpawnSalvage_Call",
+        "SpawnSalvage",
+        "Setup_Variation_BoardSalvageShip",
+        "Setup_Variation_SeekingMines"
+      ]
+    },
+    {
+      "path": "md/gmc_retrieve_dead_drop.xml",
+      "md_name": "GMC_Retrieve_Dead_Drop",
+      "sha256": "6d390ce46d2db75d3dc30a5a84e93140eac89f2ebfdf1f06f4b32b3458ebd5ce",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "6d390ce46d2db75d3dc30a5a84e93140eac89f2ebfdf1f06f4b32b3458ebd5ce",
+      "matches_installed_base": true,
+      "md_references": [
+        "genericmissions",
+        "gmc_retrieve_dead_drop",
+        "lib_generic",
+        "lib_reward_balancing",
+        "npc_instantiation",
+        "npc_missions",
+        "rml_deliver_inventory",
+        "rml_transport_passengers_v2"
+      ],
+      "effect_locations": {
+        "destroy_object": [
+          1029,
+          1061,
+          1546,
+          1549
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "GenerateTextTable",
+        "GenerateVoiceTable",
+        "Start",
+        "CalculateResourceCost",
+        "FindDockingContainers",
+        "FindPossibleFactions",
+        "FindContainer",
+        "FindTwoDockingContainers"
+      ]
+    },
+    {
+      "path": "md/rml_barterwares.xml",
+      "md_name": "RML_BarterWares",
+      "sha256": "491ec6abf747bad6e9b599c396d87a5db0ced133895293f55e0ff05486f439ee",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "491ec6abf747bad6e9b599c396d87a5db0ced133895293f55e0ff05486f439ee",
+      "matches_installed_base": true,
+      "md_references": [
+        "gm_barterwares",
+        "guidance",
+        "lib_generic",
+        "npc_usecases",
+        "rml_barterwares"
+      ],
+      "effect_locations": {
+        "create_order": [
+          1202,
+          1209
+        ]
+      },
+      "global_keys": [
+        "LastPlayerShip"
+      ],
+      "libraries": [
+        "BarterWares",
+        "GetFromAndToGroups"
+      ]
+    },
+    {
+      "path": "md/rml_escort.xml",
+      "md_name": "RML_Escort",
+      "sha256": "c3761c7d68bd33507378e2822216ddc1fbeb2e7f8794bd1ffbf7dabea2d96bbf",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "c3761c7d68bd33507378e2822216ddc1fbeb2e7f8794bd1ffbf7dabea2d96bbf",
+      "matches_installed_base": true,
+      "md_references": [],
+      "effect_locations": {
+        "commandeer_object": [
+          92,
+          259
+        ],
+        "create_order": [
+          94,
+          97,
+          270,
+          275,
+          287,
+          298,
+          307
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "Escort"
+      ]
+    },
+    {
+      "path": "md/rml_repeat_customevent.xml",
+      "md_name": "RML_Repeat_CustomEvent",
+      "sha256": "f6c0393605959a86a8820540320562133b0b80cf3ec94abf9ce884508c16d5c6",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "f6c0393605959a86a8820540320562133b0b80cf3ec94abf9ce884508c16d5c6",
+      "matches_installed_base": true,
+      "md_references": [],
+      "effect_locations": {},
+      "global_keys": [],
+      "libraries": [
+        "RepeatCustomEvent",
+        "EvaluateAndEnd"
+      ]
+    },
+    {
+      "path": "md/rml_repairsignalleaks.xml",
+      "md_name": "RML_RepairSignalLeaks",
+      "sha256": "4a57926ceb0e4f66306db8cda9d0d289e0d31ebc46f39965471b7082352a6697",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "4a57926ceb0e4f66306db8cda9d0d289e0d31ebc46f39965471b7082352a6697",
+      "matches_installed_base": true,
+      "md_references": [
+        "signal_leaks"
+      ],
+      "effect_locations": {},
+      "global_keys": [],
+      "libraries": [
+        "RepairSignalLeaks",
+        "CheckStatus_Multiple"
+      ]
+    },
+    {
+      "path": "md/rml_rescueship.xml",
+      "md_name": "RML_RescueShip",
+      "sha256": "bf3de1a41d2e41b782a6f7c0b6c91c3b680a14bad632a2fd73a59335c022e58c",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "bf3de1a41d2e41b782a6f7c0b6c91c3b680a14bad632a2fd73a59335c022e58c",
+      "matches_installed_base": true,
+      "md_references": [],
+      "effect_locations": {
+        "create_order": [
+          150
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "GenerateVoiceTable",
+        "RescueShip",
+        "DetermineObjectiveTargets"
+      ]
+    },
+    {
+      "path": "md/rml_retrieveitem.xml",
+      "md_name": "RML_RetrieveItem",
+      "sha256": "4530dda3e3d45da354653a299202060338482b3d8c4025ff67b8796e7bd1da1f",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "4530dda3e3d45da354653a299202060338482b3d8c4025ff67b8796e7bd1da1f",
+      "matches_installed_base": true,
+      "md_references": [],
+      "effect_locations": {},
+      "global_keys": [],
+      "libraries": [
+        "RetrieveItem"
+      ]
+    },
+    {
+      "path": "md/rml_trackship.xml",
+      "md_name": "RML_TrackShip",
+      "sha256": "0f7c275d5f39978ca2d0ebffd8d5f12fee80daf5816b7ad9c1821a2d74c88eff",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "0f7c275d5f39978ca2d0ebffd8d5f12fee80daf5816b7ad9c1821a2d74c88eff",
+      "matches_installed_base": true,
+      "md_references": [],
+      "effect_locations": {
+        "create_order": [
+          187
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "TrackShip"
+      ]
+    },
+    {
+      "path": "md/rml_harvest_resources.xml",
+      "md_name": "RML_Harvest_Resources",
+      "sha256": "49f7a9bcfc7ff906529259ae2c500fa7a7c70b29ddf7c48d131f0713c5f114c3",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "49f7a9bcfc7ff906529259ae2c500fa7a7c70b29ddf7c48d131f0713c5f114c3",
+      "matches_installed_base": true,
+      "md_references": [
+        "rml_flyto"
+      ],
+      "effect_locations": {},
+      "global_keys": [],
+      "libraries": [
+        "HarvestResources",
+        "CollectedResourceHandler"
+      ]
+    },
+    {
+      "path": "md/rml_transport_passengers_v2.xml",
+      "md_name": "RML_Transport_Passengers_V2",
+      "sha256": "d9af3da27207468eb92d23894f43dd1dcb7309c812c7db13a50338de5b016379",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "d9af3da27207468eb92d23894f43dd1dcb7309c812c7db13a50338de5b016379",
+      "matches_installed_base": true,
+      "md_references": [
+        "npc_instantiation",
+        "rml_transport_passengers_v2"
+      ],
+      "effect_locations": {},
+      "global_keys": [],
+      "libraries": [
+        "GenerateVoiceTable",
+        "TransportPassengers_V2",
+        "PlaceNPC"
+      ]
+    },
+    {
+      "path": "md/gm_ambush.xml",
+      "md_name": "GM_Ambush",
+      "sha256": "0915e8b83476c2ce200367e292c6912559b3ea96821bc9e18f9447597c2197f4",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "0915e8b83476c2ce200367e292c6912559b3ea96821bc9e18f9447597c2197f4",
+      "matches_installed_base": true,
+      "md_references": [
+        "genericmissions",
+        "gm_ambush",
+        "gm_destroy_objects",
+        "gmc_dynamic",
+        "lib_generic",
+        "lib_holomaptarget",
+        "lib_reward_balancing",
+        "rml_destroy_components"
+      ],
+      "effect_locations": {
+        "create_ship": [
+          560,
+          1161
+        ],
+        "destroy_object": [
+          583,
+          586,
+          622,
+          625,
+          939,
+          942,
+          951
+        ],
+        "commandeer_object": [
+          1134
+        ],
+        "create_order": [
+          1190,
+          1191,
+          1201
+        ]
+      },
+      "global_keys": [],
+      "libraries": [
+        "GenerateTextTable",
+        "GenerateVoiceTable",
+        "Start",
+        "Dynamic_Mission_Eval"
+      ]
+    },
+    {
+      "path": "md/lib_factions.xml",
+      "md_name": "LIB_Factions",
+      "sha256": "7eda48d9cd36570c25e02fee1c3b9a0e1d326c4e264b3a92ffeb7948527f1bc4",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "7eda48d9cd36570c25e02fee1c3b9a0e1d326c4e264b3a92ffeb7948527f1bc4",
+      "matches_installed_base": true,
+      "md_references": [],
+      "effect_locations": {},
+      "global_keys": [],
+      "libraries": []
+    },
+    {
+      "path": "md/notifications.xml",
+      "md_name": "Notifications",
+      "sha256": "3262d56ca654e2bb94d210cf64a85fca15553216c3ef71c19929f6832ad2400a",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "3262d56ca654e2bb94d210cf64a85fca15553216c3ef71c19929f6832ad2400a",
+      "matches_installed_base": true,
+      "md_references": [
+        "conversations",
+        "npc_usecases",
+        "placedobjects",
+        "setup"
+      ],
+      "effect_locations": {
+        "destroy_object": [
+          1362,
+          1369,
+          1382,
+          3208
+        ],
+        "create_order": [
+          1350,
+          3240,
+          3248
+        ]
+      },
+      "global_keys": [
+        "IgnoredAbandonedShips",
+        "PlayerContainerGroup",
+        "PlayerControlledGroup",
+        "PlayerOccupiedShipGroup",
+        "SuppressCommChatter",
+        "last_npc_notification"
+      ],
+      "libraries": [
+        "TruncateTickerText",
+        "AddKnownCraftingWares",
+        "NotificationCraftingProgress",
+        "Check_Ship_Userdata"
+      ]
+    },
+    {
+      "path": "md/rml_hack_object.xml",
+      "md_name": "RML_Hack_Object",
+      "sha256": "8e65ff6655af6a04db51231f8415df7c812707f8289f737d2767b0ee144c47e1",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "8e65ff6655af6a04db51231f8415df7c812707f8289f737d2767b0ee144c47e1",
+      "matches_installed_base": true,
+      "md_references": [],
+      "effect_locations": {},
+      "global_keys": [],
+      "libraries": [
+        "HackObjects"
+      ]
+    },
+    {
+      "path": "md/rml_craft_item.xml",
+      "md_name": "RML_Craft_Item",
+      "sha256": "0fa1c14474e47ca9881c4ea32bc137a7a4543a1223c4660a829be276d84f1f1d",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "0fa1c14474e47ca9881c4ea32bc137a7a4543a1223c4660a829be276d84f1f1d",
+      "matches_installed_base": true,
+      "md_references": [],
+      "effect_locations": {},
+      "global_keys": [],
+      "libraries": [
+        "CraftItem"
+      ]
+    },
+    {
+      "path": "md/rml_rescueship_2.xml",
+      "md_name": "RML_RescueShip_2",
+      "sha256": "5a196080848f297ce0b91bb2a55bd0ff9bb304dff3cb801ec8386fdb96851e67",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "5a196080848f297ce0b91bb2a55bd0ff9bb304dff3cb801ec8386fdb96851e67",
+      "matches_installed_base": true,
+      "md_references": [
+        "lib_generic"
+      ],
+      "effect_locations": {},
+      "global_keys": [],
+      "libraries": [
+        "GenerateVoiceTable",
+        "RescueShip"
+      ]
+    },
+    {
+      "path": "assets/structures/defence/macros/defence_arg_claim_01_macro.xml",
+      "sha256": "19aa07f6fc11d0d99b8b161a324424a9386611b7f06c461584b547ad523b9572",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\01.cat",
+      "installed_sha256": "19aa07f6fc11d0d99b8b161a324424a9386611b7f06c461584b547ad523b9572",
+      "matches_installed_base": true
+    },
+    {
+      "path": "libraries/wares.xml",
+      "sha256": "850ef49b18f2720eb0371362856403dbedf226c88b1c2c379aa8ca87f243df2e",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "850ef49b18f2720eb0371362856403dbedf226c88b1c2c379aa8ca87f243df2e",
+      "matches_installed_base": true
+    },
+    {
+      "path": "libraries/modulegroups.xml",
+      "sha256": "3daf00a4ef80ee3c2890dc2987e4e1114da17bd9bd53cf70a4dc8a5c5d395f1f",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "3daf00a4ef80ee3c2890dc2987e4e1114da17bd9bd53cf70a4dc8a5c5d395f1f",
+      "matches_installed_base": true
+    },
+    {
+      "path": "index/macros.xml",
+      "sha256": "4932da2e270fbd7c7442f57ded2c0a0e3c830cd68c81c5250815faa1c90fc456",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "4932da2e270fbd7c7442f57ded2c0a0e3c830cd68c81c5250815faa1c90fc456",
+      "matches_installed_base": true
+    },
+    {
+      "path": "libraries/people.xml",
+      "sha256": "d2f146b32f3190fed17ee567ef29ef086adaffa73aca9483429c3841472413aa",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "d2f146b32f3190fed17ee567ef29ef086adaffa73aca9483429c3841472413aa",
+      "matches_installed_base": true
+    },
+    {
+      "path": "libraries/experiences.xml",
+      "sha256": "7dab301ba447bb28e38fb7d73fb6d67190516301bd4faf1b6add9ef06c360dd9",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "7dab301ba447bb28e38fb7d73fb6d67190516301bd4faf1b6add9ef06c360dd9",
+      "matches_installed_base": true
+    },
+    {
+      "path": "ui/addons/ego_detailmonitor/menu_playerinfo.lua",
+      "sha256": "f95f450e7ce9bf3aa5c05f281e9d09b304a5011a0e61b9954946a61f6b9cdd9e",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "f95f450e7ce9bf3aa5c05f281e9d09b304a5011a0e61b9954946a61f6b9cdd9e",
+      "matches_installed_base": true
+    },
+    {
+      "path": "md/conversations.xml",
+      "sha256": "783985423dca953c0d41e993939eff68b10712401ae1525c90624607765db345",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "783985423dca953c0d41e993939eff68b10712401ae1525c90624607765db345",
+      "matches_installed_base": true
+    },
+    {
+      "path": "md/skill_gain.xml",
+      "sha256": "6dc312c2a20e474ff3ece28830637b70011252b6309aaaddf6e043e9301c0876",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "6dc312c2a20e474ff3ece28830637b70011252b6309aaaddf6e043e9301c0876",
+      "matches_installed_base": true
+    },
+    {
+      "path": "aiscripts/order.trade.crewexchange.xml",
+      "sha256": "468e8f7a571a612e1e3d9133e80fcaaf090fa6e20657d18e008178b37d350f44",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\08.cat",
+      "installed_sha256": "468e8f7a571a612e1e3d9133e80fcaaf090fa6e20657d18e008178b37d350f44",
+      "matches_installed_base": true
+    }
+  ],
+  "extension_overlays": [
+    {
+      "extension": "ego_dlc_boron",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_boron\\ext_03.cat",
+      "path": "index/macros.xml",
+      "sha256": "08f831c125119dc7fb36e59fe3f2b274ef46533991c6a4bbd48199dbc2246a74",
+      "root_tag": "index",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_boron",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_boron\\ext_03.cat",
+      "path": "libraries/modulegroups.xml",
+      "sha256": "7a6e38adac5829a9426203c2a8eeb7f3add2a35cfebee1eb67021aa2a53424aa",
+      "root_tag": "groups",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_boron",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_boron\\ext_03.cat",
+      "path": "libraries/people.xml",
+      "sha256": "c3436140fc70060c4180b9640502bbe78109883b0256e624775a8c5428bfc86c",
+      "root_tag": "peopledefinitions",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_boron",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_boron\\ext_03.cat",
+      "path": "libraries/wares.xml",
+      "sha256": "4b8613a4a2f054a45d834d41bc6e73e97d035d94bbbac644c7be989b5d39866b",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_boron",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_boron\\ext_03.cat",
+      "path": "md/cinematiccamera.xml",
+      "sha256": "43c7df3bd8acdb0a0d3144ec71ab6993dc7058fee3d8b546810eed9418b398fe",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_boron",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_boron\\ext_03.cat",
+      "path": "md/factionlogic.xml",
+      "sha256": "b9d2616bd3da78caf594954f467b2075096eea0a95ae40cd0ce269a8cdcd9491",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_boron",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_boron\\ext_03.cat",
+      "path": "md/factionlogic_economy.xml",
+      "sha256": "d06a163ad21d00a8b15b48b8eeffa3c011c993f33f373cdf6f9a154c8fbe6a92",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_boron",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_boron\\ext_03.cat",
+      "path": "md/factionlogic_stations.xml",
+      "sha256": "abfba95d5ec7551335964a82e524afe608710d2827e5ef8028a1fd4dfcd74119",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_boron",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_boron\\ext_03.cat",
+      "path": "md/inituniverse.xml",
+      "sha256": "f2823f4160beff4e88d4a4331a0a487e12512a2c43796f704a29bb08f8d9ec15",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_mini_01",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_mini_01\\ext_03.cat",
+      "path": "index/macros.xml",
+      "sha256": "c5139ee118fb99eb1b1edf5b03148d127fd95c7710bdb2c3531879b8b8d41e03",
+      "root_tag": "index",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_mini_01",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_mini_01\\ext_03.cat",
+      "path": "libraries/wares.xml",
+      "sha256": "2b00f99b7b177c746952acd10be9cfd5e367e0e8a308c566f4d9b28d01f37e1a",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_mini_02",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_mini_02\\ext_03.cat",
+      "path": "index/macros.xml",
+      "sha256": "085848190316ad77df5ca3674c4e34334116380a729ae4fc8402452af9995797",
+      "root_tag": "index",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_mini_02",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_mini_02\\ext_03.cat",
+      "path": "libraries/wares.xml",
+      "sha256": "6035a7e23b7c7be8cbc783b9db5d0b42f1268bd02e96795d71e7221ea1dc5173",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_mini_02",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_mini_02\\ext_03.cat",
+      "path": "md/placedobjects.xml",
+      "sha256": "229716365a8aaac93c68471a9562cdeab2a140bee922478a040b16484afcc227",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_pirate",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_pirate\\ext_03.cat",
+      "path": "index/macros.xml",
+      "sha256": "8282f4377a500bf386e56bf25b9e91c3e16c05f1e90946789814de6be0bf5770",
+      "root_tag": "index",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_pirate",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_pirate\\ext_03.cat",
+      "path": "libraries/modulegroups.xml",
+      "sha256": "11e0b88cec08da9d43608a4e9a723407fc34560b205e0c478921083f53752de6",
+      "root_tag": "groups",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_pirate",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_pirate\\ext_03.cat",
+      "path": "libraries/people.xml",
+      "sha256": "31eb05a2c76f758c3e5d6ace056f15a1f3219fba4de9e7a254b806ccba85f069",
+      "root_tag": "peopledefinitions",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_pirate",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_pirate\\ext_03.cat",
+      "path": "libraries/wares.xml",
+      "sha256": "8e30993346c1ecbd7879f2389c302bbd13073788ac3a27b1ae6824f93a7cef2c",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_pirate",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_pirate\\ext_03.cat",
+      "path": "md/cinematiccamera.xml",
+      "sha256": "7fb2702ad979accb5627419ab2afd282cf5a7d2cb44690b03ce6147d5eda71a6",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_pirate",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_pirate\\ext_03.cat",
+      "path": "md/factionlogic.xml",
+      "sha256": "80ed8c40b3cf176b0f307f809409c9639960c9c164373ff137daa1b0c4460361",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_pirate",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_pirate\\ext_03.cat",
+      "path": "md/factionlogic_stations.xml",
+      "sha256": "b87d5e7ccdacf5774143be2e8b3f9e36c9bc39896120d482c8e25bad49773ae6",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_pirate",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_pirate\\ext_03.cat",
+      "path": "md/npc_usecase_definitions.xml",
+      "sha256": "f602be266573c2a4b4c3abf220b8ffe144fb9088c9a50ca65fd7ce1ed24cc546",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_pirate",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_pirate\\ext_03.cat",
+      "path": "md/placedobjects.xml",
+      "sha256": "f7fd3a50fd9077f527116865f53dca6a22f2287933f58066796e81e8890498bc",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_pirate",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_pirate\\ext_03.cat",
+      "path": "md/signal_leaks.xml",
+      "sha256": "237b836453ebbb7886c928fd0c9dd85e25bee95bd61638dd877af724ae47a3db",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_pirate",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_pirate\\ext_03.cat",
+      "path": "md/x4ep1_mentor_subscription.xml",
+      "sha256": "2a70317fa81abf7a40235c076309f5d501b9371c352aa77278d8c720800e83a0",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_split",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_split\\ext_03.cat",
+      "path": "index/macros.xml",
+      "sha256": "487e25508d4f19fcf50f7884341d8c1ca2f64e28b92bcdd046d1fc76418e76d4",
+      "root_tag": "index",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_split",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_split\\ext_03.cat",
+      "path": "libraries/modulegroups.xml",
+      "sha256": "6b89ffeed0e08ac7d632a79386810117b23a57df6a3f79dc39391df1f16989b8",
+      "root_tag": "groups",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_split",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_split\\ext_03.cat",
+      "path": "libraries/people.xml",
+      "sha256": "8d110806cc36b46bb7d1602e753a884943fbfe60c7d4d9a273210b2833674859",
+      "root_tag": "peopledefinitions",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_split",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_split\\ext_03.cat",
+      "path": "libraries/wares.xml",
+      "sha256": "020b900078b8ec20158c006f1f9c47a9185e03e5d58c683f927ec549219588b3",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_split",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_split\\ext_03.cat",
+      "path": "md/cinematiccamera.xml",
+      "sha256": "ea1b6f1afb4a1624f1071cf4cd8a77f12f8540b62841dec1da8c69e31992364a",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_split",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_split\\ext_03.cat",
+      "path": "md/factionlogic.xml",
+      "sha256": "3590be9e6d6f41a22f7909bdc65cf92f0ad49b59734c25080fd163b26edad143",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_split",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_split\\ext_03.cat",
+      "path": "md/factionlogic_economy.xml",
+      "sha256": "fce918b38311f830a5e79e23ca8b2e3a841e70364e54349b992bb808df982b90",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_split",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_split\\ext_03.cat",
+      "path": "md/factionlogic_stations.xml",
+      "sha256": "b016e22b2a7214aaa1339b2ce7c1a115a894699a16f75c4d9f88bb3bc3cf5378",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_split",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_split\\ext_03.cat",
+      "path": "md/inituniverse.xml",
+      "sha256": "02700e760c8ff97a19959944d59c895536b4097de0cfaded645f4b775a87431c",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_split",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_split\\ext_03.cat",
+      "path": "md/rml_deliver_fleet.xml",
+      "sha256": "920720072edbc5b130de1d51dc22d7d0a422321dff791fd877c08197aec53925",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_split",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_split\\ext_03.cat",
+      "path": "md/signal_leaks.xml",
+      "sha256": "9a0c32b8b4ef4d1f89e876ec41e6d650cccd63fa3fff20cf202b8e45bd3d5151",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_split",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_split\\ext_03.cat",
+      "path": "md/story_paranid.xml",
+      "sha256": "101385c696bea387f467dc2654e1b720e9194a56208d00214df2613ef465078c",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_split",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_split\\ext_03.cat",
+      "path": "md/x4ep1_war_subscriptions.xml",
+      "sha256": "409435d86e78ce52b1b001eb024943b05852962d58430640835b343f2cd262c9",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_terran",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_terran\\ext_03.cat",
+      "path": "index/macros.xml",
+      "sha256": "9ad3aa5b417c9770f8851134e78ce448b03e06990c714bd85882f3533898c8d1",
+      "root_tag": "index",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_terran",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_terran\\ext_03.cat",
+      "path": "libraries/modulegroups.xml",
+      "sha256": "0e7067869a3c28341667102569595c63016c6c2487fe4278e92528023b9974fc",
+      "root_tag": "groups",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_terran",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_terran\\ext_03.cat",
+      "path": "libraries/people.xml",
+      "sha256": "50f5b4c7f1d73bc94ac358aa72b046db7258cf7ca724209d5ee97036f6de3915",
+      "root_tag": "peopledefinitions",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_terran",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_terran\\ext_03.cat",
+      "path": "libraries/wares.xml",
+      "sha256": "89c896795168d0d9f0c3152b5f21d022aaade21de52b0cb1a190468dd6e3fe3e",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_terran",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_terran\\ext_03.cat",
+      "path": "md/cinematiccamera.xml",
+      "sha256": "d17bbfb13a89636f4f2bf5e6d8b5ca5c2c70690a20c1df5df9fc81daa296bc26",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_terran",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_terran\\ext_03.cat",
+      "path": "md/factiongoal_invade_space.xml",
+      "sha256": "3ccca367d9448c28d2c01a7790791fa2d3b2cae9545691c7bbd32bb544264aff",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_terran",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_terran\\ext_03.cat",
+      "path": "md/factionlogic.xml",
+      "sha256": "9e7475ada0f7b7b624ef0dbef5310d1a24e98c968cb9b385f547d8d9f03afd7e",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_terran",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_terran\\ext_03.cat",
+      "path": "md/factionlogic_economy.xml",
+      "sha256": "40d136b7c5a9853f36410d77eca7b77bd9bef1c704941623030f8f5f250a8d1a",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_terran",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_terran\\ext_03.cat",
+      "path": "md/factionlogic_stations.xml",
+      "sha256": "c1128ff4957b1e69a30e90188043c04f22d48ae4c48f6cff3810c11f27bec446",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_terran",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_terran\\ext_03.cat",
+      "path": "md/gm_buildstation.xml",
+      "sha256": "6d2d86ed9af14f82f0b86ba88687330adab528a7cf3968a4a36ac54035ff3bae",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_terran",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_terran\\ext_03.cat",
+      "path": "md/gm_getexactfleet.xml",
+      "sha256": "e4c975d8fa17c4da4f696bd99d5f3ca5a74261e2a62b84974ec7cb3028547605",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_terran",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_terran\\ext_03.cat",
+      "path": "md/inituniverse.xml",
+      "sha256": "4e34c990ab5bf0266d0f36e6b26386991f07668458676552a4139c7d1278bc62",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_terran",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_terran\\ext_03.cat",
+      "path": "md/npc_usecase_definitions.xml",
+      "sha256": "a456bf47ae6a545cd33169e8ff1240fa0a55345889a8b375e1c9f98f83f14b54",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_terran",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_terran\\ext_03.cat",
+      "path": "md/playerreputation.xml",
+      "sha256": "c8d137ed7c692a14e0a09827965f73dfffbca70ba8496526fd48a9f4dec1ea5f",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_terran",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_terran\\ext_03.cat",
+      "path": "md/rml_deliver_fleet.xml",
+      "sha256": "b1795cc9d22f4775d489a3a65201b765fbdf01ad601a94a24b1773754d25f1c5",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_terran",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_terran\\ext_03.cat",
+      "path": "md/story_paranid.xml",
+      "sha256": "aad671b456e264de56127a45b2488f1da65debc917066a0babcc080e930eee4c",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_terran",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_terran\\ext_03.cat",
+      "path": "md/x4ep1_trade_subscriptions.xml",
+      "sha256": "28d1cce619b9101d5c4a8f057a0f5fc4b9c196ac915e849f49f87d169a5cb08b",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_terran",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_terran\\ext_03.cat",
+      "path": "md/x4ep1_war_subscriptions.xml",
+      "sha256": "bf717206c363125199ded889299d47c6dc39dded9bef007685f809f55003dd39",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_timelines",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_timelines\\ext_03.cat",
+      "path": "index/macros.xml",
+      "sha256": "553fdbcdbe121df9c156658d515ddf1412fd5d8b757e1e3d7cb97235da491eb1",
+      "root_tag": "index",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_timelines",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_timelines\\ext_03.cat",
+      "path": "libraries/people.xml",
+      "sha256": "023d2e03d542881f0b1de5b8e94b6d0602c1dce646478e0ff3fc2d15a559562b",
+      "root_tag": "peopledefinitions",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_timelines",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_timelines\\ext_03.cat",
+      "path": "libraries/wares.xml",
+      "sha256": "33cd308cad28a2ad468a5a857dd021427949fea4666db8e2b5a56d5585ae56f4",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_timelines",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_timelines\\ext_03.cat",
+      "path": "md/conversations.xml",
+      "sha256": "f1013b24a474e091788f73e0252c605ac4c2df739292957e7ce41bf35a9cdfc5",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_timelines",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_timelines\\ext_03.cat",
+      "path": "md/factionlogic.xml",
+      "sha256": "6d820e2000ae47fabf9af0155d58996bfd0503090b0c473f300c499a45f5e39c",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_timelines",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_timelines\\ext_03.cat",
+      "path": "md/inituniverse.xml",
+      "sha256": "a20e9d9de9fe25fafa6b74027f6ffe57c0b42c168f81864dc8115b665a5a5197",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_timelines",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_timelines\\ext_03.cat",
+      "path": "md/notifications.xml",
+      "sha256": "f043407be4c02c0552808253b270e24c7d37d58ab878419590204594cc95ae8d",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_timelines",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_timelines\\ext_03.cat",
+      "path": "md/npc_itemtrader.xml",
+      "sha256": "76b8abb53410366c5fdc518fdac38bfe456582a0f1111900f7849a547ab8ce12",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_timelines",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_timelines\\ext_03.cat",
+      "path": "md/placedobjects.xml",
+      "sha256": "86e601982faed9e505ed4823f3b85fb6b722bbf7449a72329856f4aad9b25d07",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ego_dlc_timelines",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_timelines\\ext_03.cat",
+      "path": "md/playerreputation.xml",
+      "sha256": "5eafae9086c19a76674d8bc6fda07e741357faa2da63cbf996148c081f59cf11",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "fs_exp",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\fs_exp\\ext_01.cat",
+      "path": "libraries/experiences.xml",
+      "sha256": "555a5cb08f16318b906a5ecb332d40c88facd396ec0941c622dfa1241a64e2cb",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "galaxy_trader",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\galaxy_trader\\ext_01.cat",
+      "path": "libraries/wares.xml",
+      "sha256": "316b5e06040bbd1951f940cbca1fe831a9d3b83e40fe422ce8d4ef57aeb396bc",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "MES",
+      "loose_file": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\MES\\libraries\\wares.xml",
+      "path": "libraries/wares.xml",
+      "sha256": "17a11d598f9f3fc64b872a5395d40b069044db55fe9a9d51b53de12b922c395d",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "MES",
+      "loose_file": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\MES\\md\\x4ep1_mentor_subscription.xml",
+      "path": "md/x4ep1_mentor_subscription.xml",
+      "sha256": "5bb8dc1f2c854da52d57eb418e88ca6e01ae450e8b42ae0a701e082cbd8929a7",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "MES",
+      "loose_file": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\MES\\index\\macros.xml",
+      "path": "index/macros.xml",
+      "sha256": "679ea804e0e0ef0bbf7714af3c9fb232f697dd756a7777f0e5b39692f5c551bd",
+      "root_tag": "index",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "mobile_space_station_ru",
+      "loose_file": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\mobile_space_station_ru\\libraries\\wares.xml",
+      "path": "libraries/wares.xml",
+      "sha256": "4156169edf3f668fb03b39d8df4c6e7b1ea7b1c9121cb1150a3799cd7426ded1",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "mobile_space_station_ru",
+      "loose_file": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\mobile_space_station_ru\\index\\macros.xml",
+      "path": "index/macros.xml",
+      "sha256": "334b2e6a06fff8f932eba0436c80dca7a88089e4802e0e5920964ad3bf1e3324",
+      "root_tag": "index",
+      "activation": "not_qualified"
+    },
+    {
+      "extension": "ship_mods",
+      "cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ship_mods\\ext_01.cat",
+      "path": "libraries/wares.xml",
+      "sha256": "a10abdf89cb64f09a982eada005c930b03d752fa99147620f064357b17a54050",
+      "root_tag": "diff",
+      "activation": "not_qualified"
+    }
+  ],
+  "external_dlc_boundaries": [
+    {
+      "md_name": "story_terran_core",
+      "source": "examples\\x4_unpacked\\_ego_dlc_terran\\md\\story_terran_core.xml",
+      "extension": "ego_dlc_terran",
+      "sha256": "8befcf5a0653f933b9f177c62b64aae358541daddd589ad9acb4ecc68201c7f7",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_terran\\ext_03.cat",
+      "matches_installed_dlc": true,
+      "classification": "external_story_boundary_not_copy_candidate"
+    },
+    {
+      "md_name": "story_boron",
+      "source": "examples\\x4_unpacked\\_ego_dlc_boron\\md\\story_boron.xml",
+      "extension": "ego_dlc_boron",
+      "sha256": "efdf6831b2c17159f78327e6320f99f82408ce131692d26eae77520067503e9a",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_boron\\ext_03.cat",
+      "matches_installed_dlc": true,
+      "classification": "external_story_boundary_not_copy_candidate"
+    },
+    {
+      "md_name": "story_split",
+      "source": "examples\\x4_unpacked\\_ego_dlc_split\\md\\story_split.xml",
+      "extension": "ego_dlc_split",
+      "sha256": "1d3eaf6fadb4736fc936d84b0013852804428fe444e9b72b67e1dad837db37a1",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_split\\ext_03.cat",
+      "matches_installed_dlc": true,
+      "classification": "external_story_boundary_not_copy_candidate"
+    },
+    {
+      "md_name": "story_timelines_epilogue",
+      "source": "examples\\x4_unpacked\\_ego_dlc_timelines\\md\\story_timelines_epilogue.xml",
+      "extension": "ego_dlc_timelines",
+      "sha256": "d4285e2da91f89bd3036cbe195ef213fe21761b0059b8b226e543400b229471e",
+      "installed_cat": "D:\\Games\\SteamLibrary\\steamapps\\common\\X4 Foundations\\extensions\\ego_dlc_timelines\\ext_03.cat",
+      "matches_installed_dlc": true,
+      "classification": "external_story_boundary_not_copy_candidate"
+    }
+  ],
+  "unresolved_md_names": [],
+  "base_mismatches": [],
+  "notes": [
+    "MD reference closure includes shared/story boundaries; not a copy list.",
+    "Installed extension presence does not establish activation or effective XML.",
+    "No game files modified; CAT records validated against DAT MD5."
+  ]
+}

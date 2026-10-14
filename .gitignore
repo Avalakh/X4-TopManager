@@ -1,0 +1,11 @@
+.cache/
+**/.cache/
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+dist/*
+!dist/tm_empire_management-v10.zip
+!dist/tm_empire_management-v10.manifest.json
+docs/installed-manifest.json
+native/md/
+native/aiscripts/

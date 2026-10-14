@@ -1,0 +1,336 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mdscript name="TM_Empire_Roles">
+  <cues>
+    <cue name="Pending" namespace="this">
+      <actions>
+        <set_value name="$Stage" exact="'idle'" />
+      </actions>
+    </cue>
+    <cue name="AddChoice" instantiate="true" namespace="this">
+      <conditions>
+        <check_any>
+          <event_conversation_next_section section="g_mainmore" />
+          <event_conversation_returned_to_section section="g_mainmore" />
+        </check_any>
+      </conditions>
+      <actions>
+        <set_value name="$Owned" exact="false" />
+        <do_if value="typeof event.object == datatype.component">
+          <set_value name="$Owned" exact="event.object.isplayerowned" />
+        </do_if>
+        <do_elseif value="typeof event.object == datatype.list">
+          <set_value name="$Owned" exact="event.object.{1}.isplayerowned" />
+        </do_elseif>
+        <do_if value="$Owned">
+          <add_player_choice_sub text="{98761,10}" section="tm_empire_roles" position="left" choiceparam="1" />
+        </do_if>
+      </actions>
+    </cue>
+    <cue name="Dialog" instantiate="true" namespace="this">
+      <conditions>
+        <check_any>
+          <event_conversation_started conversation="tm_empire_roles" />
+          <event_conversation_next_section sectionprefix="tm_empire_" />
+          <event_conversation_returned_to_section section="tm_empire_roles" />
+        </check_any>
+      </conditions>
+      <actions>
+        <set_value name="$Actor" exact="event.object" />
+        <add_conversation_view />
+        <do_if value="typeof $Actor == datatype.list and $Actor.count == 2 and @$Actor.{1}.roleentity.{$Actor.{2}}.exists">
+          <set_value name="$Actor" exact="$Actor.{1}.roleentity.{$Actor.{2}}" />
+        </do_if>
+        <set_value name="$Result" exact="'waiting'" />
+        <do_if value="event.param == 'tm_empire_assign'">
+          <run_actions ref="RequestAssignment" result="$Result">
+            <param name="Actor" value="$Actor" />
+            <param name="Station" value="event.param2.{1}" />
+            <param name="Module" value="event.param2.{2}" />
+          </run_actions>
+        </do_if>
+        <do_elseif value="event.param == 'tm_empire_release' and typeof $Actor == datatype.component">
+          <run_actions ref="md.TM_Empire_Runtime.UnbindGovernor" result="$Result">
+            <param name="Actor" value="$Actor" />
+          </run_actions>
+        </do_elseif>
+        <do_if value="event.param == 'tm_empire_assign' or event.param == 'tm_empire_release'">
+          <set_value name="Pending.$LastResult" exact="$Result" />
+          <set_value name="Pending.$LastResultActor" exact="$Actor" />
+          <set_value name="Pending.$LastResultTime" exact="player.age" />
+        </do_if>
+        <do_if value="event.param == 'tm_empire_roles'">
+          <set_value name="$Offset" exact="if typeof event.param2 == datatype.integer then [1, event.param2].max else 1" />
+          <set_value name="$Targets" exact="[]" />
+          <find_station name="$Stations" space="player.galaxy" owner="faction.player" multiple="true" />
+          <do_for_each name="$Station" in="$Stations">
+            <find_module name="$Modules" object="$Station" macro="macro.tm_empire_control_arg_macro" multiple="true" />
+            <do_for_each name="$Module" in="$Modules">
+              <do_if value="$Module.isoperational">
+                <append_to_list name="$Targets" exact="[$Station, $Module]" />
+              </do_if>
+            </do_for_each>
+          </do_for_each>
+          <do_if value="typeof $Actor == datatype.component and @md.TM_Empire_Runtime.Registry.$Governor == $Actor">
+            <add_player_choice text="{98761,11}" section="tm_empire_release" position="top_left" />
+          </do_if>
+          <do_elseif value="$Targets.count">
+            <do_if value="$Offset le $Targets.count">
+              <add_player_choice text="$Targets.{$Offset}.{1}.knownname + ': ' + $Targets.{$Offset}.{2}.knownname" section="tm_empire_assign" position="top_left" choiceparam="$Targets.{$Offset}" />
+            </do_if>
+            <do_if value="$Offset + 1 le $Targets.count">
+              <add_player_choice text="$Targets.{$Offset + 1}.{1}.knownname + ': ' + $Targets.{$Offset + 1}.{2}.knownname" section="tm_empire_assign" position="left" choiceparam="$Targets.{$Offset + 1}" />
+            </do_if>
+            <do_if value="$Offset + 2 le $Targets.count">
+              <add_player_choice text="$Targets.{$Offset + 2}.{1}.knownname + ': ' + $Targets.{$Offset + 2}.{2}.knownname" section="tm_empire_assign" position="bottom_left" choiceparam="$Targets.{$Offset + 2}" />
+            </do_if>
+            <do_if value="$Offset + 3 le $Targets.count">
+              <add_player_choice text="$Targets.{$Offset + 3}.{1}.knownname + ': ' + $Targets.{$Offset + 3}.{2}.knownname" section="tm_empire_assign" position="top_right" choiceparam="$Targets.{$Offset + 3}" />
+            </do_if>
+            <do_if value="$Offset + 4 le $Targets.count">
+              <add_player_choice text="{98761,12}" section="tm_empire_roles" position="right" choiceparam="$Offset + 4" />
+            </do_if>
+          </do_elseif>
+          <do_else>
+            <add_player_choice text="{98761,13}" section="tm_empire_roles" position="left" selectable="false" />
+          </do_else>
+        </do_if>
+        <do_else>
+          <set_value name="$Message" exact="{98761,20}" />
+          <do_if value="$Result == 'bound'">
+            <set_value name="$Message" exact="{98761,21}" />
+          </do_if>
+          <do_elseif value="$Result == 'sent'">
+            <set_value name="$Message" exact="{98761,22}" />
+          </do_elseif>
+          <do_elseif value="$Result == 'unbound'">
+            <set_value name="$Message" exact="{98761,23}" />
+          </do_elseif>
+          <do_elseif value="$Result == 'existing_post'">
+            <set_value name="$Message" exact="{98761,24}" />
+          </do_elseif>
+          <do_elseif value="$Result == 'governor_already_assigned'">
+            <set_value name="$Message" exact="{98761,25} + ': ' + @md.TM_Empire_Runtime.Registry.$Governor.knownname" />
+          </do_elseif>
+          <do_elseif value="$Result == 'pending'">
+            <set_value name="$Message" exact="{98761,14}" />
+          </do_elseif>
+          <do_elseif value="$Result == 'ownership'">
+            <set_value name="$Message" exact="{98761,28}" />
+          </do_elseif>
+          <do_elseif value="$Result == 'invalid_module' or $Result == 'missing_object'">
+            <set_value name="$Message" exact="{98761,29}" />
+          </do_elseif>
+          <do_elseif value="$Result == 'not_arrived'">
+            <set_value name="$Message" exact="{98761,30}" />
+          </do_elseif>
+          <do_elseif value="$Result == 'invalid_actor'">
+            <set_value name="$Message" exact="{98761,31}" />
+          </do_elseif>
+          <do_elseif value="$Result == 'assignment_rejected'">
+            <set_value name="$Message" exact="{98761,32}" />
+          </do_elseif>
+          <do_elseif value="$Result == 'unknown'">
+            <set_value name="$Message" exact="if @Pending.$IdentityReason == 'governor_employee_identity_changed' then {98761,27} else {98761,26}" />
+          </do_elseif>
+          <add_player_choice text="$Message" section="tm_empire_roles" position="left" selectable="false" />
+        </do_else>
+        <add_player_choice_return text="{1002,20}" position="bottom_right" tooltip="if Pending.$Stage != 'idle' then @Pending.$Message else ''" />
+      </actions>
+    </cue>
+    <library name="RequestAssignment" purpose="run_actions" namespace="this">
+      <params>
+        <param name="Actor" />
+        <param name="Station" />
+        <param name="Module" />
+      </params>
+      <actions>
+        <remove_value name="Pending.$NativeFailure" />
+        <do_if value="not $Station.exists or not $Station.isplayerowned or not $Module.exists or not $Module.isoperational">
+          <return value="'invalid_module'" />
+        </do_if>
+        <find_module name="$Modules" object="$Station" macro="macro.tm_empire_control_arg_macro" multiple="true" />
+        <do_if value="not $Modules.indexof.{$Module}">
+          <return value="'invalid_module'" />
+        </do_if>
+        <set_value name="$PersonSource" exact="null" />
+        <set_value name="$PersonTemplate" exact="null" />
+        <do_if value="typeof $Actor == datatype.component and $Actor.exists">
+          <set_value name="$PersonSource" exact="$Actor.roleobject" />
+          <set_value name="$PersonTemplate" exact="$Actor.npctemplate" />
+        </do_if>
+        <do_elseif value="typeof $Actor == datatype.list and $Actor.count == 2">
+          <set_value name="$PersonSource" exact="$Actor.{1}" />
+          <set_value name="$PersonTemplate" exact="$Actor.{2}" />
+        </do_elseif>
+        <!-- Check before both local binding and native transfer dispatch. -->
+        <set_value name="$Transfer" exact="@md.TM_Empire_Personnel.Transfer.$Receipt" />
+        <set_value name="$Training" exact="@md.TM_Empire_Personnel.Training.$Receipt" />
+        <do_if value="$PersonSource and $PersonTemplate and (($Transfer and ($Transfer.$state == 'sent' or $Transfer.$state == 'unknown') and $Transfer.$person == $PersonTemplate and ($Transfer.$source == $PersonSource or $Transfer.$target == $PersonSource)) or ($Training and ($Training.$state == 'sent' or $Training.$state == 'unknown') and $Training.$person == $PersonTemplate and $Training.$source == $PersonSource))">
+          <return value="'pending'" />
+        </do_if>
+        <do_if value="Pending.$Stage != 'idle'">
+          <!-- Keep the unresolved journey, but allow an independent employee
+               already at the station to bind locally. No Pending overwrite. -->
+          <do_if value="typeof $Actor == datatype.component and $Actor.exists and $Actor != @Pending.$Actor and (not Pending.$PersonSeed? or $Actor.seed != Pending.$PersonSeed) and ($Actor.npctemplate != @Pending.$Seed or ($Actor.roleobject != @Pending.$Source and $Actor.roleobject != @Pending.$Station)) and $Actor.roleobject == $Station and $Actor.container == $Station and $Actor.station == $Station and not $Actor.isintransit and not @$Actor.podarrivaltime and not $Actor.istransferscheduled">
+            <run_actions ref="md.TM_Empire_Runtime.BindGovernor" result="$LocalResult">
+              <param name="Actor" value="$Actor" /><param name="Station" value="$Station" /><param name="Module" value="$Module" />
+            </run_actions>
+            <return value="$LocalResult" />
+          </do_if>
+          <return value="if Pending.$Stage == 'unknown' then 'unknown' else 'pending'" />
+        </do_if>
+        <do_if value="typeof $Actor == datatype.component">
+          <do_if value="not $Actor.isplayerowned">
+            <return value="'ownership'" />
+          </do_if>
+          <do_if value="$Actor.controlpost">
+            <return value="'existing_post'" />
+          </do_if>
+          <do_if value="$Actor.isintransit or @$Actor.podarrivaltime or $Actor.istransferscheduled">
+            <return value="'not_arrived'" />
+          </do_if>
+          <do_if value="$Actor.roleobject == $Station">
+            <run_actions ref="md.TM_Empire_Runtime.BindGovernor" result="$Result">
+              <param name="Actor" value="$Actor" />
+              <param name="Station" value="$Station" />
+              <param name="Module" value="$Module" />
+            </run_actions>
+            <return value="$Result" />
+          </do_if>
+          <set_value name="$Source" exact="$Actor.roleobject" />
+          <set_value name="$Seed" exact="$Actor.npctemplate" />
+        </do_if>
+        <do_elseif value="typeof $Actor == datatype.list and $Actor.count == 2">
+          <set_value name="$Source" exact="$Actor.{1}" />
+          <set_value name="$Seed" exact="$Actor.{2}" />
+          <do_if value="not $Source.isplayerowned or not $Source.people.{$Seed}.exists">
+            <return value="'ownership'" />
+          </do_if>
+          <do_if value="@$Source.roleentity.{$Seed}.controlpost">
+            <return value="'existing_post'" />
+          </do_if>
+          <do_if value="$Source.people.{$Seed}.isintransit or @$Source.people.{$Seed}.podarrivaltime or $Source.people.{$Seed}.istransferscheduled or $Source.people.{$Seed}.isbusy">
+            <return value="'not_arrived'" />
+          </do_if>
+          <do_if value="@$Source.roleentity.{$Seed}.exists">
+            <set_value name="$Actor" exact="$Source.roleentity.{$Seed}" />
+          </do_if>
+        </do_elseif>
+        <do_else>
+          <return value="'invalid_actor'" />
+        </do_else>
+        <run_actions ref="md.TM_Empire_Runtime.ValidateBinding" />
+        <do_if value="@md.TM_Empire_Runtime.Registry.$Governor.exists and md.TM_Empire_Runtime.Registry.$Governor != $Actor">
+          <return value="'governor_already_assigned'" />
+        </do_if>
+        <do_if value="not $Source.exists or not $Seed">
+          <return value="'invalid_actor'" />
+        </do_if>
+        <assign_hired_actor actor="$Actor" target="$Station" role="entityrole.passenger" check="true" success="$Possible" failed="$Failure" />
+        <do_if value="not $Possible">
+          <set_value name="Pending.$NativeFailure" exact="$Failure" />
+          <return value="'assignment_rejected'" />
+        </do_if>
+        <set_value name="Pending.$Actor" exact="$Actor" />
+        <set_value name="Pending.$Source" exact="$Source" />
+        <set_value name="Pending.$Seed" exact="$Seed" />
+        <set_value name="Pending.$PersonSeed" exact="if typeof $Actor == datatype.component and $Actor.exists then $Actor.seed else $Source.people.{$Seed}.seed" />
+        <set_value name="Pending.$Station" exact="$Station" />
+        <set_value name="Pending.$Module" exact="$Module" />
+        <set_value name="Pending.$Issued" exact="player.age" />
+        <set_value name="Pending.$Stage" exact="'sent'" />
+        <remove_value name="Pending.$MoveSent" />
+        <remove_value name="Pending.$IdentityReason" />
+        <set_value name="Pending.$Message" exact="{98761,22}" />
+        <assign_hired_actor actor="$Actor" target="$Station" role="entityrole.passenger" success="$Accepted" failed="$Failure" />
+        <do_if value="not $Accepted">
+          <set_value name="Pending.$NativeFailure" exact="$Failure" />
+          <set_value name="Pending.$Stage" exact="'idle'" />
+          <return value="'assignment_rejected'" />
+        </do_if>
+        <return value="'sent'" />
+      </actions>
+    </library>
+    <cue name="ArrivalWatch" namespace="this" checkinterval="5s">
+      <conditions>
+        <check_value value="player.entity.exists" />
+      </conditions>
+      <delay exact="5s" />
+      <actions>
+        <do_if value="Pending.$Stage == 'sent' or Pending.$Stage == 'unknown'">
+          <do_if value="not @Pending.$Station.isplayerowned or not @Pending.$Module.isoperational">
+            <set_value name="Pending.$Stage" exact="'unknown'" />
+            <set_value name="Pending.$Message" exact="{98761,26}" />
+          </do_if>
+          <do_else>
+            <set_value name="$Employee" exact="null" />
+            <do_if value="Pending.$PersonSeed? and Pending.$Station.people.{Pending.$Seed}.exists and Pending.$Station.people.{Pending.$Seed}.seed != Pending.$PersonSeed">
+              <set_value name="Pending.$Stage" exact="'unknown'" />
+              <set_value name="Pending.$Message" exact="{98761,26}" />
+              <set_value name="Pending.$IdentityReason" exact="'governor_employee_identity_changed'" />
+            </do_if>
+            <do_elseif value="typeof Pending.$Actor == datatype.component and Pending.$Actor.exists">
+              <do_if value="not Pending.$Actor.isplayerowned or Pending.$Actor.controlpost">
+                <set_value name="Pending.$Stage" exact="'unknown'" />
+                <set_value name="Pending.$Message" exact="{98761,26}" />
+              </do_if>
+              <do_elseif value="Pending.$Actor.station == Pending.$Station and Pending.$Actor.container == Pending.$Station and not Pending.$Actor.isintransit and not @Pending.$Actor.podarrivaltime and not Pending.$Actor.istransferscheduled">
+                <set_value name="$Employee" exact="Pending.$Actor" />
+              </do_elseif>
+              <do_elseif value="Pending.$Stage == 'sent' and not @Pending.$MoveSent">
+                <find_npc_waypoint name="$Slot" object="Pending.$Station.controlroom" tags="tag.npctransport" />
+                <do_if value="$Slot">
+                  <signal_objects object="Pending.$Actor" param="'npc_move_to'" param2="table[$slot=$Slot, $movementspeed=Pending.$Actor.walkspeed]" />
+                  <set_value name="Pending.$MoveSent" exact="true" />
+                </do_if>
+              </do_elseif>
+            </do_elseif>
+            <do_elseif value="Pending.$Station.people.{Pending.$Seed}.exists and not Pending.$Station.people.{Pending.$Seed}.isintransit and not @Pending.$Station.people.{Pending.$Seed}.podarrivaltime and not Pending.$Station.people.{Pending.$Seed}.istransferscheduled and not @Pending.$Source.people.{Pending.$Seed}.exists">
+              <do_if value="@Pending.$Station.roleentity.{Pending.$Seed}.exists">
+                <set_value name="$Employee" exact="Pending.$Station.roleentity.{Pending.$Seed}" />
+              </do_if>
+              <do_else>
+                <create_npc_from_template name="$Employee" object="Pending.$Station" template="Pending.$Seed" owner="faction.player" placementobject="Pending.$Station.controlroom" required="true" />
+              </do_else>
+              <do_if value="$Employee">
+                <set_entity_role_object entity="$Employee" object="Pending.$Station" />
+              </do_if>
+            </do_elseif>
+            <do_if value="$Employee">
+              <!-- Keep the employee identity across native transport and NPC
+                   instantiation; a role/template reference alone is not proof. -->
+              <do_if value="Pending.$PersonSeed? and $Employee.seed != Pending.$PersonSeed">
+                <set_value name="Pending.$Stage" exact="'unknown'" />
+                <set_value name="Pending.$Message" exact="{98761,26}" />
+                <set_value name="Pending.$IdentityReason" exact="'governor_employee_identity_changed'" />
+              </do_if>
+              <do_else>
+              <set_value name="Pending.$Actor" exact="$Employee" />
+              <run_actions ref="md.TM_Empire_Runtime.BindGovernor" result="$Result">
+                <param name="Actor" value="$Employee" />
+                <param name="Station" value="Pending.$Station" />
+                <param name="Module" value="Pending.$Module" />
+              </run_actions>
+              <do_if value="$Result == 'bound'">
+                <set_value name="Pending.$Stage" exact="'idle'" />
+                <remove_value name="Pending.$MoveSent" />
+              </do_if>
+              <do_else>
+                <set_value name="Pending.$Stage" exact="'unknown'" />
+              </do_else>
+              </do_else>
+            </do_if>
+            <do_elseif value="player.age gt Pending.$Issued + 10min">
+              <set_value name="Pending.$Stage" exact="'unknown'" />
+              <set_value name="Pending.$Message" exact="{98761,26}" />
+            </do_elseif>
+          </do_else>
+        </do_if>
+        <do_if value="Pending.$Stage == 'unknown'">
+          <set_value name="Pending.$Message" exact="if @Pending.$IdentityReason == 'governor_employee_identity_changed' then {98761,27} else {98761,26}" />
+        </do_if>
+        <reset_cue cue="this" />
+      </actions>
+    </cue>
+  </cues>
+</mdscript>

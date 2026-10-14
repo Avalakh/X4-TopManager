@@ -1,0 +1,1681 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mdscript name="TM_Empire_Runtime">
+  <cues>
+    <cue name="ComponentRecords" namespace="this">
+      <actions>
+        <do_if value="not global.$TM_EmpireComponentRecords?">
+          <set_value name="global.$TM_EmpireComponentRecords" exact="table[]" />
+        </do_if>
+        <do_if value="not global.$TM_EmpireComponentRecords.$claim?">
+          <set_value name="global.$TM_EmpireComponentRecords.$claim" exact="table[]" />
+        </do_if>
+        <do_if value="not global.$TM_EmpireComponentRecords.$last_order_end?">
+          <set_value name="global.$TM_EmpireComponentRecords.$last_order_end" exact="table[]" />
+        </do_if>
+        <do_if value="not global.$TM_EmpireComponentRecords.$station_reassignment?">
+          <set_value name="global.$TM_EmpireComponentRecords.$station_reassignment" exact="table[]" />
+        </do_if>
+        <do_if value="not global.$TM_EmpireComponentRecords.$station_reassignment_result?">
+          <set_value name="global.$TM_EmpireComponentRecords.$station_reassignment_result" exact="table[]" />
+        </do_if>
+        <do_if value="not global.$TM_EmpireComponentRecords.$construction_claim?">
+          <set_value name="global.$TM_EmpireComponentRecords.$construction_claim" exact="table[]" />
+        </do_if>
+        <do_if value="not global.$TM_EmpireComponentRecords.$creation?">
+          <set_value name="global.$TM_EmpireComponentRecords.$creation" exact="table[]" />
+        </do_if>
+        <do_if value="not global.$TM_EmpireComponentRecords.$generation?">
+          <set_value name="global.$TM_EmpireComponentRecords.$generation" exact="table[]" />
+        </do_if>
+        <do_if value="not global.$TM_EmpireComponentRecords.$plot_claim?">
+          <set_value name="global.$TM_EmpireComponentRecords.$plot_claim" exact="table[]" />
+        </do_if>
+        <do_if value="not global.$TM_EmpireComponentRecords.$recycling_receipt?">
+          <set_value name="global.$TM_EmpireComponentRecords.$recycling_receipt" exact="table[]" />
+        </do_if>
+        <do_if value="not global.$TM_EmpireComponentRecords.$economy_observation?">
+          <set_value name="global.$TM_EmpireComponentRecords.$economy_observation" exact="table[]" />
+        </do_if>
+        <do_if value="not global.$TM_EmpireComponentRecords.$personnel_needs?">
+          <set_value name="global.$TM_EmpireComponentRecords.$personnel_needs" exact="table[]" />
+        </do_if>
+        <do_if value="not global.$TM_EmpireComponentRecords.$personnel_prerequisites?">
+          <set_value name="global.$TM_EmpireComponentRecords.$personnel_prerequisites" exact="table[]" />
+        </do_if>
+        <do_if value="not global.$TM_EmpireComponentRecords.$satellite_receipt?">
+          <set_value name="global.$TM_EmpireComponentRecords.$satellite_receipt" exact="table[]" />
+        </do_if>
+        <do_if value="not global.$TM_EmpireComponentRecords.$idle_work_reason?">
+          <set_value name="global.$TM_EmpireComponentRecords.$idle_work_reason" exact="table[]" />
+        </do_if>
+      </actions>
+    </cue>
+    <cue name="Registry" namespace="this" version="1">
+      <actions>
+        <set_value name="$State" exact="'inactive'" />
+      </actions>
+    </cue>
+    <library name="BindGovernor" purpose="run_actions" namespace="this">
+      <params>
+        <param name="Actor" />
+        <param name="Station" />
+        <param name="Module" />
+      </params>
+      <actions>
+        <do_if value="not $Actor.exists or not $Station.exists or not $Module.exists">
+          <return value="'missing_object'" />
+        </do_if>
+        <do_if value="not $Actor.isplayerowned or not $Station.isplayerowned">
+          <return value="'ownership'" />
+        </do_if>
+        <do_if value="$Actor == $Station.assignedcontrolentity.{controlpost.manager} or $Actor.controlpost">
+          <return value="'existing_post'" />
+        </do_if>
+        <do_if value="$Actor.roleobject != $Station or $Actor.station != $Station or $Actor.container != $Station or $Actor.isintransit or @$Actor.podarrivaltime or $Actor.istransferscheduled">
+          <return value="'not_arrived'" />
+        </do_if>
+        <find_module name="$Modules" object="$Station" macro="macro.tm_empire_control_arg_macro" multiple="true" />
+        <do_if value="not $Modules.indexof.{$Module} or not $Module.isoperational">
+          <return value="'invalid_module'" />
+        </do_if>
+        <run_actions ref="ValidateBinding" />
+        <do_if value="@Registry.$Governor.exists and Registry.$Governor != $Actor">
+          <return value="'governor_already_assigned'" />
+        </do_if>
+        <do_if value="Registry.$State == 'active' and @Registry.$ManagerCue.exists and @Registry.$Governor == $Actor and @Registry.$Station == $Station and @Registry.$Module == $Module">
+          <return value="'bound'" />
+        </do_if>
+        <do_if value="@Registry.$ManagerCue.exists">
+          <run_actions ref="RevokePurchaseApproval" />
+          <remove_value name="Registry.$ManagerCue" />
+          <run_actions ref="md.TM_Empire_Runtime.PublishAIState" />
+        </do_if>
+        <set_value name="Registry.$Governor" exact="$Actor" />
+        <set_value name="Registry.$Station" exact="$Station" />
+        <set_value name="Registry.$Module" exact="$Module" />
+        <run_actions ref="RetainGovernorActor" />
+        <set_value name="$Actor.$tm_empire_module" exact="$Module" />
+        <set_value name="$Actor.$tm_empire_station" exact="$Station" />
+        <set_value name="Registry.$State" exact="'bound'" />
+        <run_actions ref="md.TM_Empire_Runtime.PublishAIState" />
+        <remove_value name="Registry.$StopReason" />
+        <signal_cue_instantly cue="Publish" />
+        <return value="'bound'" />
+      </actions>
+    </library>
+    <cue name="StationReassignments" namespace="this">
+      <actions>
+        <create_group groupname="$Ships" />
+      </actions>
+    </cue>
+    <library name="RequestStationReassignment" purpose="run_actions" namespace="this">
+      <params>
+        <param name="ManagerCue" />
+        <param name="GoalCue" />
+        <param name="Ship" />
+        <param name="Source" />
+        <param name="Target" />
+      </params>
+      <actions>
+        <do_if value="@global.$TM_EmpireComponentRecords.$station_reassignment.{$Ship}">
+          <return value="'station_reassignment_unreconciled'" />
+        </do_if>
+        <run_actions ref="CanActForGovernor" result="$Reason">
+          <param name="Actor" value="$ManagerCue.$Governor" />
+          <param name="Station" value="$ManagerCue.$GovernorStation" />
+          <param name="Module" value="$ManagerCue.$GovernorModule" />
+          <param name="ManagerCue" value="$ManagerCue" />
+        </run_actions>
+        <do_if value="$Reason != 'available'">
+          <return value="$Reason" />
+        </do_if>
+        <run_actions ref="ReadGoalLifetime" result="$Reason">
+          <param name="GoalCue" value="$GoalCue" />
+        </run_actions>
+        <do_if value="$Reason != 'available'">
+          <return value="$Reason" />
+        </do_if>
+        <do_if value="@$GoalCue.$tm_empire_recycling_evacuation.$station != $Source or @$GoalCue.$tm_empire_recycling_evacuation.$manager != $ManagerCue">
+          <return value="'station_reassignment_goal_mismatch'" />
+        </do_if>
+        <do_if value="not $Ship.exists or not $Ship.isplayerowned or not $Ship.isoperational or not $Source.exists or not $Source.isplayerowned or $Ship.commander != $Source or not $Target.exists or not $Target.isplayerowned or not $Target.isoperational or not $Target.isclass.station or $Source == $Target or @global.$TM_EmpireComponentRecords.$construction_claim.{$Target}.$state == 'recycling_queue_sent'">
+          <return value="'station_reassignment_assets_changed'" />
+        </do_if>
+        <do_if value="$Ship == player.controlled or $Ship.hasorderloop or @$Ship.order.isoverride or @$Ship.order.haspriority or @global.$TM_EmpireComponentRecords.$claim.{$Ship}">
+          <return value="'station_reassignment_ship_protected'" />
+        </do_if>
+        <do_if value="not $Ship.canuseassignment.{$Ship.assignment}.{$Target}">
+          <return value="'station_reassignment_capability_unavailable'" />
+        </do_if>
+        <set_value name="global.$TM_EmpireComponentRecords.$station_reassignment.{$Ship}" exact="table[$state='issuing', $manager=$ManagerCue, $goal=$GoalCue, $source=$Source, $target=$Target, $assignment=$Ship.assignment, $issued=player.age]" />
+        <add_to_group groupname="StationReassignments.$Ships" object="$Ship" />
+        <create_order name="$Order" object="$Ship" id="'TM_AssignCommander'">
+          <param name="commander" value="$Target" />
+          <param name="assignment" value="$Ship.assignment" />
+          <param name="cancelorders" value="false" />
+        </create_order>
+        <set_value name="global.$TM_EmpireComponentRecords.$station_reassignment.{$Ship}.$order" exact="$Order" />
+        <do_if value="$Order.exists and $Order.object == $Ship and $Order.id == 'TM_AssignCommander'">
+          <set_value name="global.$TM_EmpireComponentRecords.$station_reassignment.{$Ship}.$state" exact="'sent'" />
+          <return value="'sent'" />
+        </do_if>
+        <set_value name="global.$TM_EmpireComponentRecords.$station_reassignment.{$Ship}.$state" exact="'unknown'" />
+        <return value="'unknown'" />
+      </actions>
+    </library>
+    <cue name="StationReassignmentWatch" checkinterval="15s" namespace="this">
+      <conditions>
+        <check_value value="StationReassignments.$Ships.count" />
+      </conditions>
+      <delay exact="15s" />
+      <actions>
+        <do_if value="not $Cursor?">
+          <set_value name="$Cursor" exact="1" />
+        </do_if>
+        <do_all exact="[StationReassignments.$Ships.count, 8].min">
+          <do_if value="$Cursor gt StationReassignments.$Ships.count">
+            <set_value name="$Cursor" exact="1" />
+          </do_if>
+          <set_value name="$Ship" exact="StationReassignments.$Ships.{$Cursor}" />
+          <set_value name="$Cursor" operation="add" />
+          <set_value name="$Lease" exact="@global.$TM_EmpireComponentRecords.$station_reassignment.{$Ship}" />
+          <do_if value="$Ship.exists and $Ship.isplayerowned and $Lease">
+            <run_actions ref="ReadGoalLifetime" result="$Lifetime">
+              <param name="GoalCue" value="$Lease.$goal" />
+            </run_actions>
+            <do_if value="($Lifetime != 'available' or Registry.$State != 'active' or @Registry.$ManagerCue != $Lease.$manager) and @$Lease.$order.exists and $Lease.$order.object == $Ship and $Lease.$order.id == 'TM_AssignCommander' and $Ship != player.controlled and not @$Ship.order.isoverride and not @$Ship.order.haspriority">
+              <cancel_order order="$Lease.$order" />
+            </do_if>
+            <do_if value="not @$Lease.$order.exists">
+              <do_if value="$Ship.commander == $Lease.$target and $Ship.assignment == $Lease.$assignment">
+                <set_value name="global.$TM_EmpireComponentRecords.$station_reassignment_result.{$Ship}" exact="table[$state='observed', $source=$Lease.$source, $target=$Lease.$target, $order=$Lease.$order, $observed=player.age]" />
+                <remove_value name="global.$TM_EmpireComponentRecords.$station_reassignment.{$Ship}" />
+                <remove_from_group group="StationReassignments.$Ships" object="$Ship" />
+              </do_if>
+              <do_elseif value="$Lifetime != 'available' and $Ship.commander == $Lease.$source">
+                <remove_value name="global.$TM_EmpireComponentRecords.$station_reassignment.{$Ship}" />
+                <remove_from_group group="StationReassignments.$Ships" object="$Ship" />
+              </do_elseif>
+              <do_else>
+                <set_value name="$Lease.$state" exact="'unknown'" />
+              </do_else>
+            </do_if>
+          </do_if>
+          <do_else>
+            <do_if value="$Ship.exists">
+              <remove_value name="global.$TM_EmpireComponentRecords.$station_reassignment.{$Ship}" />
+            </do_if>
+            <remove_from_group group="StationReassignments.$Ships" object="$Ship" />
+          </do_else>
+        </do_all>
+        <reset_cue cue="this" />
+      </actions>
+    </cue>
+    <library name="PublishAIState" purpose="run_actions">
+      <actions>
+        <set_value name="global.$TM_EmpireAIState" exact="table[$state=if @Registry.$Governor.exists then @Registry.$State else 'inactive', $manager=@Registry.$ManagerCue, $session=@md.TM_Empire_Assets.State.$ObservationSession]" />
+      </actions>
+    </library>
+    <library name="ValidateBinding" purpose="run_actions" namespace="this">
+      <actions>
+        <run_actions ref="PublishAIState" />
+        <do_if value="not Registry.$Governor?">
+          <return />
+        </do_if>
+        <set_value name="$Reason" exact="null" />
+        <do_if value="not @Registry.$Governor.exists">
+          <set_value name="$Reason" exact="'Управляющий утрачен'" />
+        </do_if>
+        <do_elseif value="not @Registry.$Station.exists or not @Registry.$Station.isplayerowned">
+          <set_value name="$Reason" exact="'Станция утрачена или больше не принадлежит игроку'" />
+        </do_elseif>
+        <do_elseif value="not @Registry.$Module.exists or not @Registry.$Module.isoperational">
+          <set_value name="$Reason" exact="'Модуль утрачен или не действует'" />
+        </do_elseif>
+        <do_elseif value="not Registry.$Governor.isplayerowned">
+          <set_value name="$Reason" exact="'Сотрудник больше не принадлежит игроку'" />
+        </do_elseif>
+        <do_elseif value="Registry.$Governor.controlpost or Registry.$Governor.roleobject != Registry.$Station">
+          <set_value name="$Reason" exact="'Сотрудник сменил должность, перемещается или находится вне станции'" />
+        </do_elseif>
+        <do_else>
+          <find_module name="$Modules" object="Registry.$Station" macro="macro.tm_empire_control_arg_macro" multiple="true" />
+          <do_if value="not $Modules.indexof.{Registry.$Module}">
+            <set_value name="$Reason" exact="'Модуль больше не входит в станцию управляющего'" />
+          </do_if>
+        </do_else>
+        <do_if value="$Reason">
+          <run_actions ref="RevokePurchaseApproval" />
+          <run_actions ref="ReleaseGovernorActor" />
+          <do_if value="@Registry.$Governor.exists">
+            <remove_value name="Registry.$Governor.$tm_empire_module" />
+            <remove_value name="Registry.$Governor.$tm_empire_station" />
+          </do_if>
+          <remove_value name="Registry.$Governor" />
+          <remove_value name="Registry.$Station" />
+          <remove_value name="Registry.$Module" />
+          <remove_value name="Registry.$ManagerCue" />
+          <run_actions ref="md.TM_Empire_Runtime.PublishAIState" />
+          <set_value name="Registry.$State" exact="'inactive'" />
+          <run_actions ref="md.TM_Empire_Runtime.PublishAIState" />
+          <set_value name="Registry.$StopReason" exact="$Reason" />
+        </do_if>
+        <do_elseif value="@Registry.$Governor.podarrivaltime or Registry.$Governor.isintransit or Registry.$Governor.istransferscheduled or Registry.$Governor.station != Registry.$Station or Registry.$Governor.container != Registry.$Station">
+          <do_if value="Registry.$State != 'waiting_arrival'">
+            <run_actions ref="RevokePurchaseApproval" />
+            <remove_value name="Registry.$ManagerCue" />
+            <run_actions ref="md.TM_Empire_Runtime.PublishAIState" />
+          </do_if>
+          <set_value name="Registry.$State" exact="'waiting_arrival'" />
+          <run_actions ref="md.TM_Empire_Runtime.PublishAIState" />
+          <set_value name="Registry.$StopReason" exact="'Управляющий ожидает штатного прибытия транспортной капсулы'" />
+        </do_elseif>
+        <do_elseif value="Registry.$State == 'waiting_arrival'">
+          <set_value name="Registry.$State" exact="'bound'" />
+          <run_actions ref="md.TM_Empire_Runtime.PublishAIState" />
+          <remove_value name="Registry.$StopReason" />
+        </do_elseif>
+        <do_if value="not $Reason and @Registry.$Governor.exists">
+          <run_actions ref="RetainGovernorActor" />
+        </do_if>
+      </actions>
+    </library>
+    <library name="RetainGovernorActor" purpose="run_actions" namespace="this">
+      <actions>
+        <do_if value="not @Registry.$Governor.exists">
+          <return />
+        </do_if>
+        <do_if value="not Registry.$GovernorOriginalTemporary?">
+          <set_value name="Registry.$GovernorOriginalTemporary" exact="Registry.$Governor.istemporary" />
+        </do_if>
+        <do_if value="Registry.$Governor.istemporary">
+          <set_entity_traits entity="Registry.$Governor" temporary="false" />
+        </do_if>
+      </actions>
+    </library>
+    <library name="ReleaseGovernorActor" purpose="run_actions" namespace="this">
+      <actions>
+        <do_if value="@Registry.$Governor.exists and Registry.$GovernorOriginalTemporary?">
+          <set_entity_traits entity="Registry.$Governor" temporary="Registry.$GovernorOriginalTemporary" />
+        </do_if>
+        <remove_value name="Registry.$GovernorOriginalTemporary" />
+      </actions>
+    </library>
+    <library name="RevokePurchaseApproval" purpose="run_actions" namespace="this">
+      <actions>
+        <run_actions ref="StopOwnedAIScripts" />
+        <do_if value="@Registry.$ManagerCue.exists">
+          <run_actions ref="RevokeGoalApprovals">
+            <param name="CancelledCue" value="Registry.$ManagerCue" />
+          </run_actions>
+          <cancel_cue cue="Registry.$ManagerCue" />
+        </do_if>
+        <do_if value="@player.entity.$tm_empire_supply_request.$state == 'payment_approved'">
+          <set_value name="player.entity.$tm_empire_supply_request.$state" exact="'revoked'" />
+          <set_value name="player.entity.$tm_empire_supply_request.$reason" exact="'governor_binding_changed'" />
+        </do_if>
+        <do_if value="@player.entity.$tm_empire_reservation_request.$state == 'approved'">
+          <set_value name="player.entity.$tm_empire_reservation_request.$state" exact="'revoked'" />
+          <set_value name="player.entity.$tm_empire_reservation_request.$reason" exact="'governor_binding_changed'" />
+        </do_if>
+        <do_if value="@player.entity.$tm_empire_plot_request.$state == 'quote_requested' or @player.entity.$tm_empire_plot_request.$state == 'quote_ready' or @player.entity.$tm_empire_plot_request.$state == 'licence_approved'">
+          <set_value name="player.entity.$tm_empire_plot_request.$state" exact="'revoked'" />
+          <set_value name="player.entity.$tm_empire_plot_request.$reason" exact="'governor_binding_changed'" />
+        </do_if>
+        <do_if value="@player.entity.$tm_empire_construction_funding.$state == 'approved'">
+          <set_value name="player.entity.$tm_empire_construction_funding.$state" exact="'revoked'" />
+          <set_value name="player.entity.$tm_empire_construction_funding.$reason" exact="'governor_binding_changed'" />
+        </do_if>
+        <do_if value="@player.entity.$tm_empire_builder_request.$state == 'approved' or @player.entity.$tm_empire_builder_request.$state == 'check_requested' or @player.entity.$tm_empire_builder_request.$state == 'recovery_approved'">
+          <set_value name="player.entity.$tm_empire_builder_request.$state" exact="'revoked'" />
+          <set_value name="player.entity.$tm_empire_builder_request.$reason" exact="'governor_binding_changed'" />
+        </do_if>
+        <do_if value="@player.entity.$tm_empire_hire_request.$state == 'approved'">
+          <set_value name="player.entity.$tm_empire_hire_request.$state" exact="'revoked'" />
+          <set_value name="player.entity.$tm_empire_hire_request.$reason" exact="'governor_binding_changed'" />
+        </do_if>
+        <do_if value="@player.entity.$tm_empire_station_funding.$state == 'approved'">
+          <set_value name="player.entity.$tm_empire_station_funding.$state" exact="'revoked'" />
+          <set_value name="player.entity.$tm_empire_station_funding.$reason" exact="'governor_binding_changed'" />
+        </do_if>
+        <do_if value="@player.entity.$tm_empire_crew_exchange_request.$state == 'check_requested' or @player.entity.$tm_empire_crew_exchange_request.$state == 'approved'">
+          <set_value name="player.entity.$tm_empire_crew_exchange_request.$state" exact="'revoked'" />
+          <set_value name="player.entity.$tm_empire_crew_exchange_request.$reason" exact="'governor_binding_changed'" />
+        </do_if>
+        <do_if value="@player.entity.$tm_empire_purchase_request.$state == 'approved' or @player.entity.$tm_empire_purchase_request.$state == 'quote_ready' or @player.entity.$tm_empire_purchase_request.$state == 'quote_requested'">
+          <set_value name="player.entity.$tm_empire_purchase_request.$state" exact="'revoked'" />
+          <set_value name="player.entity.$tm_empire_purchase_request.$reason" exact="'governor_binding_changed'" />
+        </do_if>
+      </actions>
+    </library>
+    <library name="RevokeGoalApprovals" purpose="run_actions" namespace="this">
+      <params>
+        <param name="CancelledCue" />
+      </params>
+      <actions>
+        <do_if value="$CancelledCue.exists">
+          <set_value name="$CancelledCue.$tm_empire_cancelled" exact="true" />
+        </do_if>
+        <do_if value="@$CancelledCue.$tm_empire_claimed_ships">
+          <set_value name="$Ships" exact="$CancelledCue.$tm_empire_claimed_ships.clone" />
+          <do_for_each name="$Ship" in="$Ships">
+            <do_if value="$Ship.exists and $Ship.isplayerowned and @global.$TM_EmpireComponentRecords.$claim.{$Ship}.$lineage.indexof.{$CancelledCue}">
+              <set_value name="global.$TM_EmpireComponentRecords.$claim.{$Ship}.$stoprequested" exact="true" />
+              <set_value name="global.$TM_EmpireComponentRecords.$claim.{$Ship}.$stopreason" exact="'goal_cancelled'" />
+              <signal_objects object="$Ship" param="'TM_Empire_StopOwnedOrder'" param2="global.$TM_EmpireComponentRecords.$claim.{$Ship}.$manager" />
+              <run_actions ref="CancelStoppedOwnedOrders">
+                <param name="Ship" value="$Ship" />
+                <param name="ManagerCue" value="global.$TM_EmpireComponentRecords.$claim.{$Ship}.$manager" />
+              </run_actions>
+            </do_if>
+          </do_for_each>
+        </do_if>
+        <set_value name="$Approvals" exact="[table[$request=@player.entity.$tm_empire_builder_request, $receipt=@md.TM_Empire_Construction.Builder.$Receipt], table[$request=@player.entity.$tm_empire_plot_request, $receipt=@md.TM_Empire_Construction.Plot.$Receipt], table[$request=@player.entity.$tm_empire_construction_funding, $receipt=@md.TM_Empire_Construction.Funding.$Receipt], table[$request=@player.entity.$tm_empire_hire_request, $receipt=@md.TM_Empire_Personnel.Hire.$Receipt], table[$request=@player.entity.$tm_empire_purchase_request, $receipt=@md.TM_Empire_Purchase.Request.$Pending]]" />
+        <append_to_list name="$Approvals" exact="table[$request=@player.entity.$tm_empire_reservation_request, $receipt=@md.TM_Empire_Construction.Reservation.$Receipt]" />
+        <append_to_list name="$Approvals" exact="table[$request=@player.entity.$tm_empire_supply_request, $receipt=@md.TM_Empire_Supply.Request.$Receipt]" />
+        <append_to_list name="$Approvals" exact="table[$request=@player.entity.$tm_empire_station_funding, $receipt=@md.TM_Empire_Supply.StationFunding.$Receipt]" />
+        <append_to_list name="$Approvals" exact="table[$request=@player.entity.$tm_empire_crew_exchange_request, $receipt=@md.TM_Empire_Personnel.Transfer.$Receipt]" />
+        <do_for_each name="$Approval" in="$Approvals">
+          <set_value name="$Request" exact="$Approval.$request" />
+          <set_value name="$Receipt" exact="$Approval.$receipt" />
+          <do_if value="$Request and $Receipt and @$Request.$key == @$Receipt.$key and ($Request.$state == 'check_requested' or $Request.$state == 'quote_requested' or $Request.$state == 'quote_ready' or $Request.$state == 'approved' or $Request.$state == 'recovery_approved' or $Request.$state == 'licence_approved' or $Request.$state == 'payment_approved')">
+            <set_value name="$Cursor" exact="@$Receipt.$goal" />
+            <do_while value="$Cursor">
+              <do_if value="$Cursor == $CancelledCue">
+                <set_value name="$Request.$state" exact="'revoked'" />
+                <set_value name="$Request.$reason" exact="'goal_cancelled'" />
+                <break />
+              </do_if>
+              <set_value name="$Cursor" exact="$Cursor.parent" />
+            </do_while>
+          </do_if>
+        </do_for_each>
+      </actions>
+    </library>
+    <library name="CanActForGovernor" purpose="run_actions" namespace="this">
+      <params>
+        <param name="Actor" />
+        <param name="Station" />
+        <param name="Module" />
+        <param name="ManagerCue" />
+      </params>
+      <actions>
+        <run_actions ref="ValidateBinding" />
+        <do_if value="Registry.$State != 'active'">
+          <return value="'manager_inactive'" />
+        </do_if>
+        <do_if value="not @Registry.$ManagerCue or Registry.$ManagerCue != $ManagerCue">
+          <return value="'manager_instance_mismatch'" />
+        </do_if>
+        <do_if value="@Registry.$Governor != $Actor or @Registry.$Station != $Station or @Registry.$Module != $Module">
+          <return value="'binding_changed'" />
+        </do_if>
+        <return value="'available'" />
+      </actions>
+    </library>
+    <cue name="OwnedClaims" namespace="this">
+      <actions>
+        <create_group groupname="$Ships" />
+      </actions>
+      <cues>
+        <cue name="OwnedCommanderSet" instantiate="true" namespace="this">
+          <conditions>
+            <event_object_commander_set group="OwnedClaims.$Ships" />
+          </conditions>
+          <actions>
+            <run_actions ref="ObserveOwnedCommander">
+              <param name="Ship" value="event.object" />
+            </run_actions>
+          </actions>
+        </cue>
+        <cue name="OwnedOrderEnded" instantiate="true" namespace="this">
+          <conditions>
+            <check_any>
+              <event_object_order_finished group="OwnedClaims.$Ships" />
+              <event_object_order_cancelled group="OwnedClaims.$Ships" />
+            </check_any>
+            <check_value value="not event.param.exists and @global.$TM_EmpireComponentRecords.$claim.{event.object}.$orders.indexof.{event.param}" />
+          </conditions>
+          <actions>
+            <run_actions ref="ObserveOwnedCommander">
+              <param name="Ship" value="event.object" />
+            </run_actions>
+            <run_actions ref="ReleaseOwnedClaim">
+              <param name="Ship" value="event.object" />
+              <param name="GoalCue" value="global.$TM_EmpireComponentRecords.$claim.{event.object}.$goal" />
+            </run_actions>
+          </actions>
+        </cue>
+        <cue name="OwnedShipOwnershipLost" instantiate="true" namespace="this">
+          <conditions>
+            <check_any>
+              <event_object_changed_owner group="OwnedClaims.$Ships" />
+              <event_object_changed_true_owner group="OwnedClaims.$Ships" />
+            </check_any>
+            <check_value value="event.object.exists and not event.object.isplayerowned" />
+          </conditions>
+          <actions>
+            <run_actions ref="UnindexOwnedClaim">
+              <param name="Ship" value="event.object" />
+            </run_actions>
+            <set_value name="global.$TM_EmpireComponentRecords.$last_order_end.{event.object}" exact="table[$ended=player.age, $outcome='ownership_lost_execution_unconfirmed']" />
+            <remove_value name="global.$TM_EmpireComponentRecords.$claim.{event.object}" />
+            <remove_from_group group="OwnedClaims.$Ships" object="event.object" />
+          </actions>
+        </cue>
+      </cues>
+    </cue>
+    <library name="ReadGoalLifetime" purpose="run_actions" namespace="this">
+      <params>
+        <param name="GoalCue" />
+      </params>
+      <actions>
+        <do_if value="not $GoalCue.exists">
+          <return value="'goal_instance_missing'" />
+        </do_if>
+        <set_value name="$Cursor" exact="$GoalCue" />
+        <do_while value="$Cursor">
+          <do_if value="not $Cursor.exists or $Cursor.state == cuestate.cancelled or $Cursor.state == cuestate.disabled or @$Cursor.$tm_empire_cancelled">
+            <return value="'goal_cancelled'" />
+          </do_if>
+          <do_if value="$Cursor.static == md.TM_Empire_FactionGoal_Invade_Space.Start">
+            <do_if value="not @$Cursor.$Target.exists or not $Cursor.$Target.isknown">
+              <return value="'military_target_unknown'" />
+            </do_if>
+          </do_if>
+          <set_value name="$Cursor" exact="@$Cursor.parent" />
+        </do_while>
+        <return value="'available'" />
+      </actions>
+    </library>
+    <library name="EnsurePersonnelPrerequisites" purpose="run_actions">
+      <actions>
+        <do_if value="not global.$TM_EmpireComponentRecords?">
+          <set_value name="global.$TM_EmpireComponentRecords" exact="table[]" />
+        </do_if>
+        <do_if value="not global.$TM_EmpireComponentRecords.$personnel_prerequisites?">
+          <set_value name="global.$TM_EmpireComponentRecords.$personnel_prerequisites" exact="table[]" />
+        </do_if>
+        <do_if value="not global.$TM_EmpireComponentRecords.$idle_work_reason?">
+          <set_value name="global.$TM_EmpireComponentRecords.$idle_work_reason" exact="table[]" />
+        </do_if>
+      </actions>
+    </library>
+    <library name="IsReplaceableIdleOrder" purpose="run_actions" namespace="this">
+      <params><param name="Ship" /><param name="Order" /></params>
+      <actions>
+        <do_if value="not $Order.exists"><return value="true" /></do_if>
+        <do_if value="$Order.isoverride or $Order.haspriority or $Order.trade.exists or $Order.build.exists or $Order.operation.exists or @$Order.$callerid or @$Order.$releasesignal"><return value="false" /></do_if>
+        <do_if value="$Order.id == 'Wait' and not @$Order.$timeout and not @$Order.$attacker and not @$Order.$noattackresponse"><return value="true" /></do_if>
+        <!-- order.move.wait delegates to order.wait only after movement finishes.
+             Read the documented pilot command, not distance or a guessed phase. -->
+        <do_if value="$Order.id == 'MoveWait' and $Ship.order == $Order and @$Ship.assignedaipilot.command.value == command.wait and @$Ship.assignedaipilot.commandaction.value == commandaction.standingby and not @$Order.$timeout and not @$Order.$withdraw and not @$Order.$waitforatgate and not @$Order.$gate and not @$Order.$noattackresponse"><return value="true" /></do_if>
+        <do_if value="$Order.id == 'DockAndWait' and @$Ship.dock.container == @$Order.$destination and $Ship.dock.exists and not @$Order.$building and not @$Order.$trading and not @$Order.$ventureplatform and not @$Order.$isdockfollower and not @$Order.$undockhandler and not @$Order.$subordinateorders.count and not @$Order.$timeout"><return value="true" /></do_if>
+        <return value="false" />
+      </actions>
+    </library>
+    <library name="HasOnlyIdleOrders" purpose="run_actions" namespace="this">
+      <params><param name="Ship" /></params>
+      <actions>
+        <do_if value="$Ship.hasorderloop or $Ship.orders.count gt 32"><return value="false" /></do_if>
+        <do_for_each name="$IdleOrder" in="$Ship.orders">
+          <run_actions ref="IsReplaceableIdleOrder" result="$Idle"><param name="Ship" value="$Ship" /><param name="Order" value="$IdleOrder" /></run_actions>
+          <do_if value="not $Idle"><return value="false" /></do_if>
+        </do_for_each>
+        <run_actions ref="IsReplaceableIdleOrder" result="$Idle"><param name="Ship" value="$Ship" /><param name="Order" value="@$Ship.defaultorder" /></run_actions>
+        <do_if value="not $Idle"><return value="false" /></do_if>
+        <run_actions ref="IsReplaceableIdleOrder" result="$Idle"><param name="Ship" value="$Ship" /><param name="Order" value="@$Ship.order" /></run_actions>
+        <return value="$Idle" />
+      </actions>
+    </library>
+    <library name="YieldIdleWorkClaim" purpose="run_actions" namespace="this">
+      <params><param name="Ship" /><param name="ManagerCue" /><param name="PaidServiceKey" default="null" /></params>
+      <actions>
+        <set_value name="$Claim" exact="@global.$TM_EmpireComponentRecords.$claim.{$Ship}" />
+        <do_if value="not $Claim or @$Claim.$manager != $ManagerCue or not @$Claim.$idlework or @$Claim.$missing or @$Claim.$issuing">
+          <return value="'not_reassignable_idle_work'" />
+        </do_if>
+        <do_if value="$Ship == player.controlled or $Ship.hasorderloop or @$Ship.order.isoverride or @$Ship.order.haspriority or @$Claim.$commander != @$Ship.commander">
+          <return value="'manual_or_priority_order'" />
+        </do_if>
+        <do_for_each name="$Order" in="$Ship.orders">
+          <do_if value="not $Claim.$orders.indexof.{$Order}">
+            <!-- The native crew-only purchase appends Equip behind our idle
+                 order. Keep that paid order intact while yielding our claim. -->
+            <do_if value="not $PaidServiceKey or @md.TM_Empire_Personnel.Service.$Receipt.$key != $PaidServiceKey or @md.TM_Empire_Personnel.Service.$Receipt.$source != $Ship or @player.entity.$tm_empire_crew_service_receipt.$key != $PaidServiceKey or @player.entity.$tm_empire_crew_service_receipt.$state != 'built' or $Order.id != 'Equip' or $Order.isoverride or $Order.haspriority">
+              <return value="'existing_orders'" />
+            </do_if>
+          </do_if>
+        </do_for_each>
+        <run_actions ref="StopAndReleaseOwnedShip" result="$Reason">
+          <param name="Ship" value="$Ship" /><param name="ManagerCue" value="$ManagerCue" /><param name="GoalCue" value="$Claim.$goal" />
+        </run_actions>
+        <set_value name="global.$TM_EmpireComponentRecords.$idle_work_reason.{$Ship}" exact="table[$manager=$ManagerCue, $reason='Уступает корабль более важной задаче', $observed=player.age, $retry=player.age + 10min]" />
+        <return value="$Reason" />
+      </actions>
+    </library>
+    <library name="CanUseOwnedShip" purpose="run_actions" namespace="this">
+      <params>
+        <param name="Ship" />
+        <param name="ManagerCue" />
+        <param name="GoalCue" />
+        <param name="PurchaseKey" default="null" />
+      </params>
+      <actions>
+        <do_if value="not $ManagerCue.exists">
+          <return value="'manager_instance_missing'" />
+        </do_if>
+        <do_if value="not $GoalCue.exists">
+          <return value="'goal_instance_missing'" />
+        </do_if>
+        <run_actions ref="ReadGoalLifetime" result="$Reason">
+          <param name="GoalCue" value="$GoalCue" />
+        </run_actions>
+        <do_if value="$Reason != 'available'">
+          <return value="$Reason" />
+        </do_if>
+        <run_actions ref="CanActForGovernor" result="$Reason">
+          <param name="Actor" value="$ManagerCue.$Governor" />
+          <param name="Station" value="$ManagerCue.$GovernorStation" />
+          <param name="Module" value="$ManagerCue.$GovernorModule" />
+          <param name="ManagerCue" value="$ManagerCue" />
+        </run_actions>
+        <do_if value="$Reason != 'available'">
+          <return value="$Reason" />
+        </do_if>
+        <do_if value="not $Ship.exists or not $Ship.isclass.ship or not $Ship.isplayerowned or not $Ship.isoperational">
+          <return value="'asset_unavailable'" />
+        </do_if>
+        <do_if value="$Ship == player.controlled">
+          <return value="'player_helm'" />
+        </do_if>
+        <do_if value="@md.TM_Empire_Personnel.Service.$NewCaptainQueue.indexof.{$Ship} and player.age lt @md.TM_Empire_Personnel.Service.$NewCaptainUntil.{$Ship}">
+          <return value="'crew_service_hire_reserved'" />
+        </do_if>
+        <do_if value="@md.TM_Empire_Personnel.Service.$Receipt.$source == $Ship and (@md.TM_Empire_Personnel.Service.$Receipt.$state == 'sent' or @md.TM_Empire_Personnel.Service.$Receipt.$state == 'built' or @md.TM_Empire_Personnel.Service.$Receipt.$state == 'unknown' or (@md.TM_Empire_Personnel.Service.$Receipt.$state == 'observed' and @md.TM_Empire_Personnel.Service.$Receipt.$fillpending))">
+          <return value="'crew_service_hire_reserved'" />
+        </do_if>
+        <set_value name="$PilotMissing" exact="false" />
+        <do_if value="$Ship.canhavecontrolentity.{controlpost.aipilot}">
+          <set_value name="$Pilot" exact="@$Ship.assignedcontrolentity.{controlpost.aipilot}" />
+          <do_if value="not $Pilot.exists or @$Ship.assignedaipilot != $Pilot or @$Ship.aipilot != $Pilot or $Pilot.isintransit or $Pilot.istransferscheduled or @$Pilot.podarrivaltime">
+            <do_if value="not $Pilot.exists and $Ship.controlposts.free.indexof.{controlpost.aipilot}">
+              <set_value name="$PilotMissing" exact="true" />
+            </do_if>
+            <do_else>
+              <return value="'ship_pilot_arrival_required'" />
+            </do_else>
+          </do_if>
+        </do_if>
+        <do_if value="@global.$TM_EmpireComponentRecords.$station_reassignment.{$Ship}">
+          <return value="'station_reassignment_unreconciled'" />
+        </do_if>
+        <do_if value="$Ship.hasorderloop or @$Ship.order.isoverride or @$Ship.order.haspriority">
+          <return value="'manual_or_priority_order'" />
+        </do_if>
+        <do_if value="$Ship.orders.count gt 32">
+          <return value="'order_queue_inspection_incomplete'" />
+        </do_if>
+        <do_for_each name="$QueuedOrder" in="$Ship.orders">
+          <do_if value="$QueuedOrder.exists and $QueuedOrder.object == $Ship and ($QueuedOrder.isoverride or $QueuedOrder.haspriority)">
+            <return value="'manual_or_priority_order'" />
+          </do_if>
+        </do_for_each>
+        <set_value name="$Claim" exact="@global.$TM_EmpireComponentRecords.$claim.{$Ship}" />
+        <!-- A paid ship remains assigned to its purchasing goal until the native
+             handoff completes. Selectors must not acquire the new unclaimed
+             hull between the built event and the purchase receiver's next tick. -->
+        <do_if value="not $Claim and @md.TM_Empire_Purchase.Request.$Pending and @md.TM_Empire_Purchase.Tracked.$Observation.$state == 'ready' and @md.TM_Empire_Purchase.Tracked.$Observation.$ship == $Ship and @md.TM_Empire_Purchase.Request.$Pending.$state != 'delivered' and ($PurchaseKey != @md.TM_Empire_Purchase.Request.$Pending.$key or @md.TM_Empire_Purchase.Request.$Pending.$goal != $GoalCue)">
+          <return value="'paid_ship_reserved_for_purchase'" />
+        </do_if>
+        <do_if value="$Claim">
+          <do_if value="typeof $Claim != datatype.table or not $Claim.$orders?">
+            <return value="'unknown_claim'" />
+          </do_if>
+          <do_if value="@$Claim.$manager != $ManagerCue">
+            <return value="'claim_manager_mismatch'" />
+          </do_if>
+          <do_if value="$Claim.$goal != $GoalCue">
+            <return value="'claimed_by_other_goal'" />
+          </do_if>
+          <do_if value="$Claim.$state == 'unknown' or @$Claim.$missing">
+            <return value="'unknown_claim'" />
+          </do_if>
+          <do_if value="@$Claim.$stoprequested">
+            <return value="'owned_orders_stopping'" />
+          </do_if>
+          <do_if value="@$Claim.$issuing">
+            <return value="'order_submission_pending'" />
+          </do_if>
+          <do_if value="@$Claim.$commander != @$Ship.commander">
+            <return value="'commander_changed'" />
+          </do_if>
+          <do_for_each name="$Order" in="$Ship.orders">
+            <do_if value="not $Claim.$orders.indexof.{$Order}">
+              <!-- Native order.dock.wait creates its DockAt child with this
+                   exact parent ID. Never infer ownership from the ID alone. -->
+              <set_value name="$DockParent" exact="@$Order.$dockandwaitid" />
+              <do_if value="$Order.exists and $Order.object == $Ship and $Order.id == 'DockAt' and $Order.script == 'order.dock' and not $Order.isoverride and not $Order.haspriority and typeof $DockParent == datatype.order and $DockParent.exists and $DockParent.object == $Ship and $DockParent.id == 'DockAndWait' and not $DockParent.isoverride and not $DockParent.haspriority and $Claim.$orders.indexof.{$DockParent} and @$Order.$destination.exists and @$Order.$destination == @$DockParent.$destination">
+                <run_actions ref="RecordOwnedOrder" result="$DockChildReason">
+                  <param name="Ship" value="$Ship" /><param name="GoalCue" value="$GoalCue" /><param name="Order" value="$Order" />
+                </run_actions>
+                <do_if value="$DockChildReason != 'sent'"><return value="$DockChildReason" /></do_if>
+              </do_if>
+              <do_else><return value="'existing_orders'" /></do_else>
+            </do_if>
+          </do_for_each>
+          <do_if value="$Ship.defaultorder.exists and $Ship.defaultorder.id != 'Wait' and not $Claim.$orders.indexof.{$Ship.defaultorder}">
+            <return value="'existing_behavior'" />
+          </do_if>
+          <do_if value="$Ship.order.exists and $Ship.order.id != 'Wait' and not $Claim.$orders.indexof.{$Ship.order}">
+            <return value="'existing_behavior'" />
+          </do_if>
+        </do_if>
+        <do_else>
+          <do_if value="$Ship.iscommandeered">
+            <return value="'already_commandeered'" />
+          </do_if>
+          <do_if value="$Ship.commander.exists">
+            <return value="'assigned_asset'" />
+          </do_if>
+          <run_actions ref="HasOnlyIdleOrders" result="$OnlyIdle"><param name="Ship" value="$Ship" /></run_actions>
+          <do_if value="not $OnlyIdle">
+            <return value="'existing_orders'" />
+          </do_if>
+        </do_else>
+        <do_if value="$PilotMissing">
+          <run_actions ref="EnsurePersonnelPrerequisites" />
+          <do_if value="global.$TM_EmpireComponentRecords.$personnel_prerequisites.{$Ship}? or global.$TM_EmpireComponentRecords.$personnel_prerequisites.keys.count lt 32">
+            <set_value name="global.$TM_EmpireComponentRecords.$personnel_prerequisites.{$Ship}" exact="table[$manager=$ManagerCue, $goal=$GoalCue, $post=controlpost.aipilot, $issued=player.age]" />
+          </do_if>
+          <return value="'ship_pilot_arrival_required'" />
+        </do_if>
+        <return value="'available'" />
+      </actions>
+    </library>
+    <library name="UnindexOwnedClaim" purpose="run_actions" namespace="this">
+      <params>
+        <param name="Ship" />
+      </params>
+      <actions>
+        <do_if value="not @global.$TM_EmpireComponentRecords.$claim.{$Ship}.$lineage">
+          <return />
+        </do_if>
+        <do_for_each name="$Cue" in="@global.$TM_EmpireComponentRecords.$claim.{$Ship}.$lineage">
+          <do_if value="$Cue.exists and @$Cue.$tm_empire_claimed_ships">
+            <remove_from_list name="$Cue.$tm_empire_claimed_ships" exact="$Ship" />
+          </do_if>
+        </do_for_each>
+      </actions>
+    </library>
+    <library name="IndexOwnedClaim" purpose="run_actions" namespace="this">
+      <params>
+        <param name="Ship" />
+      </params>
+      <actions>
+        <run_actions ref="UnindexOwnedClaim">
+          <param name="Ship" value="$Ship" />
+        </run_actions>
+        <set_value name="global.$TM_EmpireComponentRecords.$claim.{$Ship}.$lineage" exact="[]" />
+        <set_value name="$Cue" exact="global.$TM_EmpireComponentRecords.$claim.{$Ship}.$goal" />
+        <do_while value="$Cue and $Cue.exists">
+          <append_to_list name="global.$TM_EmpireComponentRecords.$claim.{$Ship}.$lineage" exact="$Cue" />
+          <do_if value="not $Cue.$tm_empire_claimed_ships?">
+            <set_value name="$Cue.$tm_empire_claimed_ships" exact="[]" />
+          </do_if>
+          <do_if value="not $Cue.$tm_empire_claimed_ships.indexof.{$Ship}">
+            <append_to_list name="$Cue.$tm_empire_claimed_ships" exact="$Ship" />
+          </do_if>
+          <set_value name="$Cue" exact="@$Cue.parent" />
+        </do_while>
+      </actions>
+    </library>
+    <library name="ClaimOwnedShip" purpose="run_actions" namespace="this">
+      <params>
+        <param name="Ship" />
+        <param name="ManagerCue" />
+        <param name="GoalCue" />
+        <param name="PurchaseKey" default="null" />
+      </params>
+      <actions>
+        <run_actions ref="CanUseOwnedShip" result="$Reason">
+          <param name="Ship" value="$Ship" />
+          <param name="ManagerCue" value="$ManagerCue" />
+          <param name="GoalCue" value="$GoalCue" />
+          <param name="PurchaseKey" value="$PurchaseKey" />
+        </run_actions>
+        <do_if value="$Reason != 'available'">
+          <return value="$Reason" />
+        </do_if>
+        <do_if value="not global.$TM_EmpireComponentRecords.$claim.{$Ship}?">
+          <!-- CanUseOwnedShip has just checked every order and the player helm. -->
+          <do_for_each name="$IdleOrder" in="$Ship.orders" reverse="true"><cancel_order order="$IdleOrder" /></do_for_each>
+          <do_if value="$Ship.defaultorder.exists and ($Ship.defaultorder.id == 'DockAndWait' or $Ship.defaultorder.id == 'MoveWait')"><create_order object="$Ship" id="'Wait'" default="true" /></do_if>
+          <set_value name="global.$TM_EmpireComponentRecords.$claim.{$Ship}" exact="table[$goal=$GoalCue, $manager=$ManagerCue, $state='sent', $issued=player.age, $orders=[], $missing=false, $commander=@$Ship.commander]" />
+        </do_if>
+        <add_to_group groupname="OwnedClaims.$Ships" object="$Ship" />
+        <run_actions ref="IndexOwnedClaim">
+          <param name="Ship" value="$Ship" />
+        </run_actions>
+        <return value="'available'" />
+      </actions>
+    </library>
+    <library name="CanUseMilitarySupport" purpose="run_actions" namespace="this">
+      <params><param name="Ship" /><param name="ManagerCue" /><param name="GoalCue" /></params>
+      <actions>
+        <run_actions ref="CanUseOwnedShip" result="$Reason"><param name="Ship" value="$Ship" /><param name="ManagerCue" value="$ManagerCue" /><param name="GoalCue" value="$GoalCue" /></run_actions>
+        <do_if value="$Reason != 'claimed_by_other_goal'"><return value="$Reason" /></do_if>
+        <do_if value="$GoalCue.static != md.TM_Empire_FactionGoal_PatrolCoordinationService.Start"><return value="$Reason" /></do_if>
+        <set_value name="$Origin" exact="@global.$TM_EmpireComponentRecords.$claim.{$Ship}.$goal" />
+        <do_if value="not $Origin.exists or not [md.TM_Empire_FactionSubgoal_Recon.Start, md.TM_Empire_FactionSubgoal_DefendArea.Start, md.TM_Empire_FactionGoal_Hold_Space.Start, md.TM_Empire_FactionGoal_Invade_Space.Start].indexof.{$Origin.static} or @global.$TM_EmpireComponentRecords.$claim.{$Ship}.$militarysupportorigin"><return value="$Reason" /></do_if>
+        <run_actions ref="CanUseOwnedShip" result="$Reason"><param name="Ship" value="$Ship" /><param name="ManagerCue" value="$ManagerCue" /><param name="GoalCue" value="$Origin" /></run_actions>
+        <return value="$Reason" />
+      </actions>
+    </library>
+    <library name="ClaimMilitarySupport" purpose="run_actions" namespace="this">
+      <params><param name="Ship" /><param name="ManagerCue" /><param name="GoalCue" /></params>
+      <actions>
+        <run_actions ref="CanUseMilitarySupport" result="$Reason"><param name="Ship" value="$Ship" /><param name="ManagerCue" value="$ManagerCue" /><param name="GoalCue" value="$GoalCue" /></run_actions>
+        <do_if value="$Reason != 'available'"><return value="$Reason" /></do_if>
+        <set_value name="$Origin" exact="@global.$TM_EmpireComponentRecords.$claim.{$Ship}.$goal" />
+        <do_if value="$Origin.exists and $Origin != $GoalCue">
+          <run_actions ref="TransferOwnedClaim" result="$Reason"><param name="Ship" value="$Ship" /><param name="ManagerCue" value="$ManagerCue" /><param name="GoalCue" value="$GoalCue" /><param name="FromGoalCue" value="$Origin" /></run_actions>
+          <do_if value="$Reason == 'available'"><set_value name="global.$TM_EmpireComponentRecords.$claim.{$Ship}.$militarysupportorigin" exact="$Origin" /></do_if>
+          <return value="$Reason" />
+        </do_if>
+        <run_actions ref="ClaimOwnedShip" result="$Reason"><param name="Ship" value="$Ship" /><param name="ManagerCue" value="$ManagerCue" /><param name="GoalCue" value="$GoalCue" /></run_actions>
+        <return value="$Reason" />
+      </actions>
+    </library>
+    <library name="ReleaseMilitarySupport" purpose="run_actions" namespace="this">
+      <params><param name="Ship" /><param name="GoalCue" /></params>
+      <actions>
+        <set_value name="$Origin" exact="@global.$TM_EmpireComponentRecords.$claim.{$Ship}.$militarysupportorigin" />
+        <do_if value="$Origin">
+          <do_if value="not $Origin.exists"><return value="'support_origin_lost'" /></do_if>
+          <run_actions ref="TransferOwnedClaim" result="$Reason"><param name="Ship" value="$Ship" /><param name="ManagerCue" value="@global.$TM_EmpireComponentRecords.$claim.{$Ship}.$manager" /><param name="GoalCue" value="$Origin" /><param name="FromGoalCue" value="$GoalCue" /></run_actions>
+          <do_if value="$Reason == 'available'"><remove_value name="global.$TM_EmpireComponentRecords.$claim.{$Ship}.$militarysupportorigin" /><return value="'support_origin_restored'" /></do_if>
+          <return value="$Reason" />
+        </do_if>
+        <run_actions ref="ReleaseOwnedClaim" result="$Reason"><param name="Ship" value="$Ship" /><param name="GoalCue" value="$GoalCue" /></run_actions>
+        <return value="$Reason" />
+      </actions>
+    </library>
+    <library name="TransferOwnedClaim" purpose="run_actions" namespace="this">
+      <params>
+        <param name="Ship" />
+        <param name="ManagerCue" />
+        <param name="GoalCue" />
+        <param name="FromGoalCue" />
+      </params>
+      <actions>
+        <do_if value="not $GoalCue.exists or not $FromGoalCue.exists">
+          <return value="'handoff_goal_missing'" />
+        </do_if>
+        <do_if value="@global.$TM_EmpireComponentRecords.$claim.{$Ship}.$manager != $ManagerCue">
+          <return value="'handoff_manager_mismatch'" />
+        </do_if>
+        <do_if value="@global.$TM_EmpireComponentRecords.$claim.{$Ship}.$goal == $GoalCue and @global.$TM_EmpireComponentRecords.$claim.{$Ship}.$previousgoal == $FromGoalCue">
+          <run_actions ref="CanUseOwnedShip" result="$Reason">
+            <param name="Ship" value="$Ship" />
+            <param name="ManagerCue" value="$ManagerCue" />
+            <param name="GoalCue" value="$GoalCue" />
+          </run_actions>
+          <return value="$Reason" />
+        </do_if>
+        <run_actions ref="CanUseOwnedShip" result="$Reason">
+          <param name="Ship" value="$Ship" />
+          <param name="ManagerCue" value="$ManagerCue" />
+          <param name="GoalCue" value="$FromGoalCue" />
+        </run_actions>
+        <do_if value="$Reason != 'available'">
+          <return value="$Reason" />
+        </do_if>
+        <set_value name="global.$TM_EmpireComponentRecords.$claim.{$Ship}.$previousgoal" exact="$FromGoalCue" />
+        <set_value name="global.$TM_EmpireComponentRecords.$claim.{$Ship}.$goal" exact="$GoalCue" />
+        <set_value name="global.$TM_EmpireComponentRecords.$claim.{$Ship}.$handofftime" exact="player.age" />
+        <run_actions ref="IndexOwnedClaim">
+          <param name="Ship" value="$Ship" />
+        </run_actions>
+        <return value="'available'" />
+      </actions>
+    </library>
+    <library name="RecordOwnedOrder" purpose="run_actions" namespace="this">
+      <params>
+        <param name="Ship" />
+        <param name="GoalCue" />
+        <param name="Order" />
+        <param name="ExpectedCommander" default="null" />
+      </params>
+      <actions>
+        <do_if value="not $Ship.exists or not $Ship.isplayerowned or @global.$TM_EmpireComponentRecords.$claim.{$Ship}.$goal != $GoalCue">
+          <return value="'claim_changed'" />
+        </do_if>
+        <set_value name="global.$TM_EmpireComponentRecords.$claim.{$Ship}.$issuing" exact="false" />
+        <do_if value="not $Order.exists or $Order.object != $Ship">
+          <set_value name="global.$TM_EmpireComponentRecords.$claim.{$Ship}.$state" exact="'unknown'" />
+          <set_value name="global.$TM_EmpireComponentRecords.$claim.{$Ship}.$missing" exact="true" />
+          <return value="'order_unconfirmed'" />
+        </do_if>
+        <do_for_each name="$PreviousOrder" in="global.$TM_EmpireComponentRecords.$claim.{$Ship}.$orders" reverse="true">
+          <do_if value="not $PreviousOrder.exists">
+            <remove_from_list name="global.$TM_EmpireComponentRecords.$claim.{$Ship}.$orders" exact="$PreviousOrder" />
+          </do_if>
+        </do_for_each>
+        <do_if value="not global.$TM_EmpireComponentRecords.$claim.{$Ship}.$orders.indexof.{$Order}">
+          <append_to_list name="global.$TM_EmpireComponentRecords.$claim.{$Ship}.$orders" exact="$Order" />
+        </do_if>
+        <do_if value="$ExpectedCommander">
+          <do_if value="$Order.id != 'AssignCommander' or @$Order.$commander != $ExpectedCommander or not $ExpectedCommander.exists or not $ExpectedCommander.isplayerowned">
+            <set_value name="global.$TM_EmpireComponentRecords.$claim.{$Ship}.$state" exact="'unknown'" />
+            <return value="'assignment_order_unconfirmed'" />
+          </do_if>
+          <set_value name="global.$TM_EmpireComponentRecords.$claim.{$Ship}.$assignment" exact="table[$order=$Order, $commander=$ExpectedCommander, $state='sent']" />
+          <run_actions ref="ObserveOwnedCommander">
+            <param name="Ship" value="$Ship" />
+          </run_actions>
+        </do_if>
+        <return value="'sent'" />
+      </actions>
+    </library>
+    <library name="ObserveOwnedCommander" purpose="run_actions" namespace="this">
+      <params>
+        <param name="Ship" />
+      </params>
+      <actions>
+        <do_if value="not $Ship.exists or not $Ship.isplayerowned or $Ship == player.controlled">
+          <return value="'assignment_asset_unavailable'" />
+        </do_if>
+        <set_value name="$Claim" exact="@global.$TM_EmpireComponentRecords.$claim.{$Ship}" />
+        <do_if value="not @$Claim.$assignment or not $Claim.$orders.indexof.{$Claim.$assignment.$order}">
+          <return value="'no_owned_assignment'" />
+        </do_if>
+        <do_if value="$Ship.hasorderloop or @$Ship.order.isoverride">
+          <return value="'manual_assignment_control'" />
+        </do_if>
+        <do_for_each name="$Order" in="$Ship.orders">
+          <do_if value="not $Claim.$orders.indexof.{$Order}">
+            <return value="'existing_orders'" />
+          </do_if>
+        </do_for_each>
+        <do_if value="not $Claim.$assignment.$commander.exists or not $Claim.$assignment.$commander.isplayerowned or $Ship.commander != $Claim.$assignment.$commander">
+          <return value="'commander_not_observed'" />
+        </do_if>
+        <set_value name="global.$TM_EmpireComponentRecords.$claim.{$Ship}.$commander" exact="$Ship.commander" />
+        <set_value name="global.$TM_EmpireComponentRecords.$claim.{$Ship}.$assignment.$state" exact="'observed'" />
+        <set_value name="global.$TM_EmpireComponentRecords.$claim.{$Ship}.$assignment.$observed" exact="player.age" />
+        <return value="'observed'" />
+      </actions>
+    </library>
+    <library name="ReleaseOwnedClaim" purpose="run_actions" namespace="this">
+      <params>
+        <param name="Ship" />
+        <param name="GoalCue" />
+      </params>
+      <actions>
+        <do_if value="not $Ship.exists or not $Ship.isplayerowned or @global.$TM_EmpireComponentRecords.$claim.{$Ship}.$goal != $GoalCue">
+          <return value="'claim_changed'" />
+        </do_if>
+        <do_if value="$Ship == player.controlled">
+          <return value="'player_helm'" />
+        </do_if>
+        <do_if value="$Ship.hasorderloop or @$Ship.order.isoverride or @$Ship.order.haspriority">
+          <return value="'manual_or_priority_order'" />
+        </do_if>
+        <do_if value="@global.$TM_EmpireComponentRecords.$claim.{$Ship}.$commander != @$Ship.commander">
+          <return value="'commander_changed'" />
+        </do_if>
+        <do_for_each name="$CurrentOrder" in="$Ship.orders">
+          <do_if value="not global.$TM_EmpireComponentRecords.$claim.{$Ship}.$orders.indexof.{$CurrentOrder}">
+            <return value="'existing_orders'" />
+          </do_if>
+        </do_for_each>
+        <do_if value="$Ship.defaultorder.exists and $Ship.defaultorder.id != 'Wait' and not global.$TM_EmpireComponentRecords.$claim.{$Ship}.$orders.indexof.{$Ship.defaultorder}">
+          <return value="'existing_behavior'" />
+        </do_if>
+        <do_if value="@global.$TM_EmpireComponentRecords.$claim.{$Ship}.$missing">
+          <return value="'unknown_claim'" />
+        </do_if>
+        <do_if value="@global.$TM_EmpireComponentRecords.$claim.{$Ship}.$issuing">
+          <return value="'order_submission_pending'" />
+        </do_if>
+        <do_for_each name="$Order" in="global.$TM_EmpireComponentRecords.$claim.{$Ship}.$orders" reverse="true">
+          <do_if value="$Order.exists">
+            <return value="'orders_still_exist'" />
+          </do_if>
+          <remove_from_list name="global.$TM_EmpireComponentRecords.$claim.{$Ship}.$orders" exact="$Order" />
+        </do_for_each>
+        <do_if value="$Ship.iscommandeered">
+          <set_value name="global.$TM_EmpireComponentRecords.$claim.{$Ship}.$state" exact="'unknown'" />
+          <return value="'release_unconfirmed'" />
+        </do_if>
+        <set_value name="global.$TM_EmpireComponentRecords.$last_order_end.{$Ship}" exact="table[$ended=player.age, $outcome='orders_ended_not_task_success']" />
+        <run_actions ref="UnindexOwnedClaim">
+          <param name="Ship" value="$Ship" />
+        </run_actions>
+        <remove_value name="global.$TM_EmpireComponentRecords.$claim.{$Ship}" />
+        <remove_from_group group="OwnedClaims.$Ships" object="$Ship" />
+        <return value="'released'" />
+      </actions>
+    </library>
+    <library name="ReleaseStoppedMetadata" purpose="run_actions" namespace="this">
+      <params>
+        <param name="Ship" />
+        <param name="ManagerCue" />
+      </params>
+      <actions>
+        <set_value name="$Claim" exact="@global.$TM_EmpireComponentRecords.$claim.{$Ship}" />
+        <do_if value="not $Ship.exists or not $Ship.isplayerowned or not $Claim or @$Claim.$manager != $ManagerCue or not @$Claim.$stoprequested">
+          <return value="'stop_claim_changed'" />
+        </do_if>
+        <do_if value="$Ship.iscommandeered">
+          <return value="'native_control_still_held'" />
+        </do_if>
+        <do_if value="@$Claim.$missing or @$Claim.$issuing">
+          <return value="'unknown_or_pending_claim'" />
+        </do_if>
+        <do_for_each name="$Order" in="$Claim.$orders">
+          <do_if value="$Order.exists">
+            <return value="'owned_orders_still_exist'" />
+          </do_if>
+        </do_for_each>
+        <run_actions ref="UnindexOwnedClaim">
+          <param name="Ship" value="$Ship" />
+        </run_actions>
+        <set_value name="global.$TM_EmpireComponentRecords.$last_order_end.{$Ship}" exact="table[$ended=player.age, $outcome='stopped_orders_ended_native_control_already_released']" />
+        <remove_value name="global.$TM_EmpireComponentRecords.$claim.{$Ship}" />
+        <remove_from_group group="OwnedClaims.$Ships" object="$Ship" />
+        <return value="'released_metadata_only'" />
+      </actions>
+    </library>
+    <library name="StopAndReleaseOwnedShip" purpose="run_actions" namespace="this">
+      <params>
+        <param name="Ship" />
+        <param name="ManagerCue" />
+        <param name="GoalCue" />
+      </params>
+      <actions>
+        <do_if value="not $Ship.exists or not $Ship.isplayerowned">
+          <return value="'owned_ship_unavailable'" />
+        </do_if>
+        <set_value name="$Claim" exact="@global.$TM_EmpireComponentRecords.$claim.{$Ship}" />
+        <do_if value="not $Claim or $Claim.$manager != $ManagerCue or $Claim.$goal != $GoalCue">
+          <return value="'owned_claim_goal_mismatch'" />
+        </do_if>
+        <set_value name="$Claim.$stoprequested" exact="true" />
+        <set_value name="$Claim.$reason" exact="'native_goal_release_requested'" />
+        <signal_objects object="$Ship" param="'TM_Empire_StopOwnedOrder'" param2="$ManagerCue" />
+        <run_actions ref="CancelStoppedOwnedOrders">
+          <param name="Ship" value="$Ship" />
+          <param name="ManagerCue" value="$ManagerCue" />
+        </run_actions>
+        <do_if value="@global.$TM_EmpireComponentRecords.$claim.{$Ship}">
+          <return value="'owned_orders_stopping'" />
+        </do_if>
+        <return value="'released'" />
+      </actions>
+    </library>
+    <library name="CancelStoppedOwnedOrders" purpose="run_actions" namespace="this">
+      <params>
+        <param name="Ship" />
+        <param name="ManagerCue" />
+      </params>
+      <actions>
+        <set_value name="$Claim" exact="@global.$TM_EmpireComponentRecords.$claim.{$Ship}" />
+        <do_if value="not $Ship.exists or not $Ship.isplayerowned or not $Claim or @$Claim.$manager != $ManagerCue or not @$Claim.$stoprequested">
+          <return value="'stop_claim_changed'" />
+        </do_if>
+        <run_actions ref="ReleaseStoppedMetadata" result="$Reason">
+          <param name="Ship" value="$Ship" />
+          <param name="ManagerCue" value="$ManagerCue" />
+        </run_actions>
+        <do_if value="$Reason == 'released_metadata_only'">
+          <return value="$Reason" />
+        </do_if>
+        <do_if value="$Ship == player.controlled">
+          <return value="'player_helm'" />
+        </do_if>
+        <do_if value="$Claim.$state == 'unknown' or @$Claim.$missing or @$Claim.$issuing">
+          <return value="'unknown_or_pending_claim'" />
+        </do_if>
+        <do_if value="$Ship.hasorderloop or @$Ship.order.isoverride or @$Ship.order.haspriority or @$Ship.commander != @$Claim.$commander">
+          <return value="'manual_or_priority_control'" />
+        </do_if>
+        <do_if value="not $Claim.$stoporders?">
+          <set_value name="$Claim.$stoporders" exact="[]" />
+        </do_if>
+        <do_for_each name="$Order" in="$Claim.$orders" reverse="true">
+          <do_if value="$Order.exists and $Order.object == $Ship and not $Order.isoverride and not $Order.haspriority">
+            <do_if value="not $Claim.$stoporders.indexof.{$Order} or $Order.state != orderstate.critical">
+              <do_if value="not $Claim.$stoporders.indexof.{$Order}">
+                <append_to_list name="$Claim.$stoporders" exact="$Order" />
+              </do_if>
+              <cancel_order order="$Order" />
+            </do_if>
+          </do_if>
+        </do_for_each>
+        <run_actions ref="ReleaseOwnedClaim" result="$Reason">
+          <param name="Ship" value="$Ship" />
+          <param name="GoalCue" value="$Claim.$goal" />
+        </run_actions>
+        <return value="$Reason" />
+      </actions>
+    </library>
+    <cue name="StoppedOrdersWatch" namespace="this" checkinterval="15s">
+      <conditions>
+        <check_value value="OwnedClaims.$Ships.count" />
+      </conditions>
+      <delay exact="15s" />
+      <actions>
+        <do_all exact="[8, OwnedClaims.$Ships.count].min">
+          <do_if value="not @$Cursor or $Cursor gt OwnedClaims.$Ships.count">
+            <set_value name="$Cursor" exact="1" />
+          </do_if>
+          <set_value name="$Ship" exact="@OwnedClaims.$Ships.{$Cursor}" />
+          <set_value name="$Cursor" exact="$Cursor + 1" />
+          <do_if value="$Ship.exists and @global.$TM_EmpireComponentRecords.$claim.{$Ship} and not @global.$TM_EmpireComponentRecords.$claim.{$Ship}.$stoprequested">
+            <run_actions ref="ReadGoalLifetime" result="$Reason">
+              <param name="GoalCue" value="global.$TM_EmpireComponentRecords.$claim.{$Ship}.$goal" />
+            </run_actions>
+            <do_if value="$Reason != 'available'">
+              <set_value name="global.$TM_EmpireComponentRecords.$claim.{$Ship}.$stoprequested" exact="true" />
+              <set_value name="global.$TM_EmpireComponentRecords.$claim.{$Ship}.$stopreason" exact="$Reason" />
+              <do_if value="$Ship.isplayerowned">
+                <signal_objects object="$Ship" param="'TM_Empire_StopOwnedOrder'" param2="global.$TM_EmpireComponentRecords.$claim.{$Ship}.$manager" />
+              </do_if>
+            </do_if>
+          </do_if>
+          <do_if value="$Ship.exists and @global.$TM_EmpireComponentRecords.$claim.{$Ship}.$stoprequested">
+            <run_actions ref="CancelStoppedOwnedOrders">
+              <param name="Ship" value="$Ship" />
+              <param name="ManagerCue" value="global.$TM_EmpireComponentRecords.$claim.{$Ship}.$manager" />
+            </run_actions>
+          </do_if>
+        </do_all>
+        <reset_cue cue="this" />
+      </actions>
+    </cue>
+    <library name="StopOwnedAIScripts" purpose="run_actions" namespace="this">
+      <actions>
+        <do_if value="@Registry.$ManagerCue">
+          <do_all exact="OwnedClaims.$Ships.count" counter="$i" reverse="true">
+            <set_value name="$Ship" exact="@OwnedClaims.$Ships.{$i}" />
+            <do_if value="$Ship.exists and $Ship.isplayerowned and @global.$TM_EmpireComponentRecords.$claim.{$Ship}.$manager == Registry.$ManagerCue">
+              <set_value name="global.$TM_EmpireComponentRecords.$claim.{$Ship}.$stoprequested" exact="true" />
+              <signal_objects object="$Ship" param="'TM_Empire_StopOwnedOrder'" param2="Registry.$ManagerCue" />
+              <run_actions ref="CancelStoppedOwnedOrders">
+                <param name="Ship" value="$Ship" />
+                <param name="ManagerCue" value="Registry.$ManagerCue" />
+              </run_actions>
+            </do_if>
+          </do_all>
+        </do_if>
+      </actions>
+    </library>
+    <library name="UnbindGovernor" purpose="run_actions" namespace="this">
+      <params>
+        <param name="Actor" />
+      </params>
+      <actions>
+        <do_if value="not @Registry.$Governor or Registry.$Governor != $Actor">
+          <return value="'not_current_governor'" />
+        </do_if>
+        <run_actions ref="RevokePurchaseApproval" />
+        <run_actions ref="ReleaseGovernorActor" />
+        <do_if value="$Actor.exists">
+          <remove_value name="$Actor.$tm_empire_module" />
+          <remove_value name="$Actor.$tm_empire_station" />
+        </do_if>
+        <remove_value name="Registry.$Governor" />
+        <remove_value name="Registry.$Station" />
+        <remove_value name="Registry.$Module" />
+        <remove_value name="Registry.$ManagerCue" />
+        <run_actions ref="md.TM_Empire_Runtime.PublishAIState" />
+        <set_value name="Registry.$State" exact="'inactive'" />
+        <run_actions ref="md.TM_Empire_Runtime.PublishAIState" />
+        <set_value name="Registry.$StopReason" exact="'Управляющий снят с должности'" />
+        <signal_cue_instantly cue="Publish" />
+        <return value="'unbound'" />
+      </actions>
+    </library>
+    <cue name="Publish" instantiate="true" namespace="this">
+      <conditions>
+        <check_any>
+          <event_game_loaded />
+          <event_game_started />
+          <event_cue_signalled />
+        </check_any>
+      </conditions>
+      <actions>
+        <run_actions ref="ValidateBinding" />
+        <set_value name="player.entity.$tm_empire_projection" exact="table[$schema=1, $has_governor=false, $active=false, $reason=@Registry.$StopReason, $updated=player.age]" />
+        <do_if value="@Registry.$Governor.exists and @Registry.$Governor.isplayerowned and @Registry.$Station.isplayerowned and @Registry.$Module.isoperational and Registry.$Governor.roleobject == Registry.$Station and not Registry.$Governor.controlpost">
+          <set_value name="player.entity.$tm_empire_projection" exact="table[$schema=1, $has_governor=true, $active=false, $governor_name=Registry.$Governor.knownname, $station_name=Registry.$Station.knownname, $module_name=Registry.$Module.knownname, $reason='Управляющий назначен; подготовка к работе', $updated=player.age, $rows=[]]" />
+          <do_if value="Registry.$State == 'active' and @Registry.$ManagerCue.exists">
+            <set_value name="player.entity.$tm_empire_projection.$active" exact="true" />
+            <set_value name="player.entity.$tm_empire_projection.$reason" exact="'Управляющий выполняет штатный алгоритм империи'" />
+          </do_if>
+          <do_elseif value="Registry.$State == 'starting'">
+            <set_value name="player.entity.$tm_empire_projection.$reason" exact="'Запуск управляющего империей'" />
+          </do_elseif>
+          <do_elseif value="@Registry.$StopReason">
+            <set_value name="player.entity.$tm_empire_projection.$reason" exact="Registry.$StopReason" />
+          </do_elseif>
+          <run_actions ref="md.TM_Empire_Assets.ValidateStationSnapshot" />
+          <do_if value="md.TM_Empire_Assets.State.$Snapshot?">
+            <set_value name="player.entity.$tm_empire_projection.$inventory" exact="md.TM_Empire_Assets.State.$Snapshot" />
+            <set_value name="player.entity.$tm_empire_projection.$rows" exact="md.TM_Empire_Assets.State.$Snapshot.$rows" />
+            <set_value name="player.entity.$tm_empire_projection.$observations" exact="md.TM_Empire_Assets.State.$Snapshot.$observations" />
+          </do_if>
+          <set_value name="player.entity.$tm_empire_projection.$tasks" exact="[]" />
+          <run_actions ref="ReadNativeEconomicTasks" result="$NativeEconomicTasks" />
+          <append_list_elements name="player.entity.$tm_empire_projection.$tasks" other="$NativeEconomicTasks.$rows" />
+          <set_value name="player.entity.$tm_empire_projection.$economic_tasks_complete" exact="$NativeEconomicTasks.$complete" />
+          <run_actions ref="ReadNativeMilitaryTasks" result="$NativeMilitaryTasks" />
+          <append_list_elements name="player.entity.$tm_empire_projection.$tasks" other="$NativeMilitaryTasks.$rows" />
+          <set_value name="player.entity.$tm_empire_projection.$military_tasks_complete" exact="$NativeMilitaryTasks.$complete" />
+          <set_value name="$PersonnelGoal" exact="@Registry.$ManagerCue.$tm_empire_personnel_goal" />
+          <set_value name="$EconomyEvaluation" exact="@Registry.$ManagerCue.$tm_empire_economy_evaluation" />
+          <do_if value="Registry.$State == 'active' and $EconomyEvaluation and $EconomyEvaluation.$observed le player.age and $EconomyEvaluation.$observed ge player.age - 35min">
+            <set_value name="$EvaluationReason" exact="$EconomyEvaluation.$reason" />
+            <do_if value="$EconomyEvaluation.$report_stations? and $EconomyEvaluation.$product_sectors? and $EconomyEvaluation.$workforce_sectors? and $EconomyEvaluation.$build_sectors? and $EconomyEvaluation.$action_sectors? and $EconomyEvaluation.$no_action_records?">
+              <set_value name="$EvaluationReason" exact="'Штатный анализ завершён. Отчётов станций: %1; секторов с потребностями в продукции: %2, персонале: %3, строительстве: %4; с выбранными действиями: %5; решений без нового действия: %6. Это числа отчётов, не оценка исполнения.'.[$EconomyEvaluation.$report_stations, $EconomyEvaluation.$product_sectors, $EconomyEvaluation.$workforce_sectors, $EconomyEvaluation.$build_sectors, $EconomyEvaluation.$action_sectors, $EconomyEvaluation.$no_action_records]" />
+              <do_if value="not @$EconomyEvaluation.$no_action_complete">
+                <set_value name="$EvaluationReason" exact="$EvaluationReason + ' Список решений без действия показан частично.'" />
+              </do_if>
+            </do_if>
+            <append_to_list name="player.entity.$tm_empire_projection.$tasks" exact="table[$name='Экономика: оценка потребностей', $state='observed', $reason=$EvaluationReason, $issued=$EconomyEvaluation.$observed]" />
+          </do_if>
+          <do_if value="Registry.$State == 'active' and $PersonnelGoal.exists and $PersonnelGoal.state != cuestate.cancelled and $PersonnelGoal.state != cuestate.disabled and $PersonnelGoal.$LastObserved? and $PersonnelGoal.$LastObserved le player.age and $PersonnelGoal.$LastObserved ge player.age - 2min">
+            <append_to_list name="player.entity.$tm_empire_projection.$tasks" exact="table[$name='Персонал' + (if @$PersonnelGoal.$Target.exists then ': ' + $PersonnelGoal.$Target.knownname else ''), $state=if $PersonnelGoal.$LastResult == 'sent' then 'sent' else if $PersonnelGoal.$LastResult == 'observed' then 'observed' else if $PersonnelGoal.$LastResult == 'unknown' then 'unknown' else 'waiting', $reason=$PersonnelGoal.$LastReason, $issued=$PersonnelGoal.$LastObserved]" />
+          </do_if>
+          <do_for_each name="$Entry" in="[['Покупка корабля', @md.TM_Empire_Purchase.Request.$Pending], ['Строительный план', @md.TM_Empire_Construction.Request.$Receipt], ['Создание станции', @md.TM_Empire_Construction.Creation.$Receipt], ['Расширение станции', @md.TM_Empire_Construction.Expansion.$Receipt], ['Финансирование строительства', @md.TM_Empire_Construction.Funding.$Receipt], ['Лицензия участка', @md.TM_Empire_Construction.Plot.$Receipt], ['Резервирование участка', @md.TM_Empire_Construction.Reservation.$Receipt], ['Назначение строителя', @md.TM_Empire_Construction.Builder.$Receipt], ['Снабжение корабля', @md.TM_Empire_Supply.Request.$Receipt], ['Рабочий бюджет станции', @md.TM_Empire_Supply.StationFunding.$Receipt], ['Наём сотрудника', @md.TM_Empire_Personnel.Hire.$Receipt], ['Перевод сотрудника', @md.TM_Empire_Personnel.Transfer.$Receipt], ['Обучение сотрудника', @md.TM_Empire_Personnel.Training.$Receipt]]">
+            <set_value name="$Receipt" exact="$Entry.{2}" />
+            <set_value name="$Unreconciled" exact="$Receipt and $Receipt.$state != 'observed' and $Receipt.$state != 'delivered' and $Receipt.$state != 'completed' and $Receipt.$state != 'consumed' and $Receipt.$state != 'rejected' and $Receipt.$state != 'rejected_before_effect' and $Receipt.$state != 'revoked'" />
+            <do_if value="$Receipt and ((@Registry.$ManagerCue.exists and @$Receipt.$manager == Registry.$ManagerCue) or $Unreconciled)">
+              <set_value name="$Task" exact="table[$name=$Entry.{1}, $state=$Receipt.$state, $reason=if @$Receipt.$reason then $Receipt.$reason else 'Ожидается подтверждение результата', $issued=$Receipt.$issued]" />
+              <do_if value="$Receipt == @md.TM_Empire_Supply.Request.$Receipt and $Receipt.$state == 'consumed' and @$Receipt.$result.$state == 'completed'">
+                <set_value name="$Task.$reason" exact="'native_supply_delivery_observed'" />
+              </do_if>
+              <do_if value="$Receipt.$observed?">
+                <set_value name="$Task.$observed" exact="$Receipt.$observed" />
+              </do_if>
+              <do_if value="$Receipt == @md.TM_Empire_Personnel.Hire.$Receipt and $Receipt.$paid?">
+                <set_value name="$Task.$paid" exact="$Receipt.$paid / 1Cr" />
+              </do_if>
+              <do_if value="@$Receipt.$ship.exists">
+                <set_value name="$Task.$name" exact="$Task.$name + ': ' + $Receipt.$ship.knownname" />
+              </do_if>
+              <do_if value="@$Receipt.$reason == 'required_blueprints_missing' and @$Receipt.$missing">
+                <set_value name="$Task.$reason" exact="'Для строительного плана отсутствуют чертежи: '" />
+                <do_all exact="[32, $Receipt.$missing.count].min" counter="$MissingIndex">
+                  <set_value name="$Task.$reason" exact="$Task.$reason + (if $MissingIndex gt 1 then '; ' else '') + $Receipt.$missing.{$MissingIndex}.name" />
+                  <do_if value="$Receipt.$missing.{$MissingIndex} == ware.tm_module_empire_control_arg">
+                    <do_if value="not faction.player.haslicence.ceremonyally.{faction.argon}">
+                      <do_if value="faction.player.canholdlicence.ceremonyally.{faction.argon}">
+                        <set_value name="$Task.$reason" exact="$Task.$reason + '. Отношения с Аргоном достаточны; получите штатный ранг у представителя Аргона, затем купите чертёж'" />
+                      </do_if>
+                      <do_else>
+                        <set_value name="$Task.$reason" exact="$Task.$reason + '. Для доступа к чертежу нужны отношения, позволяющие получить союзный ранг у представителя Аргона'" />
+                      </do_else>
+                    </do_if>
+                    <do_elseif value="not faction.player.haslicence.station_gen_advanced.{faction.argon}">
+                      <set_value name="$Task.$reason" exact="$Task.$reason + '. Союзный ранг получен; проверьте доступ к расширенным строительным лицензиям Аргона'" />
+                    </do_elseif>
+                    <do_else>
+                      <set_value name="$Task.$reason" exact="$Task.$reason + '. Строительная лицензия получена; купите чертёж у представителя Аргона'" />
+                    </do_else>
+                  </do_if>
+                </do_all>
+              </do_if>
+              <do_if value="@$Receipt.$manager != @Registry.$ManagerCue">
+                <set_value name="$Task.$reason" exact="'Предыдущее назначение управляющего; результат ещё не согласован. ' + $Task.$reason" />
+              </do_if>
+              <set_value name="$Source" exact="@$Receipt.$source" />
+              <set_value name="$Target" exact="if @$Receipt.$target.exists then $Receipt.$target else if @$Receipt.$station.exists then $Receipt.$station else @$Receipt.$ship" />
+              <do_if value="$Source.exists">
+                <set_value name="$Task.$source" exact="$Source.knownname" />
+              </do_if>
+              <do_if value="$Target.exists">
+                <set_value name="$Task.$target" exact="$Target.knownname" />
+              </do_if>
+              <do_if value="@$Receipt.$actor.exists">
+                <set_value name="$Task.$person" exact="$Receipt.$actor.knownname" />
+              </do_if>
+              <do_elseif value="@$Receipt.$employee.exists">
+                <set_value name="$Task.$person" exact="$Receipt.$employee.knownname" />
+              </do_elseif>
+              <do_elseif value="$Target.exists and @$Receipt.$person and @$Target.people.{$Receipt.$person}.exists">
+                <set_value name="$Task.$person" exact="$Target.people.{$Receipt.$person}.name" />
+              </do_elseif>
+              <do_elseif value="$Source.exists and @$Receipt.$person and @$Source.people.{$Receipt.$person}.exists">
+                <set_value name="$Task.$person" exact="$Source.people.{$Receipt.$person}.name" />
+              </do_elseif>
+              <append_to_list name="player.entity.$tm_empire_projection.$tasks" exact="$Task" />
+            </do_if>
+          </do_for_each>
+        </do_if>
+        <raise_lua_event name="'TM_Empire.StatusUpdated'" />
+      </actions>
+    </cue>
+    <cue name="ProjectionWatch" namespace="this" checkinterval="5s">
+      <conditions>
+        <check_value value="player.entity.exists" />
+      </conditions>
+      <delay exact="5s" />
+      <actions>
+        <signal_cue_instantly cue="Publish" />
+        <reset_cue cue="this" />
+      </actions>
+    </cue>
+    <library name="DescribeNativeMilitaryGoal" purpose="run_actions" namespace="this">
+      <params>
+        <param name="GoalCue" />
+      </params>
+      <actions>
+        <set_value name="$Cursor" exact="$GoalCue" />
+        <do_all exact="32">
+          <do_if value="not $Cursor.exists">
+            <break />
+          </do_if>
+          <set_value name="$Name" exact="null" />
+          <set_value name="$Target" exact="null" />
+          <do_if value="$Cursor.static == md.TM_Empire_FactionSubgoal_Recon.Start">
+            <set_value name="$Name" exact="'Разведка'" />
+            <set_value name="$Target" exact="@$Cursor.$Target" />
+          </do_if>
+          <do_elseif value="$Cursor.static == md.TM_Empire_FactionSubgoal_DefendArea.Start">
+            <set_value name="$Name" exact="'Оборона района'" />
+            <set_value name="$Target" exact="@$Cursor.$DefendArea.$Sector" />
+          </do_elseif>
+          <do_elseif value="$Cursor.static == md.TM_Empire_FactionGoal_PatrolCoordinationService.Start">
+            <set_value name="$Name" exact="'Помощь по сигналу бедствия'" />
+            <set_value name="$Target" exact="@$Cursor.$TargetSector" />
+          </do_elseif>
+          <do_elseif value="$Cursor.static == md.TM_Empire_FactionGoal_Hold_Space.Start">
+            <set_value name="$Name" exact="'Удержание собственного сектора'" />
+            <set_value name="$Target" exact="@$Cursor.$Target" />
+          </do_elseif>
+          <do_elseif value="$Cursor.static == md.TM_Empire_FactionGoal_Invade_Space.Start">
+            <set_value name="$Name" exact="'Штатная цель вторжения'" />
+            <set_value name="$Target" exact="@$Cursor.$Target" />
+          </do_elseif>
+          <do_if value="$Name">
+            <do_if value="$Target.exists and $Target.isknown">
+              <return value="$Name + ': ' + $Target.knownname" />
+            </do_if>
+            <return value="$Name + '; место назначения неизвестно или недоступно'" />
+          </do_if>
+          <set_value name="$Cursor" exact="if @$Cursor.$OwnerGoal.exists then $Cursor.$OwnerGoal else @$Cursor.parent" />
+        </do_all>
+        <return value="null" />
+      </actions>
+    </library>
+    <library name="ReadNativeMilitaryTasks" purpose="run_actions">
+      <actions>
+        <set_value name="$Result" exact="table[$rows=[], $complete=true]" />
+        <set_value name="$Manager" exact="@Registry.$ManagerCue" />
+        <do_if value="Registry.$State != 'active' or not $Manager.exists or not $Manager.$Goals?">
+          <return value="$Result" />
+        </do_if>
+        <do_if value="$Manager.$Goals.count gt 64">
+          <set_value name="$Result.$complete" exact="false" />
+        </do_if>
+        <do_all exact="[64, $Manager.$Goals.count].min" counter="$GoalIndex">
+          <set_value name="$Goal" exact="$Manager.$Goals.{$GoalIndex}" />
+          <do_if value="not $Goal.exists or $Goal.state == cuestate.cancelled or $Goal.state == cuestate.disabled">
+            <continue />
+          </do_if>
+          <set_value name="$Name" exact="null" />
+          <do_if value="$Goal.static == md.TM_Empire_FactionGoal_Hold_Space.Start">
+            <set_value name="$Name" exact="'Оборона собственного сектора'" />
+          </do_if>
+          <do_elseif value="$Goal.static == md.TM_Empire_FactionGoal_Invade_Space.Start">
+            <set_value name="$Name" exact="'Военная цель штатного управляющего'" />
+          </do_elseif>
+          <do_elseif value="$Goal.static == md.TM_Empire_FactionGoal_PatrolCoordinationService.Start">
+            <set_value name="$Name" exact="'Патрульная координация'" />
+          </do_elseif>
+          <do_elseif value="$Goal.static == md.TM_Empire_FactionGoal_Plunder.Start">
+            <set_value name="$Name" exact="'Штатная цель перехвата'" />
+          </do_elseif>
+          <do_if value="not $Name">
+            <continue />
+          </do_if>
+          <do_if value="$Result.$rows.count ge 8">
+            <set_value name="$Result.$complete" exact="false" />
+            <break />
+          </do_if>
+          <set_value name="$Reason" exact="'Действующая стратегическая цель; наличие цели не означает назначение флота или выполнение приказа'" />
+          <do_if value="$Goal.static == md.TM_Empire_FactionGoal_Hold_Space.Start or $Goal.static == md.TM_Empire_FactionGoal_Invade_Space.Start">
+            <do_if value="$Goal.$Recon_LastUpdate? and $Goal.$Recon_NumObjects? and $Goal.$Recon_LastUpdate gt 0s and $Goal.$Recon_LastUpdate le player.age and $Goal.$Recon_LastUpdate ge player.age - 35min and $Goal.$Recon_NumObjects ge 0">
+              <set_value name="$Reason" exact="$Reason + '; разведка: объектов угрозы ' + $Goal.$Recon_NumObjects + ', наблюдение ' + $Goal.$Recon_LastUpdate" />
+            </do_if>
+            <do_else>
+              <set_value name="$Reason" exact="$Reason + '; свежая численность угрозы неизвестна, штатное предположение не является измерением'" />
+            </do_else>
+          </do_if>
+          <set_value name="$Task" exact="table[$name=$Name, $state='planned', $reason=$Reason, $observed=player.age]" />
+          <run_actions ref="ReadMilitaryExecution" result="$Execution">
+            <param name="Goal" value="$Goal" />
+            <param name="Manager" value="$Manager" />
+          </run_actions>
+          <do_if value="@$Execution.$selectionpartial">
+            <set_value name="$Task.$reason" exact="$Task.$reason + '; подбор флота выполнен по части доступных кораблей, штатная подцель продолжает выборку в следующих циклах'" />
+          </do_if>
+          <do_if value="$Execution.$ordered gt 0">
+            <do_if value="$Execution.$ships != ''">
+              <set_value name="$Task.$reason" exact="$Task.$reason + '; корабли с подтверждёнными приказами: ' + $Execution.$ships" />
+            </do_if>
+            <set_value name="$Task.$state" exact="'sent'" />
+            <set_value name="$Task.$reason" exact="$Task.$reason + '; действующие собственные приказы: кораблей ' + $Execution.$ordered + '. Выполнение задачи ещё не подтверждено'" />
+          </do_if>
+          <do_if value="$Execution.$lowammo gt 0">
+            <set_value name="$Task.$reason" exact="$Task.$reason + '; низкий боезапас по штатному порогу: кораблей ' + $Execution.$lowammo + '. Пополнение выполняет штатный обработчик снабжения; результат ещё не подтверждён'" />
+          </do_if>
+          <do_if value="$Execution.$refilldisabled gt 0">
+            <set_value name="$Task.$reason" exact="$Task.$reason + '; для ' + $Execution.$refilldisabled + ' кораблей с низким боезапасом пополнение отключено их игровой настройкой'" />
+          </do_if>
+          <do_if value="not $Execution.$complete">
+            <set_value name="$Task.$reason" exact="$Task.$reason + '; проверена ограниченная часть штатных групп'" />
+          </do_if>
+          <do_if value="@$Goal.$Target.exists and $Goal.$Target.isknown">
+            <set_value name="$Task.$target" exact="$Goal.$Target.knownname" />
+          </do_if>
+          <do_elseif value="$Goal.static == md.TM_Empire_FactionGoal_Invade_Space.Start">
+            <set_value name="$Task.$state" exact="'waiting'" />
+            <set_value name="$Task.$reason" exact="'Цель вторжения неизвестна игроку или больше не существует; использование кораблей для этой цели удерживается'" />
+          </do_elseif>
+          <append_to_list name="$Result.$rows" exact="$Task" />
+        </do_all>
+        <do_if value="not $Result.$rows.count">
+          <set_value name="$Reason" exact="if not @$Manager.$ClaimedSectors.count then 'Нет собственного или оспариваемого сектора для территориальной обороны; других действующих военных целей в этом снимке нет' else 'В этом снимке нет действующей военной цели; наличие секторов само по себе не подтверждает назначение флота'" />
+          <append_to_list name="$Result.$rows" exact="table[$name='Военная часть', $state='waiting', $reason=$Reason, $observed=player.age]" />
+        </do_if>
+        <return value="$Result" />
+      </actions>
+    </library>
+    <library name="ReadMilitaryExecution" purpose="run_actions">
+      <params>
+        <param name="Goal" />
+        <param name="Manager" />
+      </params>
+      <actions>
+        <set_value name="$Result" exact="table[$ordered=0, $ships='', $complete=true, $selectionpartial=false, $lowammo=0, $refilldisabled=0]" />
+        <do_if value="not $Goal.$CurrentPhaseSubGoals?">
+          <return value="$Result" />
+        </do_if>
+        <set_value name="$Seen" exact="table[]" />
+        <set_value name="$Work" exact="0" />
+        <do_if value="$Goal.$CurrentPhaseSubGoals.count gt 16">
+          <set_value name="$Result.$complete" exact="false" />
+        </do_if>
+        <do_all exact="[16, $Goal.$CurrentPhaseSubGoals.count].min" counter="$SubIndex">
+          <do_if value="$Work ge 32">
+            <set_value name="$Result.$complete" exact="false" />
+            <break />
+          </do_if>
+          <set_value name="$SubGoal" exact="@$Goal.$CurrentPhaseSubGoals.{$SubIndex}.$Cue" />
+          <do_if value="not $SubGoal.exists or not $SubGoal.$Ships?">
+            <continue />
+          </do_if>
+          <do_if value="@$SubGoal.$TM_WaitReason == 'military_ship_sample_incomplete'">
+            <set_value name="$Result.$selectionpartial" exact="true" />
+          </do_if>
+          <run_actions ref="ReadGoalLifetime" result="$Lifetime">
+            <param name="GoalCue" value="$SubGoal" />
+          </run_actions>
+          <do_if value="$Lifetime != 'available'">
+            <continue />
+          </do_if>
+          <do_if value="$SubGoal.$Ships.count gt 32">
+            <set_value name="$Result.$complete" exact="false" />
+          </do_if>
+          <do_all exact="[32, $SubGoal.$Ships.count].min" counter="$ShipIndex">
+            <do_if value="$Work ge 32">
+              <set_value name="$Result.$complete" exact="false" />
+              <break />
+            </do_if>
+            <set_value name="$Work" operation="add" exact="1" />
+            <set_value name="$Ship" exact="$SubGoal.$Ships.{$ShipIndex}" />
+            <do_if value="$Seen.{$Ship}?">
+              <continue />
+            </do_if>
+            <set_value name="$Seen.{$Ship}" exact="true" />
+            <run_actions ref="ReadOwnedOrderEvidence" result="$OrderEvidence">
+              <param name="Ship" value="$Ship" />
+              <param name="Goal" value="$SubGoal" />
+              <param name="Manager" value="$Manager" />
+            </run_actions>
+            <do_if value="not $OrderEvidence.$complete">
+              <set_value name="$Result.$complete" exact="false" />
+            </do_if>
+            <do_if value="$OrderEvidence.$confirmed">
+              <!-- Current owned-ship facts only; the stock handler retains
+                   selection, resource consumption and resupply execution. -->
+              <do_if value="($Ship.ammostorage.missile.capacity gt 0 and $Ship.ammostorage.missile.free gt $Ship.ammostorage.missile.capacity * 0.8) or ($Ship.ammostorage.countermeasure.capacity gt 0 and $Ship.ammostorage.countermeasure.free gt $Ship.ammostorage.countermeasure.capacity * 0.8)">
+                <set_value name="$Result.$lowammo" operation="add" exact="1" />
+                <!-- Match interrupt.restock's player setting inheritance.
+                     An incomplete chain remains unknown rather than disabled. -->
+                <set_value name="$RefillLevel" exact="$Ship.rawloadoutlevel" />
+                <set_value name="$RefillCommander" exact="$Ship" />
+                <set_value name="$RefillDepth" exact="0" />
+                <do_while value="$RefillLevel lt 0 and @$RefillCommander.commander.isoperational and $RefillDepth lt 16">
+                  <set_value name="$RefillCommander" exact="$RefillCommander.commander" />
+                  <set_value name="$RefillLevel" exact="$RefillCommander.rawloadoutlevel" />
+                  <set_value name="$RefillDepth" operation="add" exact="1" />
+                </do_while>
+                <do_if value="$RefillLevel lt 0 and not @$RefillCommander.commander.isoperational">
+                  <set_value name="$RefillLevel" exact="player.loadoutlevel" />
+                </do_if>
+                <do_if value="$RefillLevel == 0">
+                  <set_value name="$Result.$refilldisabled" operation="add" exact="1" />
+                </do_if>
+              </do_if>
+              <do_if value="$Result.$ordered lt 4">
+                <set_value name="$Result.$ships" exact="$Result.$ships + (if $Result.$ships == '' then '' else ', ') + $Ship.knownname + ' (' + $Ship.idcode + ')'" />
+              </do_if>
+              <do_elseif value="$Result.$ordered == 4">
+                <set_value name="$Result.$ships" exact="$Result.$ships + ', остальные корабли — в списке собственности'" />
+              </do_elseif>
+              <set_value name="$Result.$ordered" operation="add" exact="1" />
+            </do_if>
+          </do_all>
+        </do_all>
+        <return value="$Result" />
+      </actions>
+    </library>
+    <library name="ReadOwnedOrderEvidence" purpose="run_actions" namespace="this">
+      <params>
+        <param name="Ship" />
+        <param name="Goal" />
+        <param name="Manager" />
+      </params>
+      <actions>
+        <set_value name="$Result" exact="table[$confirmed=false, $complete=true, $reason='owned_order_unconfirmed']" />
+        <run_actions ref="ReadGoalLifetime" result="$Lifetime">
+          <param name="GoalCue" value="$Goal" />
+        </run_actions>
+        <do_if value="$Lifetime != 'available'">
+          <set_value name="$Result.$reason" exact="$Lifetime" />
+          <return value="$Result" />
+        </do_if>
+        <set_value name="$Claim" exact="@global.$TM_EmpireComponentRecords.$claim.{$Ship}" />
+        <do_if value="not $Ship.exists or not $Ship.isplayerowned or not $Ship.isoperational or not $Claim or $Claim.$manager != $Manager or $Claim.$goal != $Goal or $Claim.$state != 'sent' or @$Claim.$stoprequested or not $Claim.$orders?">
+          <return value="$Result" />
+        </do_if>
+        <do_if value="$Ship == player.controlled">
+          <set_value name="$Result.$reason" exact="'player_helm'" />
+          <return value="$Result" />
+        </do_if>
+        <do_if value="$Ship.orders.count gt 32">
+          <set_value name="$Result.$complete" exact="false" />
+          <set_value name="$Result.$reason" exact="'order_queue_inspection_incomplete'" />
+          <return value="$Result" />
+        </do_if>
+        <set_value name="$Protected" exact="$Ship.hasorderloop or @$Ship.order.isoverride or @$Ship.order.haspriority" />
+        <do_for_each name="$QueuedOrder" in="$Ship.orders">
+          <do_if value="$QueuedOrder.exists and ($QueuedOrder.isoverride or $QueuedOrder.haspriority)">
+            <set_value name="$Protected" exact="true" />
+            <break />
+          </do_if>
+        </do_for_each>
+        <do_if value="$Protected">
+          <set_value name="$Result.$reason" exact="'manual_or_priority_order'" />
+          <return value="$Result" />
+        </do_if>
+        <do_if value="$Claim.$orders.count gt 16">
+          <set_value name="$Result.$complete" exact="false" />
+        </do_if>
+        <do_all exact="[16, $Claim.$orders.count].min" counter="$OrderIndex">
+          <set_value name="$Order" exact="$Claim.$orders.{$OrderIndex}" />
+          <do_if value="$Order.exists and $Order.object == $Ship and ($Ship.orders.indexof.{$Order} or $Ship.defaultorder == $Order or $Ship.order == $Order)">
+            <set_value name="$Result.$confirmed" exact="true" />
+            <set_value name="$Result.$reason" exact="'owned_order_observed'" />
+            <return value="$Result" />
+          </do_if>
+        </do_all>
+        <return value="$Result" />
+      </actions>
+    </library>
+    <library name="ReadNativeEconomicTasks" purpose="run_actions">
+      <actions>
+        <set_value name="$Result" exact="table[$rows=[], $complete=true]" />
+        <set_value name="$Economy" exact="@Registry.$ManagerCue.$tm_empire_economy_cue" />
+        <do_if value="Registry.$State != 'active' or not $Economy.exists">
+          <return value="$Result" />
+        </do_if>
+        <set_value name="$Reports" exact="@$Economy.$ActionReports" />
+        <do_if value="typeof $Reports != datatype.table">
+          <set_value name="$Result.$complete" exact="false" />
+          <set_value name="$Reports" exact="table[]" />
+        </do_if>
+        <set_value name="$Sectors" exact="$Reports.keys.list" />
+        <do_if value="$Sectors.count gt 32">
+          <set_value name="$Result.$complete" exact="false" />
+        </do_if>
+        <do_all exact="[32, $Sectors.count].min" counter="$SectorIndex">
+          <set_value name="$Sector" exact="$Sectors.{$SectorIndex}" />
+          <set_value name="$Actions" exact="$Reports.{$Sector}" />
+          <do_if value="$Actions.count gt 32">
+            <set_value name="$Result.$complete" exact="false" />
+          </do_if>
+          <do_all exact="[32, $Actions.count].min" counter="$ActionIndex">
+            <do_if value="$Result.$rows.count ge 8">
+              <set_value name="$Result.$complete" exact="false" />
+              <break />
+            </do_if>
+            <set_value name="$Action" exact="$Actions.{$ActionIndex}" />
+            <do_if value="not $Action.$StartTime? or $Action.$StartTime gt player.age or not @$Action.$Ware or not $Sector.exists">
+              <set_value name="$Result.$complete" exact="false" />
+              <continue />
+            </do_if>
+            <set_value name="$Type" exact="@$Action.$ActionDef.$Type" />
+            <set_value name="$ActionState" exact="'planned'" />
+            <set_value name="$ActionReason" exact="$Sector.knownname + '; выбран штатным алгоритмом по экономическому отчёту. Результат исполнения проверяется отдельно'" />
+            <do_if value="@$Action.$ActionDef.$TM_SearchCue.exists and not @$Action.$ActionDef.$TM_SearchCue.$TM_SearchCommitted">
+              <set_value name="$ActionState" exact="'waiting'" />
+              <set_value name="$ActionReason" exact="$Sector.knownname + '; подходящий собственный корабль ищется порциями; поиск ещё не завершён, отсутствие транспорта не установлено'" />
+            </do_if>
+            <do_if value="($Type == '$request_commandeerable_freighter' or $Type == '$request_prio_commandeerable_freighter') and @$Action.$ActionDef.$Ship.exists">
+              <set_value name="$EconomicShip" exact="$Action.$ActionDef.$Ship" />
+              <set_value name="$EconomicGoal" exact="@global.$TM_EmpireComponentRecords.$claim.{$EconomicShip}.$goal" />
+              <set_value name="$ActionState" exact="'unknown'" />
+              <set_value name="$ActionReason" exact="$Sector.knownname + '; выбран корабль ' + $EconomicShip.knownname + '; действующий собственный приказ ещё не подтверждён'" />
+              <do_if value="@$EconomicGoal.$ActionDefinition == $Action.$ActionDef">
+                <run_actions ref="ReadOwnedOrderEvidence" result="$EconomicOrder">
+                  <param name="Ship" value="$EconomicShip" />
+                  <param name="Goal" value="$EconomicGoal" />
+                  <param name="Manager" value="Registry.$ManagerCue" />
+                </run_actions>
+                <do_if value="not $EconomicOrder.$complete">
+                  <set_value name="$Result.$complete" exact="false" />
+                </do_if>
+                <do_if value="$EconomicOrder.$confirmed">
+                  <set_value name="$ActionState" exact="'sent'" />
+                  <set_value name="$ActionReason" exact="$Sector.knownname + '; корабль ' + $EconomicShip.knownname + ' (' + $EconomicShip.idcode + ') имеет действующий приказ этого управляющего; результат доставки или добычи проверяется отдельно'" />
+                </do_if>
+                <do_elseif value="$EconomicOrder.$reason == 'player_helm' or $EconomicOrder.$reason == 'manual_or_priority_order' or $EconomicOrder.$reason == 'order_queue_inspection_incomplete'">
+                  <set_value name="$ActionState" exact="'waiting'" />
+                  <set_value name="$ActionReason" exact="$Sector.knownname + '; действие уступает управлению кораблём: ' + $EconomicOrder.$reason" />
+                </do_elseif>
+              </do_if>
+            </do_if>
+            <do_if value="$Action.$ActionDef.$TM_PurchaseKey?">
+              <set_value name="$ActionState" exact="'unknown'" />
+              <set_value name="$ActionReason" exact="$Sector.knownname + '; выбран обычный оплачиваемый заказ корабля; результат согласуется по квитанции, повтор удерживается'" />
+              <do_if value="@md.TM_Empire_Purchase.Request.$Pending.$key == $Action.$ActionDef.$TM_PurchaseKey">
+                <set_value name="$ActionState" exact="md.TM_Empire_Purchase.Request.$Pending.$state" />
+              </do_if>
+              <do_elseif value="@$Action.$ActionDef.$TM_PurchaseState == 'delivered' and @$Action.$ActionDef.$Ship.exists">
+                <set_value name="$ActionState" exact="'observed'" />
+                <set_value name="$ActionReason" exact="$Sector.knownname + '; оплаченный корабль ' + $Action.$ActionDef.$Ship.knownname + ' получен и передан штатному экономическому поручению; результат торговли оценивается отдельно'" />
+              </do_elseif>
+              <do_elseif value="@$Action.$ActionDef.$TM_PurchaseState == 'failed'">
+                <set_value name="$ActionState" exact="'waiting'" />
+                <set_value name="$ActionReason" exact="$Sector.knownname + '; заказ отклонён до оплаты: ' + @$Action.$ActionDef.$WaitReason" />
+              </do_elseif>
+            </do_if>
+            <set_value name="$Description" exact="if $Type == '$request_commandeerable_freighter' or $Type == '$request_prio_commandeerable_freighter' then 'Назначение имеющегося транспорта' else if $Type == '$request_freighter' or $Type == '$request_priority_freighter' then 'Запрос транспортного корабля' else if $Type == '$request_production' then 'Развитие производства' else if $Type == '$request_factory' then 'Новая производственная станция' else if $Type == '$pause_production' then 'Приостановка производства' else if $Type == '$remove_factory' then 'Вывод производственной станции' else 'Экономическое действие'" />
+            <do_if value="@$Action.$ActionDef.$TM_TradeProvision and @$Action.$ActionDef.$TM_Requester.isplayerowned">
+              <set_value name="$ActionReason" exact="$ActionReason + '; станция ' + $Action.$ActionDef.$TM_Requester.knownname + ' нуждается в торговом подчинённом по штатной проверке Upkeep; торговлю выполняет менеджер станции'" />
+            </do_if>
+            <append_to_list name="$Result.$rows" exact="table[$name=$Description + ': ' + $Action.$Ware.name, $state=$ActionState, $reason=$ActionReason, $issued=$Action.$StartTime]" />
+          </do_all>
+        </do_all>
+        <do_if value="$Economy.$TM_NoActionRecords?">
+          <do_if value="not $Economy.$TM_NoActionRecordsComplete">
+            <set_value name="$Result.$complete" exact="false" />
+          </do_if>
+          <do_all exact="[32, $Economy.$TM_NoActionRecords.count].min" counter="$DecisionIndex">
+            <do_if value="$Result.$rows.count ge 8">
+              <set_value name="$Result.$complete" exact="false" />
+              <break />
+            </do_if>
+            <set_value name="$Decision" exact="$Economy.$TM_NoActionRecords.{$DecisionIndex}" />
+            <do_if value="$Decision.$observed le player.age and $Decision.$observed ge player.age - 35min and $Decision.$sector.exists">
+              <append_to_list name="$Result.$rows" exact="table[$name='Экономика: ' + $Decision.$ware.name + ' (' + $Decision.$sector.knownname + ')', $state='waiting', $reason=$Decision.$reason, $issued=$Decision.$observed]" />
+            </do_if>
+          </do_all>
+        </do_if>
+        <return value="$Result" />
+      </actions>
+    </library>
+    <library name="ReadStationTradeNeed" purpose="run_actions" namespace="this">
+      <params><param name="Station" /></params>
+      <actions>
+        <set_value name="$Result" exact="table[$needed=false, $complete=true, $ware=null]" />
+        <do_if value="not $Station.isplayerowned or not $Station.isoperational or not @$Station.tradenpc.exists"><return value="$Result" /></do_if>
+        <set_value name="$Subordinates" exact="$Station.subordinates.{assignment.trade}" />
+        <do_if value="$Subordinates.count gt 32 or $Station.tradewares.list.count gt 32 or $Station.resources.pure.list.count gt 32">
+          <set_value name="$Result.$complete" exact="false" /><return value="$Result" />
+        </do_if>
+        <!-- Upkeep_Management's native trade-then-pure-resource check, with
+             its existing suitability library; do not replace station trading. -->
+        <set_value name="$HasWares" exact="false" />
+        <set_value name="$Suitable" exact="false" />
+        <do_for_each name="$WareList" in="[$Station.tradewares.list, $Station.resources.pure.list]">
+          <set_value name="$Wares" exact="[]" />
+          <do_for_each name="$Ware" in="$WareList">
+            <do_if value="not $Ware.hasanytag.[tag.minable, tag.recycling]">
+              <append_to_list name="$Wares" exact="$Ware" />
+              <do_if value="not $Result.$ware"><set_value name="$Result.$ware" exact="$Ware" /></do_if>
+            </do_if>
+          </do_for_each>
+          <do_if value="$Wares.count">
+            <set_value name="$HasWares" exact="true" />
+            <do_for_each name="$Subordinate" in="$Subordinates">
+              <run_actions ref="md.Upkeep.Needs_Subordinate_Trade_Ship_Lib" result="$Suitable">
+                <param name="Ship" value="$Subordinate" /><param name="Wares" value="$Wares" />
+              </run_actions>
+              <do_if value="$Suitable"><break /></do_if>
+            </do_for_each>
+          </do_if>
+          <do_if value="$Suitable"><break /></do_if>
+        </do_for_each>
+        <set_value name="$Result.$needed" exact="$HasWares and not $Suitable" />
+        <return value="$Result" />
+      </actions>
+    </library>
+  </cues>
+</mdscript>

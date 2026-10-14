@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='utf-8'?>
+<diff>
+  <add sel="/index">
+    <entry name="tm_empire_control_arg_macro" value="extensions\tm_empire_management\assets\structures\defence\macros\tm_empire_control_arg_macro" />
+  </add>
+</diff>

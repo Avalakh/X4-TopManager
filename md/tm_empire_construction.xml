@@ -1,0 +1,2168 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mdscript name="TM_Empire_Construction">
+  <cues>
+    <cue name="Request" namespace="this" />
+    <cue name="Builder" namespace="this" />
+    <cue name="Funding" namespace="this" />
+    <cue name="Expansion" namespace="this" />
+    <cue name="Plot" namespace="this" />
+    <cue name="Reservation" namespace="this" />
+    <cue name="Creation" namespace="this" />
+    <library name="RequestStationPlot" purpose="run_actions" namespace="this">
+      <params>
+        <param name="ManagerCue" />
+        <param name="GoalCue" />
+        <param name="Sector" />
+        <param name="Position" />
+        <param name="Size" />
+        <param name="ModuleSet" />
+      </params>
+      <actions>
+        <do_if value="@Reservation.$Receipt and Reservation.$Receipt.$state != 'consumed' and Reservation.$Receipt.$state != 'rejected_before_effect'">
+          <return value="'previous_station_plot_unreconciled'" />
+        </do_if>
+        <do_if value="not $ManagerCue.exists or not $GoalCue.exists">
+          <return value="'construction_goal_missing'" />
+        </do_if>
+        <run_actions ref="md.TM_Empire_Runtime.ReadGoalLifetime" result="$Reason"><param name="GoalCue" value="$GoalCue" /></run_actions>
+        <do_if value="$Reason != 'available'"><return value="$Reason" /></do_if>
+        <run_actions ref="md.TM_Empire_Runtime.CanActForGovernor" result="$Reason">
+          <param name="Actor" value="$ManagerCue.$Governor" />
+          <param name="Station" value="$ManagerCue.$GovernorStation" />
+          <param name="Module" value="$ManagerCue.$GovernorModule" />
+          <param name="ManagerCue" value="$ManagerCue" />
+        </run_actions>
+        <do_if value="$Reason != 'available'">
+          <return value="$Reason" />
+        </do_if>
+        <do_if value="not $Sector.exists or not $Sector.isclass.sector or not $Sector.isknown or typeof $Position != datatype.position or typeof $Size != datatype.table or typeof $ModuleSet != datatype.string">
+          <return value="'station_plot_geometry_unavailable'" />
+        </do_if>
+        <do_if value="$Size.$x le 0m or $Size.$y le 0m or $Size.$z le 0m">
+          <return value="'station_plot_size_invalid'" />
+        </do_if>
+        <set_value name="$Radius" exact="($Size.$x + $Size.$y + $Size.$z) / 2" />
+        <get_safe_pos sector="$Sector" value="$Position" radius="$Radius" includeplotbox="true" includereservations="true" result="$SafePosition" />
+        <do_if value="typeof $SafePosition != datatype.position">
+          <return value="'native_plot_position_unavailable'" />
+        </do_if>
+        <set_value name="Reservation.$Serial" exact="@Reservation.$Serial + 1" />
+        <set_value name="$Key" exact="'reservation_' + Reservation.$Serial + '_' + player.age" />
+        <set_value name="Reservation.$Receipt" exact="table[$state='approved', $key=$Key, $manager=$ManagerCue, $goal=$GoalCue, $sector=$Sector, $position=$SafePosition, $size=$Size, $set=$ModuleSet, $issued=player.age]" />
+        <set_value name="player.entity.$tm_empire_reservation_request" exact="table[$schema=1, $state='approved', $key=$Key, $sector=$Sector, $set=$ModuleSet, $position=table[$x=$SafePosition.x, $y=$SafePosition.y, $z=$SafePosition.z], $size=table[$x=$Size.$x, $y=$Size.$y, $z=$Size.$z]]" />
+        <raise_lua_event name="'TM_Empire.ReserveStationPlot'" />
+        <return value="$Key" />
+      </actions>
+    </library>
+    <library name="ObserveStationPlot" purpose="run_actions" namespace="this">
+      <actions>
+        <set_value name="$Receipt" exact="@Reservation.$Receipt" />
+        <do_if value="not $Receipt or $Receipt.$state == 'observed' or $Receipt.$state == 'consumed' or $Receipt.$state == 'rejected_before_effect'">
+          <return value="'no_station_plot_pending'" />
+        </do_if>
+        <set_value name="$Native" exact="@player.entity.$tm_empire_reservation_receipt" />
+        <do_if value="$Native and $Native.$key == $Receipt.$key">
+          <set_value name="$Station" exact="@$Native.$station" />
+          <do_if value="$Native.$state == 'reserved' and $Station.exists and $Station.isplayerowned and $Station.sector == $Receipt.$sector and $Station.buildplot.exists and $Station.buildstorage.exists">
+            <set_value name="Reservation.$Receipt.$state" exact="'observed'" />
+            <set_value name="Reservation.$Receipt.$station" exact="$Station" />
+            <set_value name="Reservation.$Receipt.$observed" exact="player.age" />
+            <set_value name="player.entity.$tm_empire_reservation_receipt.$state" exact="'reconciled'" />
+            <return value="'observed'" />
+          </do_if>
+          <set_value name="Reservation.$Receipt.$state" exact="'unknown'" />
+          <return value="'station_plot_not_confirmed'" />
+        </do_if>
+        <do_if value="@player.entity.$tm_empire_reservation_request.$key == $Receipt.$key and player.entity.$tm_empire_reservation_request.$state == 'revoked'">
+          <set_value name="Reservation.$Receipt.$state" exact="'rejected_before_effect'" />
+          <return value="'reservation_revoked_before_effect'" />
+        </do_if>
+        <do_if value="@player.entity.$tm_empire_reservation_request.$key == $Receipt.$key and player.entity.$tm_empire_reservation_request.$state == 'approved'">
+          <set_value name="$Lifecycle" exact="'construction_goal_missing'" />
+          <do_if value="$Receipt.$manager.exists and $Receipt.$goal.exists">
+            <run_actions ref="md.TM_Empire_Runtime.CanActForGovernor" result="$Lifecycle">
+              <param name="Actor" value="$Receipt.$manager.$Governor" />
+              <param name="Station" value="$Receipt.$manager.$GovernorStation" />
+              <param name="Module" value="$Receipt.$manager.$GovernorModule" />
+              <param name="ManagerCue" value="$Receipt.$manager" />
+            </run_actions>
+          </do_if>
+          <do_if value="$Lifecycle != 'available'">
+            <set_value name="player.entity.$tm_empire_reservation_request.$state" exact="'revoked'" />
+            <set_value name="Reservation.$Receipt.$state" exact="'rejected_before_effect'" />
+            <return value="$Lifecycle" />
+          </do_if>
+        </do_if>
+        <do_if value="player.age gt $Receipt.$issued + 1min">
+          <set_value name="Reservation.$Receipt.$state" exact="'unknown'" />
+        </do_if>
+        <return value="Reservation.$Receipt.$state" />
+      </actions>
+    </library>
+    <library name="ReadReservedStationPlot" purpose="run_actions" namespace="this">
+      <params>
+        <param name="Key" />
+        <param name="ManagerCue" />
+        <param name="GoalCue" />
+      </params>
+      <actions>
+        <set_value name="$Receipt" exact="@Reservation.$Receipt" />
+        <do_if value="not $Receipt or $Receipt.$key != $Key or $Receipt.$manager != $ManagerCue or $Receipt.$goal != $GoalCue">
+          <return value="table[$state='unknown', $reason='reservation_key_or_goal_mismatch']" />
+        </do_if>
+        <do_if value="$Receipt.$state == 'observed' and (not $Receipt.$station.exists or not $Receipt.$station.isplayerowned or $Receipt.$station.sector != $Receipt.$sector)">
+          <return value="table[$state='unknown', $reason='reserved_station_lost']" />
+        </do_if>
+        <return value="$Receipt" />
+      </actions>
+    </library>
+    <library name="AcknowledgeReservedStationPlot" purpose="run_actions" namespace="this">
+      <params>
+        <param name="Key" />
+        <param name="ManagerCue" />
+        <param name="GoalCue" />
+        <param name="Station" />
+      </params>
+      <actions>
+        <run_actions ref="ReadReservedStationPlot" result="$Receipt">
+          <param name="Key" value="$Key" />
+          <param name="ManagerCue" value="$ManagerCue" />
+          <param name="GoalCue" value="$GoalCue" />
+        </run_actions>
+        <do_if value="$Receipt.$state != 'observed' or @$Receipt.$station != $Station">
+          <return value="'reservation_not_delivered_to_goal'" />
+        </do_if>
+        <set_value name="Reservation.$Receipt.$state" exact="'consumed'" />
+        <set_value name="Reservation.$Receipt.$acknowledged" exact="player.age" />
+        <return value="'consumed'" />
+      </actions>
+    </library>
+    <cue name="StationPlotLoaded" instantiate="true" namespace="this">
+      <conditions><event_game_loaded /></conditions>
+      <actions>
+        <!-- Capture the saved receipt before any post-load request can replace it. -->
+        <signal_cue_instantly cue="StationPlotLoadedReconcile" param="@Reservation.$Receipt.$key" />
+      </actions>
+    </cue>
+    <cue name="StationPlotLoadedReconcile" instantiate="true" namespace="this">
+      <conditions><event_cue_signalled /></conditions>
+      <delay exact="5s" />
+      <actions>
+        <do_if value="event.param and event.param == @Reservation.$Receipt.$key">
+        <run_actions ref="ObserveStationPlot" />
+        <set_value name="$Receipt" exact="@Reservation.$Receipt" />
+        <set_value name="$Request" exact="@player.entity.$tm_empire_reservation_request" />
+        <do_if value="$Receipt and $Receipt.$state == 'approved' and $Request and $Request.$key == $Receipt.$key and $Request.$state == 'approved' and @player.entity.$tm_empire_reservation_receipt.$key != $Receipt.$key">
+          <set_value name="$Reason" exact="'construction_goal_missing'" />
+          <do_if value="$Receipt.$manager.exists and $Receipt.$goal.exists">
+            <run_actions ref="md.TM_Empire_Runtime.CanActForGovernor" result="$Reason">
+              <param name="Actor" value="$Receipt.$manager.$Governor" />
+              <param name="Station" value="$Receipt.$manager.$GovernorStation" />
+              <param name="Module" value="$Receipt.$manager.$GovernorModule" />
+              <param name="ManagerCue" value="$Receipt.$manager" />
+            </run_actions>
+          </do_if>
+          <do_if value="$Reason == 'available'">
+            <raise_lua_event name="'TM_Empire.ReserveStationPlot'" />
+          </do_if>
+          <do_else>
+            <set_value name="player.entity.$tm_empire_reservation_request.$state" exact="'revoked'" />
+            <set_value name="Reservation.$Receipt.$state" exact="'rejected_before_effect'" />
+          </do_else>
+        </do_if>
+              </do_if>
+      </actions>
+    </cue>
+    <cue name="StationPlotSubmitted" instantiate="true" namespace="this">
+      <conditions>
+        <event_ui_triggered screen="'TM_Empire_Construction'" control="'StationPlotSubmitted'" />
+      </conditions>
+      <actions>
+        <run_actions ref="ObserveStationPlot" />
+      </actions>
+    </cue>
+    <cue name="StationPlotWatch" namespace="this" checkinterval="5s">
+      <conditions>
+        <check_value value="@Reservation.$Receipt.$state == 'approved' or @Reservation.$Receipt.$state == 'unknown'" />
+      </conditions>
+      <delay exact="5s" />
+      <actions>
+        <run_actions ref="ObserveStationPlot" />
+        <reset_cue cue="this" />
+      </actions>
+    </cue>
+    <library name="CheckPlotConstructionBoundary" purpose="run_actions" namespace="this">
+      <params>
+        <param name="ManagerCue" />
+        <param name="GoalCue" />
+        <param name="Station" />
+        <param name="Build" default="null" />
+        <param name="Extend" default="false" />
+      </params>
+      <actions>
+        <do_if value="not $ManagerCue.exists or not $GoalCue.exists">
+          <return value="'construction_goal_missing'" />
+        </do_if>
+        <run_actions ref="md.TM_Empire_Runtime.ReadGoalLifetime" result="$Reason"><param name="GoalCue" value="$GoalCue" /></run_actions>
+        <do_if value="$Reason != 'available'"><return value="$Reason" /></do_if>
+        <do_if value="not $Station.exists or not $Station.isplayerowned or not $Station.buildstorage.exists">
+          <return value="'owned_expansion_station_unavailable'" />
+        </do_if>
+        <do_if value="@global.$TM_EmpireComponentRecords.$generation.{$Station}">
+          <return value="'station_generation_pending'" />
+        </do_if>
+        <do_if value="$Build">
+          <do_if value="$Extend or not $Build.exists or not $Build.isexpansion or $Build.buildobject != $Station or $Build.object != $Station.buildstorage">
+            <return value="'queued_plot_licence_task_changed'" />
+          </do_if>
+          <do_if value="@global.$TM_EmpireComponentRecords.$construction_claim.{$Station}.$manager != $ManagerCue or @global.$TM_EmpireComponentRecords.$construction_claim.{$Station}.$goal != $GoalCue or @global.$TM_EmpireComponentRecords.$construction_claim.{$Station}.$build != $Build">
+            <return value="'queued_plot_licence_not_owned_by_goal'" />
+          </do_if>
+          <do_if value="not $Station.isoperational and (@global.$TM_EmpireComponentRecords.$creation.{$Station}.$state != 'adopted' or @global.$TM_EmpireComponentRecords.$creation.{$Station}.$manager != $ManagerCue or @global.$TM_EmpireComponentRecords.$creation.{$Station}.$goal != $GoalCue or @global.$TM_EmpireComponentRecords.$creation.{$Station}.$build != $Build)">
+            <return value="'new_station_creation_not_correlated'" />
+          </do_if>
+          <do_if value="$Station.buildstorage.builds.queued.count + $Station.buildstorage.builds.inprogress.count != 1 or (not $Station.buildstorage.builds.queued.indexof.{$Build} and not $Station.buildstorage.builds.inprogress.indexof.{$Build})">
+            <return value="'queued_plot_licence_queue_changed'" />
+          </do_if>
+        </do_if>
+        <do_elseif value="@global.$TM_EmpireComponentRecords.$construction_claim.{$Station} or $Station.buildstorage.builds.queued.count or $Station.buildstorage.builds.inprogress.count">
+          <return value="'station_construction_already_claimed'" />
+        </do_elseif>
+        <do_elseif value="not $Station.isoperational">
+          <return value="'owned_expansion_station_unavailable'" />
+        </do_elseif>
+        <return value="'available'" />
+      </actions>
+    </library>
+    <library name="RequestPlotChange" purpose="run_actions" namespace="this">
+      <params>
+        <param name="ManagerCue" />
+        <param name="GoalCue" />
+        <param name="Station" />
+        <param name="Budget" />
+        <param name="Extend" default="false" />
+        <param name="Build" default="null" />
+      </params>
+      <actions>
+        <do_if value="@Plot.$Receipt and Plot.$Receipt.$state != 'observed' and Plot.$Receipt.$state != 'rejected_before_effect'">
+          <return value="'previous_plot_change_unreconciled'" />
+        </do_if>
+        <do_if value="@player.entity.$tm_empire_plot_receipt and player.entity.$tm_empire_plot_receipt.$state != 'reconciled'">
+          <return value="'previous_plot_payment_unreconciled'" />
+        </do_if>
+        <do_if value="not $ManagerCue.exists or not $GoalCue.exists">
+          <return value="'construction_goal_missing'" />
+        </do_if>
+        <run_actions ref="md.TM_Empire_Runtime.CanActForGovernor" result="$Reason">
+          <param name="Actor" value="$ManagerCue.$Governor" />
+          <param name="Station" value="$ManagerCue.$GovernorStation" />
+          <param name="Module" value="$ManagerCue.$GovernorModule" />
+          <param name="ManagerCue" value="$ManagerCue" />
+        </run_actions>
+        <do_if value="$Reason != 'available'">
+          <return value="$Reason" />
+        </do_if>
+        <do_if value="not $Station.exists or not $Station.isplayerowned or not $Station.buildplot.exists or not $Station.buildstorage.exists">
+          <return value="'owned_expansion_station_unavailable'" />
+        </do_if>
+        <do_if value="@global.$TM_EmpireComponentRecords.$plot_claim.{$Station}">
+          <return value="'station_plot_already_claimed'" />
+        </do_if>
+        <run_actions ref="CheckPlotConstructionBoundary" result="$Boundary">
+          <param name="ManagerCue" value="$ManagerCue" />
+          <param name="GoalCue" value="$GoalCue" />
+          <param name="Station" value="$Station" />
+          <param name="Build" value="$Build" />
+          <param name="Extend" value="$Extend" />
+        </run_actions>
+        <do_if value="$Boundary != 'available'">
+          <return value="$Boundary" />
+        </do_if>
+        <do_if value="$Budget lt 0Cr or $Budget gt player.money">
+          <return value="'plot_licence_budget_missing'" />
+        </do_if>
+        <set_value name="$Bounds" exact="$Station.buildplot.max" />
+        <set_value name="$Center" exact="$Station.buildplot.center" />
+        <set_value name="Plot.$Serial" exact="@Plot.$Serial + 1" />
+        <set_value name="$Key" exact="'plot_' + Plot.$Serial + '_' + player.age" />
+        <set_value name="Plot.$Receipt" exact="table[$state='quote_requested', $reason='native_plot_quote_pending', $key=$Key, $manager=$ManagerCue, $goal=$GoalCue, $station=$Station, $sector=$Station.sector, $position=$Station.position, $base=$Station.plannedconstruction.sequence, $extend=$Extend, $budget=$Budget, $x=$Bounds.x, $y=$Bounds.y, $z=$Bounds.z, $cx=$Center.x, $cy=$Center.y, $cz=$Center.z, $issued=player.age]" />
+        <set_value name="global.$TM_EmpireComponentRecords.$plot_claim.{$Station}" exact="table[$key=$Key, $manager=$ManagerCue, $goal=$GoalCue, $state='quoting']" />
+        <set_value name="Plot.$Receipt.$build" exact="$Build" />
+        <set_value name="player.entity.$tm_empire_plot_request" exact="table[$schema=1, $key=$Key, $state='quote_requested', $station=$Station, $budget=$Budget, $extend=$Extend, $newconstruction=not $Station.isoperational]" />
+        <raise_lua_event name="'TM_Empire.QuotePlot'" />
+        <return value="$Key" />
+      </actions>
+    </library>
+    <library name="RejectUnchangedPlot" purpose="run_actions" namespace="this">
+      <params>
+        <param name="Reason" />
+      </params>
+      <actions>
+        <do_if value="@Plot.$Receipt.$state != 'quote_requested'">
+          <return value="'plot_may_have_effect'" />
+        </do_if>
+        <set_value name="Plot.$Receipt.$state" exact="'rejected_before_effect'" />
+        <set_value name="Plot.$Receipt.$reason" exact="$Reason" />
+        <do_if value="@player.entity.$tm_empire_plot_request.$key == Plot.$Receipt.$key">
+          <set_value name="player.entity.$tm_empire_plot_request.$state" exact="'revoked'" />
+        </do_if>
+        <do_if value="Plot.$Receipt.$station.exists and @global.$TM_EmpireComponentRecords.$plot_claim.{Plot.$Receipt.$station}.$key == Plot.$Receipt.$key">
+          <remove_value name="global.$TM_EmpireComponentRecords.$plot_claim.{Plot.$Receipt.$station}" />
+        </do_if>
+        <return value="'rejected_before_effect'" />
+      </actions>
+    </library>
+    <library name="CommitQuotedPlot" purpose="run_actions" namespace="this">
+      <actions>
+        <set_value name="$Receipt" exact="@Plot.$Receipt" />
+        <set_value name="$Request" exact="@player.entity.$tm_empire_plot_request" />
+        <do_if value="not $Receipt or $Receipt.$state != 'quote_requested' or @$Request.$key != $Receipt.$key">
+          <return value="'no_plot_quote_pending'" />
+        </do_if>
+        <do_if value="$Request.$state == 'quote_failed' or $Request.$state == 'revoked'">
+          <run_actions ref="RejectUnchangedPlot">
+            <param name="Reason" value="@$Request.$reason" />
+          </run_actions>
+          <return value="'plot_quote_rejected'" />
+        </do_if>
+        <do_if value="not $Receipt.$manager.exists or not $Receipt.$goal.exists">
+          <run_actions ref="RejectUnchangedPlot">
+            <param name="Reason" value="'construction_goal_missing'" />
+          </run_actions>
+          <return value="'construction_goal_missing'" />
+        </do_if>
+        <run_actions ref="md.TM_Empire_Runtime.CanActForGovernor" result="$Reason">
+          <param name="Actor" value="$Receipt.$manager.$Governor" />
+          <param name="Station" value="$Receipt.$manager.$GovernorStation" />
+          <param name="Module" value="$Receipt.$manager.$GovernorModule" />
+          <param name="ManagerCue" value="$Receipt.$manager" />
+        </run_actions>
+        <do_if value="$Reason != 'available'">
+          <run_actions ref="RejectUnchangedPlot">
+            <param name="Reason" value="$Reason" />
+          </run_actions>
+          <return value="$Reason" />
+        </do_if>
+        <do_if value="$Request.$state != 'quote_ready'">
+          <return value="'native_plot_quote_pending'" />
+        </do_if>
+        <set_value name="$Station" exact="$Receipt.$station" />
+        <set_value name="$Quote" exact="@$Request.$quote" />
+        <do_if value="not $Station.exists or not $Station.isplayerowned or @global.$TM_EmpireComponentRecords.$plot_claim.{$Station}.$key != $Receipt.$key or $Station.sector != $Receipt.$sector or $Station.position != $Receipt.$position or $Station.plannedconstruction.sequence != $Receipt.$base">
+          <run_actions ref="RejectUnchangedPlot">
+            <param name="Reason" value="'plot_station_or_plan_changed'" />
+          </run_actions>
+          <return value="'plot_station_or_plan_changed'" />
+        </do_if>
+        <run_actions ref="CheckPlotConstructionBoundary" result="$Boundary">
+          <param name="ManagerCue" value="$Receipt.$manager" />
+          <param name="GoalCue" value="$Receipt.$goal" />
+          <param name="Station" value="$Station" />
+          <param name="Build" value="@$Receipt.$build" />
+          <param name="Extend" value="$Receipt.$extend" />
+        </run_actions>
+        <do_if value="$Boundary != 'available'">
+          <run_actions ref="RejectUnchangedPlot">
+            <param name="Reason" value="$Boundary" />
+          </run_actions>
+          <return value="$Boundary" />
+        </do_if>
+        <set_value name="$Bounds" exact="$Station.buildplot.max" />
+        <set_value name="$Center" exact="$Station.buildplot.center" />
+        <do_if value="$Bounds.x != $Receipt.$x or $Bounds.y != $Receipt.$y or $Bounds.z != $Receipt.$z or $Center.x != $Receipt.$cx or $Center.y != $Receipt.$cy or $Center.z != $Receipt.$cz">
+          <run_actions ref="RejectUnchangedPlot">
+            <param name="Reason" value="'plot_geometry_changed_before_effect'" />
+          </run_actions>
+          <return value="'plot_geometry_changed_before_effect'" />
+        </do_if>
+        <set_value name="$Free" exact="$Station.sector.owner == faction.player or $Station.sector.owner == faction.ownerless or $Station.sector.owner == faction.xenon" />
+        <do_if value="not $Quote or $Quote.$owner != $Station.sector.owner.id or $Quote.$free != $Free or $Quote.$price lt 0 or $Quote.$price * 1Cr gt $Receipt.$budget or $Quote.$price * 1Cr gt player.money">
+          <run_actions ref="RejectUnchangedPlot">
+            <param name="Reason" value="'plot_owner_or_budget_changed'" />
+          </run_actions>
+          <return value="'plot_owner_or_budget_changed'" />
+        </do_if>
+        <do_if value="$Receipt.$extend">
+          <can_safely_extend_build_plot object="$Station" negx="1km" posx="1km" negy="0.5km" posy="0.5km" negz="1km" posz="1km" result="$Safe" />
+          <do_if value="not $Safe">
+            <run_actions ref="RejectUnchangedPlot">
+              <param name="Reason" value="'native_plot_extension_blocked'" />
+            </run_actions>
+            <return value="'native_plot_extension_blocked'" />
+          </do_if>
+          <set_value name="Plot.$Receipt.$state" exact="'extension_sent'" />
+          <set_value name="global.$TM_EmpireComponentRecords.$plot_claim.{$Station}.$state" exact="'extension_sent'" />
+          <extend_build_plot object="$Station" negx="1km" posx="1km" negy="0.5km" posy="0.5km" negz="1km" posz="1km" />
+        </do_if>
+        <set_value name="$Bounds" exact="$Station.buildplot.max" />
+        <set_value name="$Center" exact="$Station.buildplot.center" />
+        <set_value name="Plot.$Receipt.$after" exact="table[$x=$Bounds.x, $y=$Bounds.y, $z=$Bounds.z, $cx=$Center.x, $cy=$Center.y, $cz=$Center.z]" />
+        <set_value name="Plot.$Receipt.$state" exact="'licence_pending'" />
+        <set_value name="Plot.$Receipt.$reason" exact="'native_plot_licence_pending'" />
+        <set_value name="global.$TM_EmpireComponentRecords.$plot_claim.{$Station}.$state" exact="'licence_pending'" />
+        <set_value name="player.entity.$tm_empire_plot_request.$state" exact="'licence_approved'" />
+        <raise_lua_event name="'TM_Empire.LicensePlot'" />
+        <return value="'licence_pending'" />
+      </actions>
+    </library>
+    <library name="ObservePlotChange" purpose="run_actions" namespace="this">
+      <actions>
+        <set_value name="$Receipt" exact="@Plot.$Receipt" />
+        <do_if value="not $Receipt or ($Receipt.$state != 'licence_pending' and $Receipt.$state != 'extension_sent' and $Receipt.$state != 'unknown')">
+          <return value="'no_plot_effect_pending'" />
+        </do_if>
+        <set_value name="$Payment" exact="@player.entity.$tm_empire_plot_receipt" />
+        <set_value name="$Station" exact="$Receipt.$station" />
+        <do_if value="@player.entity.$tm_empire_plot_request.$key == $Receipt.$key and player.entity.$tm_empire_plot_request.$state == 'licence_approved'">
+          <set_value name="$Lifecycle" exact="'construction_goal_missing'" />
+          <do_if value="$Receipt.$manager.exists and $Receipt.$goal.exists">
+            <run_actions ref="md.TM_Empire_Runtime.CanActForGovernor" result="$Lifecycle">
+              <param name="Actor" value="$Receipt.$manager.$Governor" />
+              <param name="Station" value="$Receipt.$manager.$GovernorStation" />
+              <param name="Module" value="$Receipt.$manager.$GovernorModule" />
+              <param name="ManagerCue" value="$Receipt.$manager" />
+            </run_actions>
+          </do_if>
+          <do_if value="$Lifecycle != 'available'">
+            <set_value name="player.entity.$tm_empire_plot_request.$state" exact="'revoked'" />
+            <set_value name="player.entity.$tm_empire_plot_request.$reason" exact="$Lifecycle" />
+          </do_if>
+        </do_if>
+        <do_if value="$Station.exists and $Station.isplayerowned and @$Payment.$key == $Receipt.$key and $Payment.$state == 'reconciled' and $Payment.$station == $Station">
+          <run_actions ref="ReadPlotLicence" result="$Reason">
+            <param name="Station" value="$Station" />
+          </run_actions>
+          <set_value name="$Bounds" exact="$Station.buildplot.max" />
+          <set_value name="$Center" exact="$Station.buildplot.center" />
+          <do_if value="$Reason == 'observed' and $Bounds.x == $Receipt.$after.$x and $Bounds.y == $Receipt.$after.$y and $Bounds.z == $Receipt.$after.$z and $Center.x == $Receipt.$after.$cx and $Center.y == $Receipt.$after.$cy and $Center.z == $Receipt.$after.$cz">
+            <set_value name="Plot.$Receipt.$state" exact="'observed'" />
+            <set_value name="Plot.$Receipt.$reason" exact="'native_plot_geometry_and_licence_observed'" />
+            <set_value name="Plot.$Receipt.$paid" exact="$Payment.$paid * 1Cr" />
+            <set_value name="Plot.$Receipt.$observed" exact="player.age" />
+            <do_if value="@global.$TM_EmpireComponentRecords.$plot_claim.{$Station}.$key == $Receipt.$key">
+              <remove_value name="global.$TM_EmpireComponentRecords.$plot_claim.{$Station}" />
+            </do_if>
+            <return value="'observed'" />
+          </do_if>
+        </do_if>
+        <do_if value="(@$Payment.$key == $Receipt.$key and $Payment.$state != 'reconciled') or (@player.entity.$tm_empire_plot_request.$key == $Receipt.$key and player.entity.$tm_empire_plot_request.$state == 'licence_failed') or player.age gt $Receipt.$issued + 1min">
+          <set_value name="Plot.$Receipt.$state" exact="'unknown'" />
+          <set_value name="Plot.$Receipt.$reason" exact="'native_plot_licence_not_confirmed'" />
+        </do_if>
+        <return value="Plot.$Receipt.$state" />
+      </actions>
+    </library>
+    <cue name="PlotQuoteReady" instantiate="true" namespace="this">
+      <conditions>
+        <event_ui_triggered screen="'TM_Empire_Construction'" control="'PlotQuoteReady'" />
+      </conditions>
+      <actions>
+        <run_actions ref="CommitQuotedPlot" />
+      </actions>
+    </cue>
+    <cue name="PlotLicenceSubmitted" instantiate="true" namespace="this">
+      <conditions>
+        <event_ui_triggered screen="'TM_Empire_Construction'" control="'PlotLicenceSubmitted'" />
+      </conditions>
+      <actions>
+        <run_actions ref="ObservePlotChange" />
+      </actions>
+    </cue>
+    <cue name="PlotWatch" namespace="this" checkinterval="5s">
+      <conditions>
+        <check_value value="@Plot.$Receipt.$state == 'quote_requested' or @Plot.$Receipt.$state == 'extension_sent' or @Plot.$Receipt.$state == 'licence_pending' or @Plot.$Receipt.$state == 'unknown'" />
+      </conditions>
+      <delay exact="5s" />
+      <actions>
+        <run_actions ref="CommitQuotedPlot" />
+        <run_actions ref="ObservePlotChange" />
+        <reset_cue cue="this" />
+      </actions>
+    </cue>
+    <library name="ResumeUnpaidPlotLicence" purpose="run_actions" namespace="this">
+      <actions>
+        <set_value name="$Receipt" exact="@Plot.$Receipt" />
+        <set_value name="$Request" exact="@player.entity.$tm_empire_plot_request" />
+        <do_if value="not $Receipt or @$Request.$key != $Receipt.$key or @player.entity.$tm_empire_plot_receipt.$key == $Receipt.$key">
+          <return value="'plot_payment_not_resumable'" />
+        </do_if>
+        <!-- This exact Lua rejection precedes durable payment intent. The
+             same-key payment receipt guard above remains mandatory. -->
+        <set_value name="$QuoteRejectedBeforePayment" exact="$Request.$state == 'licence_failed' and @$Request.$reason == 'quoted_plot_geometry_or_price_changed'" />
+        <do_if value="$Receipt.$state != 'licence_pending' and ($Receipt.$state != 'unknown' or (not $Receipt.$extend and not $QuoteRejectedBeforePayment))">
+          <return value="'plot_payment_not_resumable'" />
+        </do_if>
+        <do_if value="($Request.$state != 'licence_approved' and $Request.$state != 'licence_failed' and $Request.$state != 'revoked') or not @$Receipt.$after or not @$Request.$quote">
+          <return value="'plot_payment_not_resumable'" />
+        </do_if>
+        <do_if value="player.age lt @$Receipt.$nextlicenceattempt">
+          <return value="'plot_licence_retry_deferred'" />
+        </do_if>
+        <set_value name="Plot.$Receipt.$nextlicenceattempt" exact="player.age + 1min" />
+        <set_value name="$Reason" exact="'construction_goal_missing'" />
+        <do_if value="$Receipt.$manager.exists and $Receipt.$goal.exists">
+          <run_actions ref="md.TM_Empire_Runtime.CanActForGovernor" result="$Reason">
+            <param name="Actor" value="$Receipt.$manager.$Governor" />
+            <param name="Station" value="$Receipt.$manager.$GovernorStation" />
+            <param name="Module" value="$Receipt.$manager.$GovernorModule" />
+            <param name="ManagerCue" value="$Receipt.$manager" />
+          </run_actions>
+        </do_if>
+        <set_value name="$Station" exact="$Receipt.$station" />
+        <do_if value="$Reason == 'available'">
+          <run_actions ref="CheckPlotConstructionBoundary" result="$Reason">
+            <param name="ManagerCue" value="$Receipt.$manager" />
+            <param name="GoalCue" value="$Receipt.$goal" />
+            <param name="Station" value="$Station" />
+            <param name="Build" value="@$Receipt.$build" />
+            <param name="Extend" value="$Receipt.$extend" />
+          </run_actions>
+        </do_if>
+        <do_if value="$Reason == 'available'">
+          <set_value name="$Bounds" exact="$Station.buildplot.max" />
+          <set_value name="$Center" exact="$Station.buildplot.center" />
+          <do_if value="@global.$TM_EmpireComponentRecords.$plot_claim.{$Station}.$key != $Receipt.$key or $Station.sector != $Receipt.$sector or $Station.position != $Receipt.$position or $Station.plannedconstruction.sequence != $Receipt.$base or $Bounds.x != $Receipt.$after.$x or $Bounds.y != $Receipt.$after.$y or $Bounds.z != $Receipt.$after.$z or $Center.x != $Receipt.$after.$cx or $Center.y != $Receipt.$after.$cy or $Center.z != $Receipt.$after.$cz or $Request.$station != $Station or $Request.$budget != $Receipt.$budget">
+            <set_value name="$Reason" exact="'plot_station_or_geometry_changed_after_load'" />
+          </do_if>
+        </do_if>
+        <do_if value="$Reason == 'available'">
+          <set_value name="Plot.$Receipt.$state" exact="'licence_pending'" />
+          <set_value name="player.entity.$tm_empire_plot_request.$state" exact="'licence_approved'" />
+          <raise_lua_event name="'TM_Empire.LicensePlot'" />
+          <return value="'resumed_same_unpaid_key'" />
+        </do_if>
+        <set_value name="player.entity.$tm_empire_plot_request.$state" exact="'revoked'" />
+        <set_value name="player.entity.$tm_empire_plot_request.$reason" exact="$Reason" />
+        <set_value name="Plot.$Receipt.$reason" exact="$Reason" />
+        <do_if value="not $Receipt.$extend">
+          <set_value name="Plot.$Receipt.$state" exact="'rejected_before_effect'" />
+          <do_if value="$Station.exists and @global.$TM_EmpireComponentRecords.$plot_claim.{$Station}.$key == $Receipt.$key">
+            <remove_value name="global.$TM_EmpireComponentRecords.$plot_claim.{$Station}" />
+          </do_if>
+        </do_if>
+        <do_else>
+          <set_value name="Plot.$Receipt.$state" exact="'unknown'" />
+        </do_else>
+        <return value="$Reason" />
+      </actions>
+    </library>
+    <cue name="UnpaidExtendedPlotWatch" namespace="this" checkinterval="15s">
+      <conditions>
+        <check_value value="@Plot.$Receipt.$state == 'unknown' and (@Plot.$Receipt.$extend or (@player.entity.$tm_empire_plot_request.$key == Plot.$Receipt.$key and @player.entity.$tm_empire_plot_request.$state == 'licence_failed' and @player.entity.$tm_empire_plot_request.$reason == 'quoted_plot_geometry_or_price_changed')) and @player.entity.$tm_empire_plot_receipt.$key != Plot.$Receipt.$key" />
+      </conditions>
+      <delay exact="15s" />
+      <actions>
+        <run_actions ref="ResumeUnpaidPlotLicence" />
+        <reset_cue cue="this" />
+      </actions>
+    </cue>
+    <cue name="PlotLoaded" instantiate="true" namespace="this">
+      <conditions><event_game_loaded /></conditions>
+      <actions>
+        <!-- Capture the saved receipt before any post-load request can replace it. -->
+        <signal_cue_instantly cue="PlotLoadedReconcile" param="@Plot.$Receipt.$key" />
+      </actions>
+    </cue>
+    <cue name="PlotLoadedReconcile" instantiate="true" namespace="this">
+      <conditions><event_cue_signalled /></conditions>
+      <delay exact="5s" />
+      <actions>
+        <do_if value="event.param and event.param == @Plot.$Receipt.$key">
+        <set_value name="$Receipt" exact="@Plot.$Receipt" />
+        <set_value name="$Request" exact="@player.entity.$tm_empire_plot_request" />
+        <run_actions ref="ResumeUnpaidPlotLicence" />
+        <do_if value="$Receipt and @$Request.$key == $Receipt.$key and $Receipt.$manager.exists and $Receipt.$goal.exists">
+          <run_actions ref="md.TM_Empire_Runtime.CanActForGovernor" result="$Reason">
+            <param name="Actor" value="$Receipt.$manager.$Governor" />
+            <param name="Station" value="$Receipt.$manager.$GovernorStation" />
+            <param name="Module" value="$Receipt.$manager.$GovernorModule" />
+            <param name="ManagerCue" value="$Receipt.$manager" />
+          </run_actions>
+          <do_if value="$Reason == 'available'">
+            <do_if value="$Receipt.$state == 'quote_requested' and $Request.$state == 'quote_requested'">
+              <raise_lua_event name="'TM_Empire.QuotePlot'" />
+            </do_if>
+          </do_if>
+        </do_if>
+              </do_if>
+      </actions>
+    </cue>
+    <library name="BeginExpansionGeneration" purpose="run_actions" namespace="this">
+      <params>
+        <param name="ManagerCue" />
+        <param name="GoalCue" />
+        <param name="Station" />
+        <param name="Modules" />
+        <param name="Connectors" />
+      </params>
+      <actions>
+        <do_if value="not $ManagerCue.exists or not $GoalCue.exists">
+          <return value="'construction_goal_missing'" />
+        </do_if>
+        <run_actions ref="md.TM_Empire_Runtime.CanActForGovernor" result="$Reason">
+          <param name="Actor" value="$ManagerCue.$Governor" />
+          <param name="Station" value="$ManagerCue.$GovernorStation" />
+          <param name="Module" value="$ManagerCue.$GovernorModule" />
+          <param name="ManagerCue" value="$ManagerCue" />
+        </run_actions>
+        <do_if value="$Reason != 'available'">
+          <return value="$Reason" />
+        </do_if>
+        <do_if value="not $Station.exists or not $Station.isplayerowned or not $Station.isoperational or not $Station.buildstorage.exists or not $Modules.count">
+          <return value="'owned_expansion_station_unavailable'" />
+        </do_if>
+        <do_if value="@global.$TM_EmpireComponentRecords.$construction_claim.{$Station} or @global.$TM_EmpireComponentRecords.$generation.{$Station} or @global.$TM_EmpireComponentRecords.$plot_claim.{$Station}">
+          <return value="'station_construction_already_claimed'" />
+        </do_if>
+        <do_if value="$Station.buildstorage.builds.queued.count or $Station.buildstorage.builds.inprogress.count">
+          <return value="'existing_station_build_requires_reconciliation'" />
+        </do_if>
+        <run_actions ref="ReadPlotLicence" result="$PlotReason">
+          <param name="Station" value="$Station" />
+        </run_actions>
+        <do_if value="$PlotReason != 'observed'">
+          <return value="$PlotReason" />
+        </do_if>
+        <set_value name="$Bounds" exact="$Station.buildplot.max" />
+        <set_value name="$Center" exact="$Station.buildplot.center" />
+        <set_value name="global.$TM_EmpireComponentRecords.$generation.{$Station}" exact="table[$state='generating', $manager=$ManagerCue, $goal=$GoalCue, $base=$Station.plannedconstruction.sequence, $x=$Bounds.x, $y=$Bounds.y, $z=$Bounds.z, $cx=$Center.x, $cy=$Center.y, $cz=$Center.z, $issued=player.age]" />
+        <create_construction_sequence station="$Station" base="global.$TM_EmpireComponentRecords.$generation.{$Station}.$base" macros="$Modules" connectors="$Connectors" />
+        <return value="'generating'" />
+      </actions>
+    </library>
+    <library name="AcceptGeneratedExpansion" purpose="run_actions" namespace="this">
+      <params>
+        <param name="ManagerCue" />
+        <param name="GoalCue" />
+        <param name="Station" />
+        <param name="Sequence" />
+        <param name="Budget" />
+        <param name="EventStation" />
+        <param name="EventSequence" />
+        <param name="EventSuccess" />
+      </params>
+      <actions>
+        <set_value name="$Generation" exact="@global.$TM_EmpireComponentRecords.$generation.{$Station}" />
+        <do_if value="not $Generation or $Generation.$state != 'generating' or $Generation.$manager != $ManagerCue or $Generation.$goal != $GoalCue">
+          <return value="'native_generation_claim_missing'" />
+        </do_if>
+        <do_if value="$EventStation != $Station or $EventSequence != $Sequence or not $EventSuccess or typeof $Sequence != datatype.constructionsequence or not $Sequence.count">
+          <return value="'native_generation_event_not_confirmed'" />
+        </do_if>
+        <do_if value="@Expansion.$Receipt and Expansion.$Receipt.$state != 'observed' and Expansion.$Receipt.$state != 'abandoned_before_effect'">
+          <remove_value name="global.$TM_EmpireComponentRecords.$generation.{$Station}" />
+          <return value="'previous_expansion_unreconciled'" />
+        </do_if>
+        <do_if value="$Budget lt 0Cr or $Budget gt player.money">
+          <remove_value name="global.$TM_EmpireComponentRecords.$generation.{$Station}" />
+          <return value="'construction_budget_unavailable'" />
+        </do_if>
+        <run_actions ref="RequestPlanValidation" result="$Key">
+          <param name="ManagerCue" value="$ManagerCue" />
+          <param name="GoalCue" value="$GoalCue" />
+          <param name="Sequence" value="$Sequence" />
+          <param name="Station" value="$Station" />
+        </run_actions>
+        <do_if value="@Request.$Receipt.$key != $Key">
+          <remove_value name="global.$TM_EmpireComponentRecords.$generation.{$Station}" />
+          <return value="$Key" />
+        </do_if>
+        <set_value name="global.$TM_EmpireComponentRecords.$generation.{$Station}.$state" exact="'validating'" />
+        <set_value name="Expansion.$Receipt" exact="table[$state='validating', $reason='native_expansion_plan_validation_pending', $key=$Key, $manager=$ManagerCue, $goal=$GoalCue, $station=$Station, $sequence=$Sequence, $generation=$Generation, $budget=$Budget, $issued=player.age, $nextattempt=player.age]" />
+        <return value="$Key" />
+      </actions>
+    </library>
+    <library name="CreateValidatedNativeStation" purpose="run_actions" namespace="this">
+      <params>
+        <param name="ManagerCue" />
+        <param name="GoalCue" />
+        <param name="PlanKey" />
+        <param name="Sector" />
+        <param name="Position" />
+        <param name="Macro" />
+        <param name="RawName" default="null" />
+        <param name="OriginalProduct" default="null" />
+        <param name="Stage" default="0" />
+        <param name="Budget" />
+      </params>
+      <actions>
+        <do_if value="@$GoalCue.$tm_empire_station_creation">
+          <return value="$GoalCue.$tm_empire_station_creation" />
+        </do_if>
+        <do_if value="not $ManagerCue.exists or not $GoalCue.exists">
+          <return value="table[$state='rejected_before_effect', $reason='construction_goal_missing']" />
+        </do_if>
+        <do_if value="@Creation.$Receipt and Creation.$Receipt.$state != 'adopted'">
+          <return value="table[$state='waiting', $reason='previous_station_creation_unreconciled']" />
+        </do_if>
+        <do_if value="@Expansion.$Receipt and Expansion.$Receipt.$state != 'observed' and Expansion.$Receipt.$state != 'abandoned_before_effect'">
+          <return value="table[$state='waiting', $reason='previous_expansion_unreconciled']" />
+        </do_if>
+        <run_actions ref="ReadValidatedPlan" result="$Plan">
+          <param name="Key" value="$PlanKey" />
+          <param name="ManagerCue" value="$ManagerCue" />
+          <param name="GoalCue" value="$GoalCue" />
+        </run_actions>
+        <do_if value="$Plan.$state != 'blueprints_observed'">
+          <return value="$Plan" />
+        </do_if>
+        <do_if value="not $Sector.exists or not $Sector.isclass.sector or not $Sector.isknown or typeof $Position != datatype.position or typeof $Macro != datatype.macro or $Budget lt 0Cr or $Budget gt player.money or $Stage != 0">
+          <return value="table[$state='rejected_before_effect', $reason='native_station_creation_input_invalid']" />
+        </do_if>
+        <set_value name="$GoalCue.$tm_empire_station_creation" exact="table[$state='creation_sent', $reason='native_station_creation_pending', $manager=$ManagerCue, $goal=$GoalCue, $plankey=$PlanKey, $sequence=$Plan.$sequence, $sector=$Sector, $product=$OriginalProduct, $budget=$Budget, $issued=player.age]" />
+        <set_value name="Creation.$Receipt" exact="$GoalCue.$tm_empire_station_creation" />
+        <set_value name="Creation.$Receipt.$entries" exact="Request.$Receipt.$entries.clone" />
+        <create_station name="$Station" macro="$Macro" constructionplan="$Plan.$sequence" owner="faction.player" sector="$Sector" state="componentstate.construction" rawname="$RawName" originalproduct="$OriginalProduct">
+          <safepos value="$Position" includeplotbox="true" />
+          <stage exact="$Stage" />
+        </create_station>
+        <do_if value="not $Station.exists or not $Station.isplayerowned or $Station.sector != $Sector or not $Station.buildplot.exists or not $Station.buildstorage.exists">
+          <set_value name="$GoalCue.$tm_empire_station_creation.$state" exact="'unknown'" />
+          <set_value name="$GoalCue.$tm_empire_station_creation.$reason" exact="'native_station_creation_unconfirmed'" />
+          <return value="$GoalCue.$tm_empire_station_creation" />
+        </do_if>
+        <set_value name="$GoalCue.$tm_empire_station_creation.$station" exact="$Station" />
+        <set_value name="$GoalCue.$tm_empire_station_creation.$state" exact="'station_observed'" />
+        <set_value name="$GoalCue.$tm_empire_station_creation.$reason" exact="'native_station_build_pending_readback'" />
+        <set_value name="global.$TM_EmpireComponentRecords.$creation.{$Station}" exact="$GoalCue.$tm_empire_station_creation" />
+        <set_value name="$Build" exact="@$Station.buildstorage.builds.queued.{1}" />
+        <do_if value="not $Build">
+          <set_value name="$Build" exact="@$Station.buildstorage.builds.inprogress.{1}" />
+        </do_if>
+        <do_if value="$Build.exists and $Build.isexpansion and $Build.buildobject == $Station and $Build.object == $Station.buildstorage">
+          <set_value name="global.$TM_EmpireComponentRecords.$creation.{$Station}.$build" exact="$Build" />
+        </do_if>
+        <return value="$GoalCue.$tm_empire_station_creation" />
+      </actions>
+    </library>
+    <cue name="CreatedStationLoaded" instantiate="true" namespace="this">
+      <conditions><event_game_loaded /></conditions>
+      <actions>
+        <!-- Capture the saved receipt before any post-load request can replace it. -->
+        <signal_cue_instantly cue="CreatedStationLoadedReconcile" param="@Creation.$Receipt.$key" />
+      </actions>
+    </cue>
+    <cue name="CreatedStationLoadedReconcile" instantiate="true" namespace="this">
+      <conditions><event_cue_signalled /></conditions>
+      <delay exact="5s" />
+      <actions>
+        <do_if value="event.param and event.param == @Creation.$Receipt.$key">
+        <do_if value="@Creation.$Receipt.$state == 'station_observed'">
+          <set_value name="Creation.$Receipt.$correlationcursor" exact="1" />
+          <remove_value name="Creation.$Receipt.$correlated" />
+          <remove_value name="Creation.$Receipt.$nativesequence" />
+        </do_if>
+              </do_if>
+      </actions>
+    </cue>
+    <library name="StepCreatedNativeStation" purpose="run_actions" namespace="this">
+      <params>
+        <param name="ManagerCue" />
+        <param name="GoalCue" />
+      </params>
+      <actions>
+        <set_value name="$Creation" exact="@$GoalCue.$tm_empire_station_creation" />
+        <do_if value="not $Creation or $Creation.$manager != $ManagerCue or $Creation.$goal != $GoalCue">
+          <return value="table[$state='unknown', $reason='native_creation_goal_mismatch']" />
+        </do_if>
+        <do_if value="$Creation.$state == 'creation_sent' or $Creation.$state == 'unknown' or $Creation.$state == 'adopted'">
+          <return value="$Creation" />
+        </do_if>
+        <run_actions ref="ReadValidatedPlan" result="$Plan">
+          <param name="Key" value="$Creation.$plankey" />
+          <param name="ManagerCue" value="$ManagerCue" />
+          <param name="GoalCue" value="$GoalCue" />
+        </run_actions>
+        <do_if value="$Plan.$state == 'abandoned_before_effect'">
+          <set_value name="$Creation.$reason" exact="$Plan.$reason" />
+          <return value="$Creation" />
+        </do_if>
+        <set_value name="$Station" exact="@$Creation.$station" />
+        <do_if value="not $Station.exists or not $Station.isplayerowned or $Station.sector != $Creation.$sector or not $Station.buildstorage.exists">
+          <set_value name="$Creation.$state" exact="'unknown'" />
+          <set_value name="$Creation.$reason" exact="'native_created_station_lost'" />
+          <return value="$Creation" />
+        </do_if>
+        <set_value name="$Storage" exact="$Station.buildstorage" />
+        <do_if value="$Storage.builds.queued.count + $Storage.builds.inprogress.count != 1">
+          <set_value name="$Creation.$reason" exact="'native_created_station_queue_pending_or_changed'" />
+          <return value="$Creation" />
+        </do_if>
+        <set_value name="$Build" exact="@$Storage.builds.queued.{1}" />
+        <do_if value="not $Build">
+          <set_value name="$Build" exact="@$Storage.builds.inprogress.{1}" />
+        </do_if>
+        <do_if value="not $Build.exists or not $Build.isexpansion or $Build.buildobject != $Station or $Build.object != $Storage">
+          <set_value name="$Creation.$state" exact="'unknown'" />
+          <set_value name="$Creation.$reason" exact="'native_created_station_task_changed'" />
+          <return value="$Creation" />
+        </do_if>
+        <do_if value="@$Creation.$build and $Creation.$build != $Build">
+          <set_value name="$Creation.$state" exact="'unknown'" />
+          <set_value name="$Creation.$reason" exact="'native_created_station_build_replaced'" />
+          <return value="$Creation" />
+        </do_if>
+        <set_value name="$Creation.$build" exact="$Build" />
+        <do_if value="typeof $Station.plannedconstruction.sequence != datatype.constructionsequence or not $Station.plannedconstruction.sequence.count">
+          <set_value name="$Creation.$reason" exact="'native_created_station_plan_pending'" />
+          <return value="$Creation" />
+        </do_if>
+        <set_value name="$NativeSequence" exact="$Station.plannedconstruction.sequence" />
+        <do_if value="not @$Creation.$correlationcursor or @$Creation.$nativesequence != $NativeSequence">
+          <set_value name="$Creation.$correlationcursor" exact="1" />
+          <set_value name="$Creation.$nativesequence" exact="$NativeSequence" />
+          <remove_value name="$Creation.$correlated" />
+        </do_if>
+        <run_actions ref="CheckPlanIdentityPage" result="$Identity">
+          <param name="Sequence" value="$NativeSequence" />
+          <param name="Start" value="$Creation.$correlationcursor" />
+          <param name="Entries" value="$Creation.$entries" />
+        </run_actions>
+        <do_if value="$Identity.$state != 'page_observed'">
+          <set_value name="$Creation.$state" exact="'unknown'" />
+          <set_value name="$Creation.$reason" exact="$Identity.$reason" />
+          <return value="$Creation" />
+        </do_if>
+        <set_value name="$Creation.$correlationcursor" exact="$Identity.$to + 1" />
+        <do_if value="$Identity.$to != $NativeSequence.count">
+          <set_value name="$Creation.$reason" exact="'native_created_station_identity_check_pending'" />
+          <return value="$Creation" />
+        </do_if>
+        <set_value name="$Creation.$correlated" exact="player.age" />
+        <set_value name="$Creation.$correlationcursor" exact="1" />
+        <run_actions ref="AdoptNativeStationBuild" result="$Key">
+          <param name="ManagerCue" value="$ManagerCue" />
+          <param name="GoalCue" value="$GoalCue" />
+          <param name="Station" value="$Station" />
+          <param name="Build" value="$Build" />
+          <param name="PlanKey" value="$Creation.$plankey" />
+          <param name="Budget" value="$Creation.$budget" />
+        </run_actions>
+        <set_value name="$Creation.$reason" exact="if @Expansion.$Receipt.$key == $Key then 'native_station_build_adopted' else $Key" />
+        <return value="$Creation" />
+      </actions>
+    </library>
+    <library name="AdoptNativeStationBuild" purpose="run_actions" namespace="this">
+      <params>
+        <param name="ManagerCue" />
+        <param name="GoalCue" />
+        <param name="Station" />
+        <param name="Build" />
+        <param name="PlanKey" />
+        <param name="Budget" />
+      </params>
+      <actions>
+        <do_if value="@Expansion.$Receipt.$manager == $ManagerCue and @Expansion.$Receipt.$goal == $GoalCue and @Expansion.$Receipt.$station == $Station and @Expansion.$Receipt.$build == $Build">
+          <return value="Expansion.$Receipt.$key" />
+        </do_if>
+        <do_if value="@Expansion.$Receipt and Expansion.$Receipt.$state != 'observed' and Expansion.$Receipt.$state != 'abandoned_before_effect'">
+          <return value="'previous_expansion_unreconciled'" />
+        </do_if>
+        <do_if value="not $ManagerCue.exists or not $GoalCue.exists">
+          <return value="'construction_goal_missing'" />
+        </do_if>
+        <run_actions ref="md.TM_Empire_Runtime.CanActForGovernor" result="$Reason">
+          <param name="Actor" value="$ManagerCue.$Governor" />
+          <param name="Station" value="$ManagerCue.$GovernorStation" />
+          <param name="Module" value="$ManagerCue.$GovernorModule" />
+          <param name="ManagerCue" value="$ManagerCue" />
+        </run_actions>
+        <do_if value="$Reason != 'available'">
+          <return value="$Reason" />
+        </do_if>
+        <do_if value="not $Station.exists or not $Station.isplayerowned or not $Station.buildstorage.exists or not $Build.exists or not $Build.isexpansion or $Build.buildobject != $Station or $Build.object != $Station.buildstorage">
+          <return value="'native_station_build_unavailable'" />
+        </do_if>
+        <set_value name="$Creation" exact="@global.$TM_EmpireComponentRecords.$creation.{$Station}" />
+        <do_if value="not $Creation or $Creation.$manager != $ManagerCue or $Creation.$goal != $GoalCue or $Creation.$plankey != $PlanKey or $Creation.$build != $Build">
+          <return value="'native_station_creation_provenance_missing'" />
+        </do_if>
+        <do_if value="@global.$TM_EmpireComponentRecords.$construction_claim.{$Station} or @global.$TM_EmpireComponentRecords.$generation.{$Station}">
+          <return value="'station_construction_already_claimed'" />
+        </do_if>
+        <do_if value="$Station.buildstorage.builds.queued.count + $Station.buildstorage.builds.inprogress.count != 1 or (not $Station.buildstorage.builds.queued.indexof.{$Build} and not $Station.buildstorage.builds.inprogress.indexof.{$Build})">
+          <return value="'native_station_build_queue_changed'" />
+        </do_if>
+        <run_actions ref="ReadValidatedPlan" result="$Plan">
+          <param name="Key" value="$PlanKey" />
+          <param name="ManagerCue" value="$ManagerCue" />
+          <param name="GoalCue" value="$GoalCue" />
+        </run_actions>
+        <do_if value="$Plan.$state != 'blueprints_observed'">
+          <return value="$Plan.$reason" />
+        </do_if>
+        <set_value name="$NativeSequence" exact="$Station.plannedconstruction.sequence" />
+        <do_if value="$Creation.$nativesequence != $NativeSequence or not $Creation.$correlated? or player.age gt $Creation.$correlated + 1min or $NativeSequence.count != $Plan.$total">
+          <return value="'native_station_plan_not_correlated'" />
+        </do_if>
+        <do_if value="$Budget lt 0Cr or $Budget gt player.money">
+          <return value="'construction_budget_unavailable'" />
+        </do_if>
+        <set_value name="Expansion.$Receipt" exact="table[$state='queued', $key=$PlanKey, $reason='native_station_build_adopted', $manager=$ManagerCue, $goal=$GoalCue, $station=$Station, $build=$Build, $sequence=$NativeSequence, $budget=$Budget, $issued=player.age, $nextattempt=player.age, $nativecreation=true]" />
+        <set_value name="global.$TM_EmpireComponentRecords.$construction_claim.{$Station}" exact="table[$key=$PlanKey, $manager=$ManagerCue, $goal=$GoalCue, $build=$Build, $state='queued', $issued=player.age]" />
+        <set_value name="Request.$Receipt.$state" exact="'consumed'" />
+        <set_value name="global.$TM_EmpireComponentRecords.$creation.{$Station}.$state" exact="'adopted'" />
+        <set_value name="global.$TM_EmpireComponentRecords.$creation.{$Station}.$reason" exact="'native_station_build_adopted'" />
+        <return value="$PlanKey" />
+      </actions>
+    </library>
+    <library name="QueueValidatedFactoryPlan" purpose="run_actions" namespace="this">
+      <params>
+        <param name="ManagerCue" />
+        <param name="GoalCue" />
+        <param name="Station" />
+        <param name="PlanKey" />
+        <param name="Budget" />
+      </params>
+      <actions>
+        <set_value name="$Creation" exact="@$GoalCue.$tm_empire_factory_creation" />
+        <do_if value="not $Creation or $Creation.$manager != $ManagerCue or $Creation.$goal != $GoalCue or $Creation.$station != $Station">
+          <return value="table[$state='unknown', $reason='factory_shell_receipt_missing']" />
+        </do_if>
+        <do_if value="$Creation.$state != 'bare_station_observed'">
+          <return value="$Creation" />
+        </do_if>
+        <do_if value="@Expansion.$Receipt and Expansion.$Receipt.$state != 'observed' and Expansion.$Receipt.$state != 'abandoned_before_effect'">
+          <return value="table[$state='waiting', $reason='previous_expansion_unreconciled']" />
+        </do_if>
+        <run_actions ref="ReadValidatedPlan" result="$Plan">
+          <param name="Key" value="$PlanKey" />
+          <param name="ManagerCue" value="$ManagerCue" />
+          <param name="GoalCue" value="$GoalCue" />
+        </run_actions>
+        <do_if value="$Plan.$state != 'blueprints_observed'">
+          <return value="$Plan" />
+        </do_if>
+        <do_if value="not $Station.exists or not $Station.isplayerowned or not $Station.buildstorage.exists or not $Station.buildplot.exists or $Station.modules.all.count or $Station.buildstorage.builds.queued.count or $Station.buildstorage.builds.inprogress.count or @global.$TM_EmpireComponentRecords.$construction_claim.{$Station} or $Budget lt 0Cr or $Budget gt player.money">
+          <return value="table[$state='unknown', $reason='factory_shell_changed_before_queue']" />
+        </do_if>
+        <set_value name="Expansion.$Receipt" exact="table[$state='queue_sent', $key=$PlanKey, $manager=$ManagerCue, $goal=$GoalCue, $station=$Station, $sequence=$Plan.$sequence, $budget=$Budget, $nativecreation=true, $issued=player.age, $nextattempt=player.age]" />
+        <set_value name="$Creation.$state" exact="'queue_sent'" />
+        <set_value name="global.$TM_EmpireComponentRecords.$construction_claim.{$Station}" exact="table[$key=$PlanKey, $manager=$ManagerCue, $goal=$GoalCue, $state='queue_sent', $issued=player.age]" />
+        <add_build_to_expand_station result="$Build" buildobject="$Station" object="$Station.buildstorage" constructionplan="$Plan.$sequence" />
+        <set_value name="Expansion.$Receipt.$build" exact="$Build" />
+        <set_value name="global.$TM_EmpireComponentRecords.$construction_claim.{$Station}.$build" exact="$Build" />
+        <set_value name="$Creation.$build" exact="$Build" />
+        <do_if value="not $Build.exists or not $Build.isexpansion or $Build.buildobject != $Station or $Build.object != $Station.buildstorage or not $Station.buildstorage.builds.queued.indexof.{$Build}">
+          <set_value name="$Creation.$state" exact="'unknown'" />
+          <set_value name="$Creation.$reason" exact="'factory_queue_unconfirmed'" />
+          <set_value name="Expansion.$Receipt.$state" exact="'unknown'" />
+          <return value="$Creation" />
+        </do_if>
+        <set_value name="$Creation.$state" exact="'adopted'" />
+        <set_value name="$Creation.$reason" exact="'native_factory_queue_observed'" />
+        <set_value name="global.$TM_EmpireComponentRecords.$creation.{$Station}" exact="$Creation" />
+        <set_value name="Expansion.$Receipt.$state" exact="'queued'" />
+        <set_value name="Expansion.$Receipt.$reason" exact="'native_factory_resources_pending'" />
+        <set_value name="global.$TM_EmpireComponentRecords.$construction_claim.{$Station}.$state" exact="'queued'" />
+        <set_value name="Request.$Receipt.$state" exact="'consumed'" />
+        <return value="$Creation" />
+      </actions>
+    </library>
+    <library name="ReleaseUnappliedGeneration" purpose="run_actions" namespace="this">
+      <params>
+        <param name="ManagerCue" />
+        <param name="GoalCue" />
+        <param name="Station" />
+      </params>
+      <actions>
+        <do_if value="$Station.exists and @global.$TM_EmpireComponentRecords.$generation.{$Station}.$state == 'generating' and @global.$TM_EmpireComponentRecords.$generation.{$Station}.$manager == $ManagerCue and @global.$TM_EmpireComponentRecords.$generation.{$Station}.$goal == $GoalCue and not @global.$TM_EmpireComponentRecords.$construction_claim.{$Station}">
+          <remove_value name="global.$TM_EmpireComponentRecords.$generation.{$Station}" />
+          <return value="'released_before_effect'" />
+        </do_if>
+        <return value="'no_unapplied_generation_owned_by_goal'" />
+      </actions>
+    </library>
+    <library name="ReconcileQueuedExpansionOwner" purpose="run_actions" namespace="this">
+      <params><param name="ManagerCue" /><param name="GoalCue" /><param name="Station" /></params>
+      <actions>
+        <set_value name="$Receipt" exact="@Expansion.$Receipt" />
+        <do_if value="not $Receipt or $Receipt.$state != 'queued' or $Receipt.$station != $Station"><return value="'queued_expansion_not_available'" /></do_if>
+        <do_if value="$Receipt.$manager == $ManagerCue and $Receipt.$goal == $GoalCue"><return value="$Receipt.$key" /></do_if>
+        <!-- Never take work from a live goal or interpret an ambiguous issue as
+             a completed effect. The native queue and its key remain intact. -->
+        <do_if value="not $ManagerCue.exists or not $GoalCue.exists"><return value="'construction_goal_missing'" /></do_if>
+        <run_actions ref="md.TM_Empire_Runtime.CanActForGovernor" result="$Reason"><param name="Actor" value="$ManagerCue.$Governor" /><param name="Station" value="$ManagerCue.$GovernorStation" /><param name="Module" value="$ManagerCue.$GovernorModule" /><param name="ManagerCue" value="$ManagerCue" /></run_actions>
+        <do_if value="$Reason != 'available'"><return value="$Reason" /></do_if>
+        <run_actions ref="md.TM_Empire_Runtime.ReadGoalLifetime" result="$Lifetime"><param name="GoalCue" value="$GoalCue" /></run_actions>
+        <do_if value="$Lifetime != 'available'"><return value="$Lifetime" /></do_if>
+        <do_if value="$Receipt.$manager.exists and $Receipt.$goal.exists">
+          <run_actions ref="md.TM_Empire_Runtime.ReadGoalLifetime" result="$PreviousLifetime"><param name="GoalCue" value="$Receipt.$goal" /></run_actions>
+          <do_if value="$PreviousLifetime == 'available' and @md.TM_Empire_Runtime.Registry.$State == 'active' and @md.TM_Empire_Runtime.Registry.$ManagerCue == $Receipt.$manager">
+            <return value="'previous_construction_goal_still_active'" />
+          </do_if>
+        </do_if>
+        <set_value name="$Build" exact="@$Receipt.$build" />
+        <do_if value="not $Station.exists or not $Station.isplayerowned or not $Station.buildstorage.exists or not $Station.buildstorage.isplayerowned or not $Build.exists or not $Build.isexpansion or $Build.iscancelled or $Build.buildobject != $Station or $Build.object != $Station.buildstorage or $Station.buildstorage.builds.queued.count + $Station.buildstorage.builds.inprogress.count != 1 or (not $Station.buildstorage.builds.queued.indexof.{$Build} and not $Station.buildstorage.builds.inprogress.indexof.{$Build}) or $Station.plannedconstruction.sequence != $Receipt.$sequence"><return value="'construction_handoff_native_queue_changed'" /></do_if>
+        <set_value name="$Claim" exact="@global.$TM_EmpireComponentRecords.$construction_claim.{$Station}" />
+        <do_if value="not $Claim or $Claim.$key != $Receipt.$key or $Claim.$build != $Build or $Claim.$manager != $Receipt.$manager or $Claim.$goal != $Receipt.$goal"><return value="'construction_handoff_claim_changed'" /></do_if>
+        <do_for_each name="$Effect" in="[@Funding.$Receipt, @Plot.$Receipt, @Builder.$Receipt]">
+          <!-- These adapters each retain their latest receipt globally. A
+               pending operation for a different station is not an unresolved
+               effect of this queue and must not block its authority handoff.
+               Missing station identity remains ambiguous and blocks safely. -->
+          <do_if value="$Effect and (not @$Effect.$station or $Effect.$station == $Station) and ($Effect.$state != 'observed' and $Effect.$state != 'rejected_before_effect' and $Effect.$state != 'consumed' and $Effect.$state != 'abandoned_before_effect')"><return value="'construction_handoff_effect_unreconciled'" /></do_if>
+        </do_for_each>
+        <set_value name="$Creation" exact="@global.$TM_EmpireComponentRecords.$creation.{$Station}" />
+        <do_if value="@$Receipt.$nativecreation and (not $Creation or $Creation.$build != $Build or $Creation.$manager != $Receipt.$manager or $Creation.$goal != $Receipt.$goal or $Creation.$state != 'adopted')"><return value="'construction_handoff_provenance_changed'" /></do_if>
+        <!-- Settle only already observed debits; never issue a payment.
+             Validate the complete set before changing accounting/authority. -->
+        <do_for_each name="$Debit" in="[@Funding.$Receipt, @Plot.$Receipt]">
+          <do_if value="$Debit and $Debit.$station == $Station and @$Debit.$build == $Build and $Debit.$state == 'observed' and (not $Debit.$paid? or $Debit.$paid lt 0Cr or not $Debit.$key?)"><return value="'construction_handoff_payment_evidence_missing'" /></do_if>
+        </do_for_each>
+        <do_if value="@Funding.$Receipt.$station == $Station and @Funding.$Receipt.$build == $Build and @Funding.$Receipt.$state == 'observed' and @$Receipt.$accountedpayment != Funding.$Receipt.$key">
+          <set_value name="$Receipt.$spent" exact="@$Receipt.$spent + Funding.$Receipt.$paid" /><set_value name="$Receipt.$accountedpayment" exact="Funding.$Receipt.$key" />
+        </do_if>
+        <do_if value="@Plot.$Receipt.$station == $Station and @Plot.$Receipt.$build == $Build and @Plot.$Receipt.$state == 'observed' and @$Receipt.$accountedplot != Plot.$Receipt.$key">
+          <set_value name="$Receipt.$spent" exact="@$Receipt.$spent + Plot.$Receipt.$paid" /><set_value name="$Receipt.$accountedplot" exact="Plot.$Receipt.$key" />
+        </do_if>
+        <!-- Preserve accumulated spend, plan and every payment receipt.
+             Only authority changes after all read-back checks succeed. -->
+        <set_value name="$Receipt.$previousmanager" exact="$Receipt.$manager" /><set_value name="$Receipt.$previousgoal" exact="$Receipt.$goal" />
+        <set_value name="$Receipt.$manager" exact="$ManagerCue" /><set_value name="$Receipt.$goal" exact="$GoalCue" /><set_value name="$Receipt.$handoff" exact="player.age" />
+        <set_value name="$Claim.$manager" exact="$ManagerCue" /><set_value name="$Claim.$goal" exact="$GoalCue" />
+        <do_if value="@$Receipt.$nativecreation"><set_value name="$Creation.$manager" exact="$ManagerCue" /><set_value name="$Creation.$goal" exact="$GoalCue" /></do_if>
+        <set_value name="$Receipt.$reason" exact="'native_construction_authority_reconciled'" /><set_value name="$Receipt.$nextattempt" exact="player.age" />
+        <set_value name="$GoalCue.$tm_empire_prefab_expansion" exact="$Receipt" />
+        <return value="$Receipt.$key" />
+      </actions>
+    </library>
+    <library name="StepPrefabExpansion" purpose="run_actions" namespace="this">
+      <params>
+        <param name="ManagerCue" />
+        <param name="GoalCue" />
+        <param name="Station" />
+        <param name="Sequence" />
+        <param name="Stage" />
+        <param name="Budget" />
+      </params>
+      <actions>
+        <do_if value="@Expansion.$Receipt.$state == 'queued' and @Expansion.$Receipt.$station == $Station and $Station.exists and $Sequence == $Station.plannedconstruction.sequence.finalsequence">
+          <run_actions ref="ReconcileQueuedExpansionOwner" result="$Handoff"><param name="ManagerCue" value="$ManagerCue" /><param name="GoalCue" value="$GoalCue" /><param name="Station" value="$Station" /></run_actions>
+          <do_if value="@Expansion.$Receipt.$key == $Handoff"><return value="Expansion.$Receipt" /></do_if>
+          <return value="table[$state='waiting', $reason=$Handoff]" />
+        </do_if>
+        <set_value name="$Pending" exact="@$GoalCue.$tm_empire_prefab_expansion" />
+        <do_if value="$Pending and @$GoalCue.$tm_empire_expansion_result.$key == $Pending.$key and @$GoalCue.$tm_empire_expansion_result.$state == 'observed'">
+          <remove_value name="$GoalCue.$tm_empire_prefab_expansion" />
+          <return value="table[$state='observed', $reason='prefab_stage_modules_observed']" />
+        </do_if>
+        <do_if value="$Pending and ($Pending.$state == 'queued' or $Pending.$state == 'queue_sent' or $Pending.$state == 'unknown')">
+          <return value="$Pending" />
+        </do_if>
+        <do_if value="not $Station.exists or not $Station.isplayerowned or not $Station.hasfutureconstructionstage or typeof $Stage != datatype.integer or $Stage != $Station.plannedconstruction.sequence.stage.current + 1 or $Sequence != $Station.plannedconstruction.sequence.finalsequence">
+          <return value="table[$state='waiting', $reason='prefab_station_plan_or_stage_changed']" />
+        </do_if>
+        <do_if value="$Pending and ($Pending.$station != $Station or $Pending.$stage != $Stage or $Pending.$sequence != $Sequence)">
+          <return value="table[$state='waiting', $reason='previous_prefab_request_requires_reconciliation']" />
+        </do_if>
+        <do_if value="@Expansion.$Receipt and Expansion.$Receipt.$state != 'observed' and Expansion.$Receipt.$state != 'abandoned_before_effect'">
+          <return value="table[$state='waiting', $reason='previous_expansion_unreconciled']" />
+        </do_if>
+        <do_if value="not $Pending">
+          <run_actions ref="RequestPlanValidation" result="$Key">
+            <param name="ManagerCue" value="$ManagerCue" />
+            <param name="GoalCue" value="$GoalCue" />
+            <param name="Station" value="$Station" />
+            <param name="Sequence" value="$Sequence" />
+          </run_actions>
+          <do_if value="@Request.$Receipt.$key != $Key">
+            <return value="table[$state='waiting', $reason=$Key]" />
+          </do_if>
+          <set_value name="$GoalCue.$tm_empire_prefab_expansion" exact="table[$state='validating', $key=$Key, $station=$Station, $sequence=$Sequence, $stage=$Stage]" />
+          <set_value name="$Pending" exact="$GoalCue.$tm_empire_prefab_expansion" />
+        </do_if>
+        <run_actions ref="ReadValidatedPlan" result="$Plan">
+          <param name="Key" value="$Pending.$key" />
+          <param name="ManagerCue" value="$ManagerCue" />
+          <param name="GoalCue" value="$GoalCue" />
+        </run_actions>
+        <do_if value="$Plan.$state != 'blueprints_observed'">
+          <set_value name="$Pending.$reason" exact="$Plan.$reason" />
+          <return value="$Pending" />
+        </do_if>
+        <run_actions ref="ReadExpansionPrerequisites" result="$Ready">
+          <param name="Station" value="$Station" />
+          <param name="Sequence" value="$Sequence" />
+        </run_actions>
+        <do_if value="$Ready.$state != 'observed'">
+          <set_value name="$Pending.$reason" exact="$Ready.$reason" />
+          <return value="$Pending" />
+        </do_if>
+        <do_if value="@global.$TM_EmpireComponentRecords.$construction_claim.{$Station} or $Budget lt 0Cr or $Budget gt player.money">
+          <return value="table[$state='waiting', $reason='prefab_station_claim_or_budget_changed']" />
+        </do_if>
+        <set_value name="$First" exact="$Station.plannedconstruction.sequence.stage.{$Stage}.first" />
+        <set_value name="$Last" exact="$Station.plannedconstruction.sequence.stage.{$Stage}.last - 1" />
+        <do_if value="$First lt 1 or $Last lt $First or $Last gt $Sequence.count">
+          <return value="table[$state='waiting', $reason='prefab_stage_entry_range_invalid']" />
+        </do_if>
+        <set_value name="Expansion.$Receipt" exact="table[$state='queue_sent', $key=$Pending.$key, $manager=$ManagerCue, $goal=$GoalCue, $station=$Station, $sequence=$Sequence, $stage=$Stage, $first=$First, $last=$Last, $budget=$Budget, $spent=0Cr, $issued=player.age]" />
+        <set_value name="global.$TM_EmpireComponentRecords.$construction_claim.{$Station}" exact="table[$key=$Pending.$key, $manager=$ManagerCue, $goal=$GoalCue, $state='queue_sent']" />
+        <set_value name="$Pending.$state" exact="'queue_sent'" />
+        <add_build_to_expand_station result="$Build" buildobject="$Station" object="$Station.buildstorage" constructionplan="$Sequence">
+          <stage exact="$Stage" />
+        </add_build_to_expand_station>
+        <set_value name="Expansion.$Receipt.$build" exact="$Build" />
+        <set_value name="global.$TM_EmpireComponentRecords.$construction_claim.{$Station}.$build" exact="$Build" />
+        <set_value name="$Pending.$build" exact="$Build" />
+        <do_if value="$Build.exists and $Build.isexpansion and $Build.buildobject == $Station and $Build.object == $Station.buildstorage">
+          <set_value name="Expansion.$Receipt.$state" exact="'queued'" />
+          <set_value name="$Pending.$state" exact="'queued'" />
+          <set_value name="Request.$Receipt.$state" exact="'consumed'" />
+        </do_if>
+        <do_else>
+          <set_value name="Expansion.$Receipt.$state" exact="'unknown'" />
+          <set_value name="$Pending.$state" exact="'unknown'" />
+          <set_value name="$Pending.$reason" exact="'prefab_build_unconfirmed'" />
+        </do_else>
+        <return value="$Pending" />
+      </actions>
+    </library>
+    <library name="QueueValidatedExpansion" purpose="run_actions" namespace="this">
+      <actions>
+        <set_value name="$Receipt" exact="@Expansion.$Receipt" />
+        <do_if value="not $Receipt or $Receipt.$state != 'validating'">
+          <return value="'no_expansion_plan_pending'" />
+        </do_if>
+        <do_if value="not $Receipt.$manager.exists or not $Receipt.$goal.exists">
+          <run_actions ref="AbandonUnqueuedExpansion">
+            <param name="Reason" value="'construction_goal_missing'" />
+          </run_actions>
+          <return value="'construction_goal_missing'" />
+        </do_if>
+        <run_actions ref="md.TM_Empire_Runtime.CanActForGovernor" result="$Lifecycle">
+          <param name="Actor" value="$Receipt.$manager.$Governor" />
+          <param name="Station" value="$Receipt.$manager.$GovernorStation" />
+          <param name="Module" value="$Receipt.$manager.$GovernorModule" />
+          <param name="ManagerCue" value="$Receipt.$manager" />
+        </run_actions>
+        <do_if value="$Lifecycle != 'available'">
+          <run_actions ref="AbandonUnqueuedExpansion">
+            <param name="Reason" value="$Lifecycle" />
+          </run_actions>
+          <return value="$Lifecycle" />
+        </do_if>
+        <run_actions ref="ReadValidatedPlan" result="$Plan">
+          <param name="Key" value="$Receipt.$key" />
+          <param name="ManagerCue" value="$Receipt.$manager" />
+          <param name="GoalCue" value="$Receipt.$goal" />
+        </run_actions>
+        <do_if value="$Plan.$state != 'blueprints_observed'">
+          <set_value name="Expansion.$Receipt.$reason" exact="$Plan.$reason" />
+          <do_if value="@Request.$Receipt.$state == 'abandoned_before_effect'">
+            <run_actions ref="AbandonUnqueuedExpansion">
+              <param name="Reason" value="$Plan.$reason" />
+            </run_actions>
+          </do_if>
+          <return value="$Plan.$reason" />
+        </do_if>
+        <set_value name="$Station" exact="$Receipt.$station" />
+        <do_if value="not $Station.exists or not $Station.isplayerowned or not $Station.isoperational">
+          <run_actions ref="AbandonUnqueuedExpansion">
+            <param name="Reason" value="'owned_expansion_station_unavailable'" />
+          </run_actions>
+          <return value="'owned_expansion_station_unavailable'" />
+        </do_if>
+        <do_if value="$Station.buildstorage.builds.queued.count or $Station.buildstorage.builds.inprogress.count">
+          <run_actions ref="AbandonUnqueuedExpansion">
+            <param name="Reason" value="'construction_queue_changed_before_effect'" />
+          </run_actions>
+          <return value="'construction_queue_changed_before_effect'" />
+        </do_if>
+        <run_actions ref="ReadExpansionPrerequisites" result="$Ready">
+          <param name="Station" value="$Station" />
+          <param name="Sequence" value="$Plan.$sequence" />
+        </run_actions>
+        <do_if value="$Ready.$state != 'observed'">
+          <set_value name="Expansion.$Receipt.$reason" exact="$Ready.$reason" />
+          <return value="$Ready.$reason" />
+        </do_if>
+        <set_value name="$Bounds" exact="$Station.buildplot.max" />
+        <set_value name="$Center" exact="$Station.buildplot.center" />
+        <set_value name="$Generation" exact="$Receipt.$generation" />
+        <do_if value="@global.$TM_EmpireComponentRecords.$generation.{$Station}.$goal != $Receipt.$goal or $Station.plannedconstruction.sequence != $Generation.$base or $Bounds.x != $Generation.$x or $Bounds.y != $Generation.$y or $Bounds.z != $Generation.$z or $Center.x != $Generation.$cx or $Center.y != $Generation.$cy or $Center.z != $Generation.$cz">
+          <run_actions ref="AbandonUnqueuedExpansion">
+            <param name="Reason" value="'station_plan_or_plot_changed_since_generation'" />
+          </run_actions>
+          <return value="'station_plan_or_plot_changed_since_generation'" />
+        </do_if>
+        <do_if value="@global.$TM_EmpireComponentRecords.$construction_claim.{$Station}">
+          <return value="'station_construction_already_claimed'" />
+        </do_if>
+        <set_value name="Expansion.$Receipt.$state" exact="'queue_sent'" />
+        <set_value name="global.$TM_EmpireComponentRecords.$construction_claim.{$Station}" exact="table[$key=$Receipt.$key, $manager=$Receipt.$manager, $goal=$Receipt.$goal, $state='queue_sent', $issued=player.age]" />
+        <add_build_to_expand_station result="$Build" buildobject="$Station" object="$Station.buildstorage" constructionplan="$Plan.$sequence" />
+        <set_value name="Expansion.$Receipt.$build" exact="$Build" />
+        <set_value name="global.$TM_EmpireComponentRecords.$construction_claim.{$Station}.$build" exact="$Build" />
+        <do_if value="not $Build.exists or not $Build.isexpansion or $Build.buildobject != $Station or $Build.object != $Station.buildstorage">
+          <set_value name="Expansion.$Receipt.$state" exact="'unknown'" />
+          <set_value name="Expansion.$Receipt.$reason" exact="'native_expansion_queue_unconfirmed'" />
+          <set_value name="global.$TM_EmpireComponentRecords.$construction_claim.{$Station}.$state" exact="'unknown'" />
+          <return value="'unknown'" />
+        </do_if>
+        <set_value name="Expansion.$Receipt.$state" exact="'queued'" />
+        <set_value name="Expansion.$Receipt.$reason" exact="'native_expansion_resources_pending'" />
+        <set_value name="global.$TM_EmpireComponentRecords.$construction_claim.{$Station}.$state" exact="'queued'" />
+        <set_value name="Request.$Receipt.$state" exact="'consumed'" />
+        <remove_value name="global.$TM_EmpireComponentRecords.$generation.{$Station}" />
+        <return value="'queued'" />
+      </actions>
+    </library>
+    <library name="ReadExpansionResult" purpose="run_actions" namespace="this">
+      <params>
+        <param name="ManagerCue" />
+        <param name="GoalCue" />
+        <param name="Key" />
+      </params>
+      <actions>
+        <do_if value="not $GoalCue.exists">
+          <return value="table[$state='missing', $reason='construction_goal_missing']" />
+        </do_if>
+        <set_value name="$Receipt" exact="@$GoalCue.$tm_empire_expansion_result" />
+        <do_if value="@$Receipt.$key == $Key and @$Receipt.$manager == $ManagerCue and @$Receipt.$goal == $GoalCue">
+          <return value="$Receipt" />
+        </do_if>
+        <set_value name="$Receipt" exact="@Expansion.$Receipt" />
+        <do_if value="@$Receipt.$key == $Key and @$Receipt.$manager == $ManagerCue and @$Receipt.$goal == $GoalCue">
+          <return value="$Receipt" />
+        </do_if>
+        <return value="table[$state='missing', $reason='expansion_result_not_correlated']" />
+      </actions>
+    </library>
+    <library name="AbandonUnqueuedExpansion" purpose="run_actions" namespace="this">
+      <params>
+        <param name="Reason" />
+      </params>
+      <actions>
+        <set_value name="$Receipt" exact="@Expansion.$Receipt" />
+        <do_if value="not $Receipt or $Receipt.$state != 'validating'">
+          <return value="'expansion_may_have_effect'" />
+        </do_if>
+        <set_value name="Expansion.$Receipt.$state" exact="'abandoned_before_effect'" />
+        <set_value name="Expansion.$Receipt.$reason" exact="$Reason" />
+        <do_if value="$Receipt.$goal.exists">
+          <set_value name="$Receipt.$goal.$tm_empire_expansion_result" exact="Expansion.$Receipt.clone" />
+        </do_if>
+        <do_if value="@Request.$Receipt.$key == $Receipt.$key">
+          <set_value name="Request.$Receipt.$state" exact="'abandoned_before_effect'" />
+        </do_if>
+        <do_if value="$Receipt.$station.exists and @global.$TM_EmpireComponentRecords.$generation.{$Receipt.$station}.$manager == $Receipt.$manager and @global.$TM_EmpireComponentRecords.$generation.{$Receipt.$station}.$goal == $Receipt.$goal and @global.$TM_EmpireComponentRecords.$generation.{$Receipt.$station}.$state == 'validating'">
+          <remove_value name="global.$TM_EmpireComponentRecords.$generation.{$Receipt.$station}" />
+        </do_if>
+        <return value="'abandoned_before_effect'" />
+      </actions>
+    </library>
+    <library name="StepQueuedExpansion" purpose="run_actions" namespace="this">
+      <actions>
+        <set_value name="$Receipt" exact="@Expansion.$Receipt" />
+        <do_if value="not $Receipt or ($Receipt.$state != 'queued' and $Receipt.$state != 'queue_sent' and $Receipt.$state != 'unknown')">
+          <return value="'no_queued_expansion'" />
+        </do_if>
+        <set_value name="$Station" exact="$Receipt.$station" />
+        <set_value name="$Build" exact="@$Receipt.$build" />
+        <do_if value="not $Station.exists or not $Station.isplayerowned or not $Station.buildstorage.exists">
+          <set_value name="Expansion.$Receipt.$state" exact="'unknown'" />
+          <set_value name="Expansion.$Receipt.$reason" exact="'expansion_station_lost'" />
+          <return value="'expansion_station_lost'" />
+        </do_if>
+        <set_value name="$First" exact="if @$Receipt.$stage then $Receipt.$first else 1" />
+        <set_value name="$Last" exact="if @$Receipt.$stage then $Receipt.$last else $Receipt.$sequence.count" />
+        <do_if value="not Expansion.$Receipt.$observedentries?">
+          <set_value name="Expansion.$Receipt.$observedentries" exact="[]" />
+          <set_value name="Expansion.$Receipt.$cursor" exact="$First" />
+        </do_if>
+        <set_value name="$From" exact="Expansion.$Receipt.$cursor" />
+        <set_value name="$To" exact="[$From + 31, $Last].min" />
+        <do_if value="$From == $First">
+          <set_value name="Expansion.$Receipt.$observedentries" exact="[]" />
+          <set_value name="Expansion.$Receipt.$observationstarted" exact="player.age" />
+        </do_if>
+        <do_all exact="$To - $From + 1" counter="$Offset">
+          <set_value name="$EntryIndex" exact="$From + $Offset - 1" />
+          <do_if value="$Station.planmodule.{$Receipt.$sequence.{$EntryIndex}.id}.exists and $Station.planmodule.{$Receipt.$sequence.{$EntryIndex}.id}.isoperational and $Station.planmodule.{$Receipt.$sequence.{$EntryIndex}.id}.macro == $Receipt.$sequence.{$EntryIndex}.macro and not Expansion.$Receipt.$observedentries.indexof.{$Receipt.$sequence.{$EntryIndex}.id}">
+            <append_to_list name="Expansion.$Receipt.$observedentries" exact="$Receipt.$sequence.{$EntryIndex}.id" />
+          </do_if>
+        </do_all>
+        <set_value name="Expansion.$Receipt.$cursor" exact="if $To == $Last then $First else $To + 1" />
+        <do_if value="$To == $Last and Expansion.$Receipt.$observedentries.count == $Last - $First + 1">
+          <set_value name="Expansion.$Receipt.$state" exact="'observed'" />
+          <set_value name="Expansion.$Receipt.$reason" exact="'native_expansion_modules_observed'" />
+          <set_value name="Expansion.$Receipt.$observed" exact="player.age" />
+          <do_if value="$Receipt.$goal.exists">
+            <set_value name="$Receipt.$goal.$tm_empire_expansion_result" exact="Expansion.$Receipt.clone" />
+          </do_if>
+          <do_if value="@global.$TM_EmpireComponentRecords.$construction_claim.{$Station}.$key == $Receipt.$key">
+            <remove_value name="global.$TM_EmpireComponentRecords.$construction_claim.{$Station}" />
+          </do_if>
+          <return value="'observed'" />
+        </do_if>
+        <do_if value="not $Build.exists or $Build.iscancelled">
+          <set_value name="Expansion.$Receipt.$state" exact="'unknown'" />
+          <set_value name="Expansion.$Receipt.$reason" exact="'native_expansion_build_missing_or_cancelled'" />
+          <return value="'unknown'" />
+        </do_if>
+        <do_if value="@global.$TM_EmpireComponentRecords.$construction_claim.{$Station}.$key != $Receipt.$key or @global.$TM_EmpireComponentRecords.$construction_claim.{$Station}.$build != $Build">
+          <set_value name="Expansion.$Receipt.$state" exact="'unknown'" />
+          <set_value name="Expansion.$Receipt.$reason" exact="'native_expansion_claim_changed'" />
+          <return value="'unknown'" />
+        </do_if>
+        <set_value name="$Storage" exact="$Station.buildstorage" />
+        <set_value name="Expansion.$Receipt.$missingresources" exact="$Storage.neededbuildresources.{$Build}.table" />
+        <set_value name="Expansion.$Receipt.$wantedmoney" exact="$Storage.wantedmoney" />
+        <do_if value="@Funding.$Receipt.$goal == $Receipt.$goal and @Funding.$Receipt.$build == $Build">
+          <do_if value="Funding.$Receipt.$state == 'observed' and @Expansion.$Receipt.$accountedpayment != Funding.$Receipt.$key">
+            <set_value name="Expansion.$Receipt.$spent" exact="@Expansion.$Receipt.$spent + Funding.$Receipt.$paid" />
+            <set_value name="Expansion.$Receipt.$accountedpayment" exact="Funding.$Receipt.$key" />
+          </do_if>
+          <do_elseif value="Funding.$Receipt.$state == 'quote_requested' or Funding.$Receipt.$state == 'sent' or Funding.$Receipt.$state == 'unknown'">
+            <set_value name="Expansion.$Receipt.$reason" exact="'construction_funding_unreconciled'" />
+            <return value="'construction_funding_unreconciled'" />
+          </do_elseif>
+        </do_if>
+        <do_if value="player.age lt @Expansion.$Receipt.$nextattempt">
+          <return value="Expansion.$Receipt.$reason" />
+        </do_if>
+        <do_if value="not $Receipt.$manager.exists or not $Receipt.$goal.exists">
+          <set_value name="Expansion.$Receipt.$reason" exact="'construction_goal_missing_after_queue'" />
+          <return value="'construction_goal_missing_after_queue'" />
+        </do_if>
+        <run_actions ref="md.TM_Empire_Runtime.CanActForGovernor" result="$Reason">
+          <param name="Actor" value="$Receipt.$manager.$Governor" />
+          <param name="Station" value="$Receipt.$manager.$GovernorStation" />
+          <param name="Module" value="$Receipt.$manager.$GovernorModule" />
+          <param name="ManagerCue" value="$Receipt.$manager" />
+        </run_actions>
+        <do_if value="$Reason != 'available'">
+          <set_value name="Expansion.$Receipt.$reason" exact="$Reason" />
+          <return value="$Reason" />
+        </do_if>
+        <run_actions ref="ReadPlotLicence" result="$PlotReason">
+          <param name="Station" value="$Station" />
+        </run_actions>
+        <do_if value="$PlotReason != 'observed'">
+          <set_value name="Expansion.$Receipt.$reason" exact="$PlotReason" />
+          <do_if value="@$Receipt.$nativecreation">
+            <do_if value="@Plot.$Receipt.$goal == $Receipt.$goal and @Plot.$Receipt.$station == $Station and Plot.$Receipt.$state != 'observed' and Plot.$Receipt.$state != 'rejected_before_effect'">
+              <set_value name="Expansion.$Receipt.$reason" exact="'native_station_plot_licence_pending'" />
+              <return value="'native_station_plot_licence_pending'" />
+            </do_if>
+            <run_actions ref="RequestPlotChange" result="$PlotKey">
+              <param name="ManagerCue" value="$Receipt.$manager" />
+              <param name="GoalCue" value="$Receipt.$goal" />
+              <param name="Station" value="$Station" />
+              <param name="Build" value="$Build" />
+              <param name="Budget" value="[[$Receipt.$budget - @Expansion.$Receipt.$spent, 0Cr].max, player.money].min" />
+            </run_actions>
+            <set_value name="Expansion.$Receipt.$reason" exact="if @Plot.$Receipt.$key == $PlotKey then 'native_station_plot_licence_pending' else $PlotKey" />
+            <set_value name="Expansion.$Receipt.$nextattempt" exact="player.age + 1min" />
+          </do_if>
+          <return value="Expansion.$Receipt.$reason" />
+        </do_if>
+        <do_if value="@Plot.$Receipt.$goal == $Receipt.$goal and @Plot.$Receipt.$station == $Station and @Plot.$Receipt.$build == $Build and Plot.$Receipt.$state == 'observed' and @Expansion.$Receipt.$accountedplot != Plot.$Receipt.$key">
+          <set_value name="Expansion.$Receipt.$spent" exact="@Expansion.$Receipt.$spent + Plot.$Receipt.$paid" />
+          <set_value name="Expansion.$Receipt.$accountedplot" exact="Plot.$Receipt.$key" />
+        </do_if>
+        <do_if value="$Storage.wantedmoney gt $Storage.money">
+          <run_actions ref="ApproveConstructionFunding" result="$Reason">
+            <param name="ManagerCue" value="$Receipt.$manager" />
+            <param name="GoalCue" value="$Receipt.$goal" />
+            <param name="Station" value="$Station" />
+            <param name="Build" value="$Build" />
+            <param name="Budget" value="[$Receipt.$budget - @Expansion.$Receipt.$spent, 0Cr].max" />
+          </run_actions>
+          <set_value name="Expansion.$Receipt.$reason" exact="$Reason" />
+          <do_if value="$Reason == 'sent'">
+            <return value="'funding_sent'" />
+          </do_if>
+          <set_value name="Expansion.$Receipt.$nextattempt" exact="player.age + 1min" />
+          <return value="$Reason" />
+        </do_if>
+        <do_if value="$Station.requiresconstructionvessel.{$Receipt.$sequence} and not $Storage.buildmodule.constructionvessel.exists">
+          <do_if value="@Builder.$Receipt.$goal == $Receipt.$goal and @Builder.$Receipt.$build == $Build and (Builder.$Receipt.$state == 'sent' or Builder.$Receipt.$state == 'unknown')">
+            <set_value name="Expansion.$Receipt.$reason" exact="'builder_arrival_pending'" />
+            <return value="'builder_arrival_pending'" />
+          </do_if>
+          <do_if value="not Expansion.$Receipt.$builders? or player.age gt @Expansion.$Receipt.$builderrefresh + 10min">
+            <find_ship_by_true_owner name="$Builders" faction="faction.player" space="player.galaxy" primarypurpose="purpose.build" known="true" multiple="true" checkoperational="true" />
+            <set_value name="Expansion.$Receipt.$builders" exact="$Builders" />
+            <set_value name="Expansion.$Receipt.$builderrefresh" exact="player.age" />
+            <do_if value="not Expansion.$Receipt.$buildercursor?">
+              <set_value name="Expansion.$Receipt.$buildercursor" exact="1" />
+            </do_if>
+          </do_if>
+          <do_all exact="[8, Expansion.$Receipt.$builders.count].min">
+            <do_if value="Expansion.$Receipt.$buildercursor gt Expansion.$Receipt.$builders.count">
+              <set_value name="Expansion.$Receipt.$buildercursor" exact="1" />
+            </do_if>
+            <set_value name="$Ship" exact="Expansion.$Receipt.$builders.{Expansion.$Receipt.$buildercursor}" />
+            <set_value name="Expansion.$Receipt.$buildercursor" exact="Expansion.$Receipt.$buildercursor + 1" />
+            <run_actions ref="RequestOwnedBuilder" result="$Reason">
+              <param name="ManagerCue" value="$Receipt.$manager" />
+              <param name="GoalCue" value="$Receipt.$goal" />
+              <param name="Station" value="$Station" />
+              <param name="Build" value="$Build" />
+              <param name="Ship" value="$Ship" />
+            </run_actions>
+            <do_if value="$Reason == 'sent'">
+              <set_value name="Expansion.$Receipt.$reason" exact="'builder_arrival_pending'" />
+              <return value="'builder_arrival_pending'" />
+            </do_if>
+          </do_all>
+          <run_actions ref="RequestHiredBuilder" result="$HireReason" />
+          <set_value name="Expansion.$Receipt.$reason" exact="$HireReason" />
+          <set_value name="Expansion.$Receipt.$nextattempt" exact="player.age + 1min" />
+          <return value="$HireReason" />
+        </do_if>
+        <set_value name="Expansion.$Receipt.$reason" exact="if not @$Storage.buildmodule.constructionvessel.isdeployedconstructionvessel then 'builder_arrival_pending' else if $Build.isprocessing then 'native_construction_in_progress' else 'native_resources_or_processor_pending'" />
+        <return value="Expansion.$Receipt.$reason" />
+      </actions>
+    </library>
+    <cue name="ExpansionBuildWatch" namespace="this" checkinterval="15s">
+      <conditions>
+        <check_value value="@Expansion.$Receipt.$state == 'queued' or @Expansion.$Receipt.$state == 'queue_sent' or @Expansion.$Receipt.$state == 'unknown'" />
+      </conditions>
+      <delay exact="15s" />
+      <actions>
+        <run_actions ref="StepQueuedExpansion" />
+        <reset_cue cue="this" />
+      </actions>
+    </cue>
+    <library name="ApproveConstructionFunding" purpose="run_actions" namespace="this">
+      <params>
+        <param name="ManagerCue" />
+        <param name="GoalCue" />
+        <param name="Station" />
+        <param name="Build" />
+        <param name="Budget" />
+      </params>
+      <actions>
+        <do_if value="@Funding.$Receipt.$state == 'quote_requested' or @Funding.$Receipt.$state == 'sent' or @Funding.$Receipt.$state == 'unknown'">
+          <return value="'previous_construction_funding_unreconciled'" />
+        </do_if>
+        <do_if value="not $ManagerCue.exists or not $GoalCue.exists">
+          <return value="'construction_goal_missing'" />
+        </do_if>
+        <run_actions ref="md.TM_Empire_Runtime.CanActForGovernor" result="$Reason">
+          <param name="Actor" value="$ManagerCue.$Governor" />
+          <param name="Station" value="$ManagerCue.$GovernorStation" />
+          <param name="Module" value="$ManagerCue.$GovernorModule" />
+          <param name="ManagerCue" value="$ManagerCue" />
+        </run_actions>
+        <do_if value="$Reason != 'available'">
+          <return value="$Reason" />
+        </do_if>
+        <do_if value="not $Station.exists or not $Station.isplayerowned or not $Station.buildstorage.exists or not $Station.buildstorage.isplayerowned or not $Build.exists or not $Build.isexpansion or $Build.buildobject != $Station or $Build.object != $Station.buildstorage">
+          <return value="'owned_expansion_task_unavailable'" />
+        </do_if>
+        <do_if value="@global.$TM_EmpireComponentRecords.$construction_claim.{$Station}.$manager != $ManagerCue or @global.$TM_EmpireComponentRecords.$construction_claim.{$Station}.$goal != $GoalCue or @global.$TM_EmpireComponentRecords.$construction_claim.{$Station}.$build != $Build">
+          <return value="'construction_task_not_owned_by_goal'" />
+        </do_if>
+        <do_if value="not $Station.isoperational and (@global.$TM_EmpireComponentRecords.$creation.{$Station}.$state != 'adopted' or @global.$TM_EmpireComponentRecords.$creation.{$Station}.$manager != $ManagerCue or @global.$TM_EmpireComponentRecords.$creation.{$Station}.$goal != $GoalCue or @global.$TM_EmpireComponentRecords.$creation.{$Station}.$build != $Build)">
+          <return value="'new_station_creation_not_correlated'" />
+        </do_if>
+        <set_value name="$Storage" exact="$Station.buildstorage" />
+        <do_if value="$Storage.builds.queued.count + $Storage.builds.inprogress.count != 1 or (not $Storage.builds.queued.indexof.{$Build} and not $Storage.builds.inprogress.indexof.{$Build})">
+          <return value="'construction_queue_changed'" />
+        </do_if>
+        <set_value name="$Wanted" exact="$Storage.wantedmoney" />
+        <set_value name="$Balance" exact="$Storage.money" />
+        <set_value name="$Amount" exact="[0Cr, $Wanted - $Balance].max" />
+        <do_if value="$Budget lt 0Cr or $Wanted lt 0Cr or $Amount gt $Budget or $Amount gt player.money">
+          <return value="'construction_budget_missing'" />
+        </do_if>
+        <set_value name="Funding.$Serial" exact="@Funding.$Serial + 1" />
+        <set_value name="$Key" exact="'construction_funding_' + Funding.$Serial + '_' + player.age" />
+        <set_value name="Funding.$Receipt" exact="table[$state='quote_requested', $key=$Key, $manager=$ManagerCue, $goal=$GoalCue, $station=$Station, $storage=$Storage, $build=$Build, $wanted=$Wanted, $amount=$Amount, $budget=$Budget, $issued=player.age]" />
+        <set_value name="player.entity.$tm_empire_construction_funding" exact="table[$schema=1, $state='quote_requested', $key=$Key, $station=$Station, $storage=$Storage, $wanted=$Wanted, $balance=$Balance, $budget=$Budget, $newconstruction=not $Station.isoperational]" />
+        <raise_lua_event name="'TM_Empire.QuoteConstructionFunding'" />
+        <return value="'sent'" />
+      </actions>
+    </library>
+    <cue name="FundingQuoted" instantiate="true" namespace="this">
+      <conditions><event_ui_triggered screen="'TM_Empire_Construction'" control="'FundingQuoted'" /></conditions>
+      <actions><run_actions ref="ApproveFundingQuote" /></actions>
+    </cue>
+    <library name="ApproveFundingQuote" purpose="run_actions" namespace="this">
+      <actions>
+        <set_value name="$Receipt" exact="@Funding.$Receipt" />
+        <set_value name="$Request" exact="@player.entity.$tm_empire_construction_funding" />
+        <do_if value="not $Receipt or $Receipt.$state != 'quote_requested' or not $Request or @$Request.$key != $Receipt.$key"><return /></do_if>
+        <do_if value="$Request.$state == 'quote_failed' or $Request.$state == 'revoked'">
+          <set_value name="$Request.$state" exact="'rejected_before_payment'" />
+          <do_if value="not $Request.$reason?"><set_value name="$Request.$reason" exact="'construction_funding_revoked'" /></do_if>
+          <set_value name="Funding.$Receipt.$state" exact="'sent'" /><run_actions ref="ObserveConstructionFunding" /><return />
+        </do_if>
+        <do_if value="$Request.$state != 'quote_ready'"><return /></do_if>
+        <set_value name="$Reason" exact="'construction_goal_missing'" />
+        <do_if value="$Receipt.$manager.exists and $Receipt.$goal.exists">
+          <run_actions ref="md.TM_Empire_Runtime.CanActForGovernor" result="$Reason">
+            <param name="Actor" value="$Receipt.$manager.$Governor" /><param name="Station" value="$Receipt.$manager.$GovernorStation" /><param name="Module" value="$Receipt.$manager.$GovernorModule" /><param name="ManagerCue" value="$Receipt.$manager" />
+          </run_actions>
+          <do_if value="$Reason == 'available'"><run_actions ref="CheckPlotConstructionBoundary" result="$Reason"><param name="ManagerCue" value="$Receipt.$manager" /><param name="GoalCue" value="$Receipt.$goal" /><param name="Station" value="$Receipt.$station" /><param name="Build" value="$Receipt.$build" /></run_actions></do_if>
+        </do_if>
+        <do_if value="$Reason != 'available' or $Request.$station != $Receipt.$station or $Request.$storage != $Receipt.$storage or $Request.$budget * 1Cr != $Receipt.$budget or player.age gt $Receipt.$issued + 1min">
+          <set_value name="$Request.$state" exact="'rejected_before_payment'" /><set_value name="$Request.$reason" exact="if $Reason != 'available' then $Reason else 'construction_funding_revoked'" />
+          <set_value name="Funding.$Receipt.$state" exact="'sent'" /><run_actions ref="ObserveConstructionFunding" /><return />
+        </do_if>
+        <do_for_each name="$Field" in="['$quotedwanted', '$quotedbalance']">
+          <do_if value="typeof @$Request.{$Field} != datatype.integer and typeof @$Request.{$Field} != datatype.float and typeof @$Request.{$Field} != datatype.largeint and typeof @$Request.{$Field} != datatype.largefloat">
+            <set_value name="$Request.$state" exact="'rejected_before_payment'" /><set_value name="$Request.$reason" exact="'native_construction_quote_unavailable'" /><set_value name="Funding.$Receipt.$state" exact="'sent'" /><run_actions ref="ObserveConstructionFunding" /><return />
+          </do_if>
+        </do_for_each>
+        <set_value name="$Wanted" exact="$Request.$quotedwanted * 1Cr" /><set_value name="$Balance" exact="$Request.$quotedbalance * 1Cr" />
+        <set_value name="$Amount" exact="[0Cr, $Wanted - $Balance].max" />
+        <!-- Native UI exposes a whole-credit estimate while MD retains cents.
+             Approve the actual native quote, never infer a rounding method. -->
+        <do_if value="$Wanted lt 0Cr or $Balance lt 0Cr or $Amount gt $Receipt.$budget or $Amount gt player.money or $Wanted gt $Receipt.$storage.wantedmoney + 1Cr or $Wanted lt $Receipt.$storage.wantedmoney - 1Cr or $Balance gt $Receipt.$storage.money + 1Cr or $Balance lt $Receipt.$storage.money - 1Cr">
+          <set_value name="$Request.$state" exact="'rejected_before_payment'" /><set_value name="$Request.$reason" exact="'construction_native_quote_or_budget_changed'" /><set_value name="Funding.$Receipt.$state" exact="'sent'" /><run_actions ref="ObserveConstructionFunding" /><return />
+        </do_if>
+        <set_value name="Funding.$Receipt.$raw_wanted" exact="$Receipt.$wanted" /><set_value name="Funding.$Receipt.$wanted" exact="$Wanted" /><set_value name="Funding.$Receipt.$amount" exact="$Amount" />
+        <set_value name="Funding.$Receipt.$state" exact="'sent'" />
+        <set_value name="$Request.$wanted" exact="$Request.$quotedwanted" /><set_value name="$Request.$balance" exact="$Request.$quotedbalance" /><set_value name="$Request.$state" exact="'approved'" />
+        <raise_lua_event name="'TM_Empire.FundConstruction'" />
+      </actions>
+    </library>
+    <library name="ObserveConstructionFunding" purpose="run_actions" namespace="this">
+      <actions>
+        <set_value name="$Receipt" exact="@Funding.$Receipt" />
+        <do_if value="@$Receipt.$state == 'quote_requested'">
+          <run_actions ref="ApproveFundingQuote" />
+          <do_if value="@Funding.$Receipt.$state == 'quote_requested' and player.age gt $Receipt.$issued + 1min">
+            <do_if value="@player.entity.$tm_empire_construction_funding.$key == $Receipt.$key">
+              <set_value name="player.entity.$tm_empire_construction_funding.$state" exact="'rejected_before_payment'" />
+              <set_value name="player.entity.$tm_empire_construction_funding.$reason" exact="'native_construction_quote_unavailable'" />
+              <set_value name="Funding.$Receipt.$state" exact="'sent'" /><run_actions ref="ObserveConstructionFunding" />
+            </do_if>
+            <do_else>
+              <set_value name="Funding.$Receipt.$state" exact="'rejected'" /><set_value name="Funding.$Receipt.$reason" exact="'native_construction_quote_unavailable'" />
+              <do_if value="@Expansion.$Receipt.$goal == $Receipt.$goal and @Expansion.$Receipt.$build == $Receipt.$build"><set_value name="Expansion.$Receipt.$reason" exact="Funding.$Receipt.$reason" /><set_value name="Expansion.$Receipt.$nextattempt" exact="player.age + 1min" /></do_if>
+            </do_else>
+          </do_if>
+          <return value="@Funding.$Receipt.$state" />
+        </do_if>
+        <do_if value="not $Receipt or ($Receipt.$state != 'sent' and $Receipt.$state != 'unknown')">
+          <return value="'no_construction_funding_pending'" />
+        </do_if>
+        <set_value name="$Payment" exact="@player.entity.$tm_empire_construction_payment" />
+        <do_if value="@$Payment.$key == $Receipt.$key">
+          <do_if value="$Payment.$state == 'paid' and $Payment.$station == $Receipt.$station and $Payment.$storage == $Receipt.$storage and $Payment.$paid * 1Cr == $Receipt.$amount and $Payment.$wanted * 1Cr == $Receipt.$wanted">
+            <set_value name="Funding.$Receipt.$state" exact="'observed'" />
+            <set_value name="Funding.$Receipt.$paid" exact="$Payment.$paid * 1Cr" />
+            <set_value name="Funding.$Receipt.$observed" exact="player.age" />
+            <set_value name="player.entity.$tm_empire_construction_payment.$state" exact="'reconciled'" />
+            <return value="'observed'" />
+          </do_if>
+          <set_value name="Funding.$Receipt.$state" exact="'unknown'" />
+          <set_value name="Funding.$Receipt.$reason" exact="@$Payment.$reason" />
+          <return value="'unknown'" />
+        </do_if>
+        <!-- The matching payment intent was handled above. With no intent for
+             this key, a revoked approval is a confirmed pre-payment refusal. -->
+        <do_if value="@player.entity.$tm_empire_construction_funding.$key == $Receipt.$key and (@player.entity.$tm_empire_construction_funding.$state == 'rejected_before_payment' or @player.entity.$tm_empire_construction_funding.$state == 'revoked')">
+          <set_value name="Funding.$Receipt.$state" exact="'rejected'" />
+          <set_value name="Funding.$Receipt.$reason" exact="player.entity.$tm_empire_construction_funding.$reason" />
+          <do_if value="@Expansion.$Receipt.$goal == $Receipt.$goal and @Expansion.$Receipt.$build == $Receipt.$build">
+            <set_value name="Expansion.$Receipt.$reason" exact="Funding.$Receipt.$reason" />
+            <set_value name="Expansion.$Receipt.$nextattempt" exact="player.age + 1min" />
+          </do_if>
+          <return value="'rejected'" />
+        </do_if>
+        <do_if value="player.age gt $Receipt.$issued + 1min">
+          <set_value name="Funding.$Receipt.$state" exact="'unknown'" />
+          <set_value name="Funding.$Receipt.$reason" exact="'construction_funding_effect_unconfirmed'" />
+        </do_if>
+        <return value="Funding.$Receipt.$state" />
+      </actions>
+    </library>
+    <cue name="FundingSubmitted" instantiate="true" namespace="this">
+      <conditions>
+        <event_ui_triggered screen="'TM_Empire_Construction'" control="'FundingSubmitted'" />
+      </conditions>
+      <actions>
+        <run_actions ref="ObserveConstructionFunding" />
+      </actions>
+    </cue>
+    <cue name="FundingWatch" namespace="this" checkinterval="15s">
+      <conditions>
+        <check_value value="@Funding.$Receipt.$state == 'quote_requested' or @Funding.$Receipt.$state == 'sent' or @Funding.$Receipt.$state == 'unknown'" />
+      </conditions>
+      <delay exact="15s" />
+      <actions>
+        <do_if value="@Funding.$Receipt.$state == 'quote_requested' and @player.entity.$tm_empire_construction_funding.$key == Funding.$Receipt.$key and @player.entity.$tm_empire_construction_funding.$state == 'quote_requested' and player.age le Funding.$Receipt.$issued + 1min">
+          <raise_lua_event name="'TM_Empire.QuoteConstructionFunding'" />
+        </do_if>
+        <run_actions ref="ObserveConstructionFunding" />
+        <reset_cue cue="this" />
+      </actions>
+    </cue>
+    <cue name="FundingLoaded" instantiate="true" namespace="this">
+      <conditions><event_game_loaded /></conditions>
+      <actions>
+        <!-- Capture the saved receipt before any post-load request can replace it. -->
+        <signal_cue_instantly cue="FundingLoadedReconcile" param="@Funding.$Receipt.$key" />
+      </actions>
+    </cue>
+    <cue name="FundingLoadedReconcile" instantiate="true" namespace="this">
+      <conditions><event_cue_signalled /></conditions>
+      <delay exact="5s" />
+      <actions>
+        <do_if value="event.param and event.param == @Funding.$Receipt.$key">
+        <set_value name="$Receipt" exact="@Funding.$Receipt" />
+        <do_if value="@$Receipt.$state == 'quote_requested' and @player.entity.$tm_empire_construction_funding.$state == 'quote_requested' and @player.entity.$tm_empire_construction_funding.$key == $Receipt.$key">
+          <raise_lua_event name="'TM_Empire.QuoteConstructionFunding'" />
+        </do_if>
+        <do_if value="$Receipt and ($Receipt.$state == 'quote_requested' or $Receipt.$state == 'sent' or $Receipt.$state == 'unknown')">
+          <run_actions ref="ObserveConstructionFunding" />
+          <do_if value="@player.entity.$tm_empire_construction_payment.$key != $Receipt.$key and @player.entity.$tm_empire_construction_funding.$key == $Receipt.$key and @player.entity.$tm_empire_construction_funding.$state == 'approved' and $Receipt.$manager.exists and $Receipt.$goal.exists">
+            <run_actions ref="md.TM_Empire_Runtime.CanActForGovernor" result="$Reason">
+              <param name="Actor" value="$Receipt.$manager.$Governor" />
+              <param name="Station" value="$Receipt.$manager.$GovernorStation" />
+              <param name="Module" value="$Receipt.$manager.$GovernorModule" />
+              <param name="ManagerCue" value="$Receipt.$manager" />
+            </run_actions>
+            <do_if value="$Reason == 'available'">
+              <run_actions ref="CheckPlotConstructionBoundary" result="$Reason">
+                <param name="ManagerCue" value="$Receipt.$manager" />
+                <param name="GoalCue" value="$Receipt.$goal" />
+                <param name="Station" value="$Receipt.$station" />
+                <param name="Build" value="$Receipt.$build" />
+              </run_actions>
+            </do_if>
+            <do_if value="$Reason == 'available'">
+              <raise_lua_event name="'TM_Empire.FundConstruction'" />
+            </do_if>
+            <do_else>
+              <set_value name="player.entity.$tm_empire_construction_funding.$state" exact="'rejected_before_payment'" />
+              <set_value name="player.entity.$tm_empire_construction_funding.$reason" exact="$Reason" />
+              <run_actions ref="ObserveConstructionFunding" />
+            </do_else>
+          </do_if>
+        </do_if>
+              </do_if>
+      </actions>
+    </cue>
+    <cue name="ExpansionQueueWatch" namespace="this" checkinterval="5s">
+      <conditions>
+        <check_value value="@Expansion.$Receipt.$state == 'validating'" />
+      </conditions>
+      <delay exact="5s" />
+      <actions>
+        <run_actions ref="QueueValidatedExpansion" />
+        <reset_cue cue="this" />
+      </actions>
+    </cue>
+    <library name="RequestHiredBuilder" purpose="run_actions" namespace="this">
+      <actions>
+        <set_value name="$Expansion" exact="@Expansion.$Receipt" />
+        <do_if value="not $Expansion or $Expansion.$state != 'queued'"><return value="'construction_not_queued'" /></do_if>
+        <run_actions ref="md.TM_Empire_Runtime.ReadGoalLifetime" result="$Reason"><param name="GoalCue" value="$Expansion.$goal" /></run_actions>
+        <do_if value="$Reason != 'available'"><return value="$Reason" /></do_if>
+        <do_if value="@Builder.$Receipt and Builder.$Receipt.$state != 'observed' and Builder.$Receipt.$state != 'rejected_before_effect'"><return value="'previous_builder_attempt_unreconciled'" /></do_if>
+        <set_value name="$Station" exact="$Expansion.$station" />
+        <do_if value="@global.$TM_EmpireComponentRecords.$construction_claim.{$Station}.$key != $Expansion.$key or @global.$TM_EmpireComponentRecords.$construction_claim.{$Station}.$build != $Expansion.$build"><return value="'construction_claim_changed'" /></do_if>
+        <do_if value="not $Station.exists or not $Station.isplayerowned or not $Expansion.$build.exists or @$Station.buildstorage.buildmodule.constructionvessel.exists"><return value="'builder_destination_changed'" /></do_if>
+        <set_value name="$Manager" exact="$Expansion.$manager" />
+        <run_actions ref="md.TM_Empire_Runtime.CanActForGovernor" result="$Reason">
+          <param name="Actor" value="$Manager.$Governor" /><param name="Station" value="$Manager.$GovernorStation" /><param name="Module" value="$Manager.$GovernorModule" /><param name="ManagerCue" value="$Manager" />
+        </run_actions>
+        <do_if value="$Reason != 'available'"><return value="$Reason" /></do_if>
+        <do_if value="not Expansion.$Receipt.$hirebuilders? or player.age gt @Expansion.$Receipt.$hirebuilderrefresh + 10min">
+          <find_ship name="$Ships" space="player.galaxy" primarypurpose="purpose.build" known="true" multiple="true" checkoperational="true" sortbydistanceto="$Station" />
+          <set_value name="Expansion.$Receipt.$hirebuilders" exact="$Ships" />
+          <set_value name="Expansion.$Receipt.$hirebuildercursor" exact="1" />
+          <set_value name="Expansion.$Receipt.$hirebuilderrefresh" exact="player.age" />
+        </do_if>
+        <set_value name="$Budget" exact="[$Expansion.$budget - @$Expansion.$spent, player.money].min" />
+        <do_if value="$Budget le 0Cr"><return value="'builder_budget_missing'" /></do_if>
+        <do_all exact="[8, Expansion.$Receipt.$hirebuilders.count].min">
+          <do_if value="Expansion.$Receipt.$hirebuildercursor gt Expansion.$Receipt.$hirebuilders.count"><set_value name="Expansion.$Receipt.$hirebuildercursor" exact="1" /></do_if>
+          <set_value name="$Ship" exact="Expansion.$Receipt.$hirebuilders.{Expansion.$Receipt.$hirebuildercursor}" />
+          <set_value name="Expansion.$Receipt.$hirebuildercursor" exact="Expansion.$Receipt.$hirebuildercursor + 1" />
+          <do_if value="not $Ship.exists or not $Ship.isknown or not $Ship.isoperational or $Ship.isplayerowned or $Ship.isdeployedconstructionvessel or $Ship.orders.count or not $Ship.hasrelation.friend.{faction.player} or $Ship.commander.exists"><continue /></do_if>
+          <set_value name="Builder.$Serial" exact="@Builder.$Serial + 1" />
+          <set_value name="Builder.$Receipt" exact="table[$state='sent', $engine='native_hired', $key='builder_hire_' + Builder.$Serial + '_' + player.age, $manager=$Manager, $goal=$Expansion.$goal, $station=$Station, $build=$Expansion.$build, $ship=$Ship, $issued=player.age, $reason='native_builder_quote_pending', $budget=$Budget]" />
+          <set_value name="player.entity.$tm_empire_builder_request" exact="table[$schema=1, $state='check_requested', $key=Builder.$Receipt.$key, $ship=$Ship, $station=$Station, $storage=$Station.buildstorage, $budget=$Budget]" />
+          <raise_lua_event name="'TM_Empire.QuoteBuilder'" />
+          <return value="'native_builder_quote_pending'" />
+        </do_all>
+        <return value="'known_idle_builder_unavailable'" />
+      </actions>
+    </library>
+    <cue name="BuilderHiringUpdated" instantiate="true">
+      <conditions><event_ui_triggered screen="'TM_Empire_Construction'" control="'BuilderHiringUpdated'" /></conditions>
+      <actions><run_actions ref="ApplyHiredBuilderResult" /></actions>
+    </cue>
+    <library name="ApplyHiredBuilderResult" purpose="run_actions" namespace="this">
+      <actions>
+        <set_value name="$Receipt" exact="@Builder.$Receipt" />
+        <set_value name="$Result" exact="@player.entity.$tm_empire_builder_result" />
+        <do_if value="not $Receipt or @$Receipt.$engine != 'native_hired' or not $Result or $Result.$key != $Receipt.$key"><return /></do_if>
+        <do_if value="$Result.$state == 'quoted'">
+          <run_actions ref="md.TM_Empire_Runtime.ReadGoalLifetime" result="$Reason"><param name="GoalCue" value="$Receipt.$goal" /></run_actions>
+          <do_if value="$Reason != 'available'"><set_value name="Builder.$Receipt.$state" exact="'rejected_before_effect'" /><set_value name="Builder.$Receipt.$reason" exact="$Reason" /><set_value name="player.entity.$tm_empire_builder_request.$state" exact="'revoked'" /><return /></do_if>
+          <set_value name="$Manager" exact="$Receipt.$manager" />
+          <run_actions ref="md.TM_Empire_Runtime.CanActForGovernor" result="$Reason">
+            <param name="Actor" value="$Manager.$Governor" /><param name="Station" value="$Manager.$GovernorStation" /><param name="Module" value="$Manager.$GovernorModule" /><param name="ManagerCue" value="$Manager" />
+          </run_actions>
+          <do_if value="$Reason != 'available' or @global.$TM_EmpireComponentRecords.$construction_claim.{$Receipt.$station}.$build != $Receipt.$build or @global.$TM_EmpireComponentRecords.$construction_claim.{$Receipt.$station}.$goal != $Receipt.$goal or Expansion.$Receipt.$state != 'queued' or Expansion.$Receipt.$build != $Receipt.$build or not $Receipt.$ship.exists or not $Receipt.$ship.isknown or not $Receipt.$ship.isoperational or $Receipt.$ship.isplayerowned or $Receipt.$ship.orders.count or not $Receipt.$ship.hasrelation.friend.{faction.player} or @$Receipt.$station.buildstorage.buildmodule.constructionvessel.exists or $Result.$fee * 1Cr gt $Receipt.$budget or $Result.$fee * 1Cr gt player.money">
+            <set_value name="Builder.$Receipt.$state" exact="'rejected_before_effect'" /><set_value name="Builder.$Receipt.$reason" exact="'builder_authorization_changed'" /><set_value name="player.entity.$tm_empire_builder_request.$state" exact="'revoked'" /><return />
+          </do_if>
+          <set_value name="player.entity.$tm_empire_builder_request.$fee" exact="$Result.$fee" />
+          <set_value name="player.entity.$tm_empire_builder_request.$state" exact="'approved'" />
+          <raise_lua_event name="'TM_Empire.HireBuilder'" /><return />
+        </do_if>
+        <set_value name="Builder.$Receipt.$state" exact="if $Result.$state == 'rejected_before_effect' then 'rejected_before_effect' else if $Result.$state == 'sent' then 'sent' else 'unknown'" />
+        <set_value name="Builder.$Receipt.$reason" exact="$Result.$reason" />
+        <do_if value="@$Result.$paid and not @$Receipt.$accounted">
+          <set_value name="Builder.$Receipt.$paid" exact="$Result.$paid * 1Cr" />
+          <set_value name="Builder.$Receipt.$accounted" exact="true" />
+          <set_value name="Expansion.$Receipt.$spent" exact="@Expansion.$Receipt.$spent + Builder.$Receipt.$paid" />
+        </do_if>
+      </actions>
+    </library>
+    <library name="RequestOwnedBuilder" purpose="run_actions" namespace="this">
+      <params>
+        <param name="ManagerCue" />
+        <param name="GoalCue" />
+        <param name="Station" />
+        <param name="Build" />
+        <param name="Ship" />
+      </params>
+      <actions>
+        <do_if value="@Builder.$Receipt.$state == 'sent' or @Builder.$Receipt.$state == 'unknown'">
+          <return value="'previous_builder_assignment_unreconciled'" />
+        </do_if>
+        <do_if value="not $Station.exists or not $Station.isplayerowned or not $Build.exists or not $Build.isexpansion or $Build.buildobject != $Station or $Build.object != $Station.buildstorage">
+          <return value="'owned_expansion_task_unavailable'" />
+        </do_if>
+        <do_if value="@global.$TM_EmpireComponentRecords.$construction_claim.{$Station}.$manager != $ManagerCue or @global.$TM_EmpireComponentRecords.$construction_claim.{$Station}.$goal != $GoalCue or @global.$TM_EmpireComponentRecords.$construction_claim.{$Station}.$build != $Build">
+          <return value="'construction_task_not_owned_by_goal'" />
+        </do_if>
+        <do_if value="not $Ship.exists or $Ship.primarypurpose != purpose.build or $Ship.constructionmodule">
+          <return value="'idle_owned_builder_unavailable'" />
+        </do_if>
+        <run_actions ref="md.TM_Empire_Runtime.CanUseOwnedShip" result="$Reason">
+          <param name="Ship" value="$Ship" />
+          <param name="ManagerCue" value="$ManagerCue" />
+          <param name="GoalCue" value="$GoalCue" />
+        </run_actions>
+        <do_if value="$Reason != 'available'">
+          <return value="$Reason" />
+        </do_if>
+        <run_actions ref="md.TM_Empire_Runtime.ClaimOwnedShip" result="$Reason">
+          <param name="Ship" value="$Ship" />
+          <param name="ManagerCue" value="$ManagerCue" />
+          <param name="GoalCue" value="$GoalCue" />
+        </run_actions>
+        <do_if value="$Reason != 'available'">
+          <return value="$Reason" />
+        </do_if>
+        <set_value name="Builder.$Receipt" exact="table[$state='sent', $manager=$ManagerCue, $goal=$GoalCue, $station=$Station, $build=$Build, $ship=$Ship, $issued=player.age, $reason='native_builder_deployment_pending']" />
+        <set_value name="global.$TM_EmpireComponentRecords.$claim.{$Ship}.$issuing" exact="true" />
+        <create_order name="$Order" id="'DeployToStation'" object="$Ship" immediate="true">
+          <param name="station" value="$Station" />
+        </create_order>
+        <run_actions ref="md.TM_Empire_Runtime.RecordOwnedOrder" result="$Reason">
+          <param name="Ship" value="$Ship" />
+          <param name="GoalCue" value="$GoalCue" />
+          <param name="Order" value="$Order" />
+        </run_actions>
+        <set_value name="Builder.$Receipt.$order" exact="$Order" />
+        <do_if value="$Reason != 'sent'">
+          <set_value name="Builder.$Receipt.$state" exact="'unknown'" />
+          <set_value name="Builder.$Receipt.$reason" exact="$Reason" />
+          <return value="$Reason" />
+        </do_if>
+        <return value="'sent'" />
+      </actions>
+    </library>
+    <library name="ObserveOwnedBuilder" purpose="run_actions" namespace="this">
+      <actions>
+        <set_value name="$Receipt" exact="@Builder.$Receipt" />
+        <do_if value="not $Receipt or ($Receipt.$state != 'sent' and $Receipt.$state != 'unknown')">
+          <return value="'no_pending_builder_deployment'" />
+        </do_if>
+        <set_value name="$Ship" exact="$Receipt.$ship" />
+        <set_value name="$Station" exact="$Receipt.$station" />
+        <do_if value="@$Receipt.$engine == 'native_hired'">
+          <do_if value="not $Receipt.$build.exists or not $Ship.exists or not $Station.exists or not $Station.isplayerowned">
+            <set_value name="Builder.$Receipt.$state" exact="'unknown'" /><set_value name="Builder.$Receipt.$reason" exact="'builder_or_station_lost'" /><return value="'builder_or_station_lost'" />
+          </do_if>
+          <do_if value="@$Receipt.$paid gt 0Cr and $Receipt.$build.exists and $Ship.exists and $Station.exists and $Station.isplayerowned and $Ship.isdeployedconstructionvessel and $Ship.constructionmodule == $Station.buildstorage.buildmodule and $Station.buildstorage.buildmodule.constructionvessel == $Ship">
+            <set_value name="Builder.$Receipt.$state" exact="'observed'" /><set_value name="Builder.$Receipt.$observed" exact="player.age" /><set_value name="Builder.$Receipt.$reason" exact="'native_hired_builder_arrival_observed'" /><return value="'observed'" />
+          </do_if>
+          <return value="'native_hired_builder_arrival_pending'" />
+        </do_if>
+        <do_if value="not $Ship.exists or not $Ship.isplayerowned or not $Station.exists or not $Station.isplayerowned">
+          <set_value name="Builder.$Receipt.$state" exact="'unknown'" />
+          <set_value name="Builder.$Receipt.$reason" exact="'builder_or_station_lost'" />
+          <return value="'builder_or_station_lost'" />
+        </do_if>
+        <do_if value="$Ship == player.controlled">
+          <return value="'player_helm'" />
+        </do_if>
+        <do_if value="$Receipt.$order.exists and $Receipt.$order.object == $Ship and $Receipt.$order.id == 'DeployToStation' and $Receipt.$order.isrunning and @$Receipt.$order.$station == $Station and @global.$TM_EmpireComponentRecords.$claim.{$Ship}.$goal == $Receipt.$goal and @global.$TM_EmpireComponentRecords.$claim.{$Ship}.$manager == $Receipt.$manager and $Ship.isdeployedconstructionvessel and $Ship.constructionmodule == $Station.buildstorage.buildmodule and $Station.buildstorage.buildmodule.constructionvessel == $Ship">
+          <set_value name="Builder.$Receipt.$state" exact="'observed'" />
+          <set_value name="Builder.$Receipt.$observed" exact="player.age" />
+          <set_value name="Builder.$Receipt.$reason" exact="'native_builder_deployed_observed'" />
+          <return value="'observed'" />
+        </do_if>
+        <do_if value="not $Receipt.$order.exists or player.age gt $Receipt.$issued + 10min">
+          <set_value name="Builder.$Receipt.$state" exact="'unknown'" />
+          <set_value name="Builder.$Receipt.$reason" exact="'native_builder_arrival_not_observed'" />
+        </do_if>
+        <return value="Builder.$Receipt.$state" />
+      </actions>
+    </library>
+    <library name="RecoverLegacyHiredBuilder" purpose="run_actions" namespace="this">
+      <actions>
+        <set_value name="$Receipt" exact="@Builder.$Receipt" />
+        <set_value name="$Result" exact="@player.entity.$tm_empire_builder_result" />
+        <do_if value="not $Receipt or not $Result or @$Receipt.$engine != 'native_hired' or $Receipt.$state != 'sent' or $Result.$state != 'sent' or $Result.$key != $Receipt.$key or $Result.$destination_version? or @$Result.$recovery_attempted or @$Result.$paid le 0 or @$Result.$paid != @$Result.$fee"><return /></do_if>
+        <set_value name="$Manager" exact="$Receipt.$manager" />
+        <set_value name="$Station" exact="$Receipt.$station" />
+        <set_value name="$Ship" exact="$Receipt.$ship" />
+        <do_if value="@global.$TM_EmpireComponentRecords.$construction_claim.{$Station}.$manager != $Manager or @Expansion.$Receipt.$manager != $Manager"><return /></do_if>
+        <do_if value="not $Manager.exists or not $Station.exists or not $Station.isplayerowned or not $Station.buildstorage.exists or not $Receipt.$build.exists or not $Ship.exists or not $Ship.isknown or not $Ship.isoperational or $Ship.isplayerowned or $Ship == player.controlled or $Ship.orders.count or $Ship.isdeployedconstructionvessel or not $Ship.hasrelation.friend.{faction.player} or $Ship.commander.exists or @Expansion.$Receipt.$state != 'queued' or @Expansion.$Receipt.$build != $Receipt.$build or @Expansion.$Receipt.$goal != $Receipt.$goal or @global.$TM_EmpireComponentRecords.$construction_claim.{$Station}.$build != $Receipt.$build or @global.$TM_EmpireComponentRecords.$construction_claim.{$Station}.$goal != $Receipt.$goal or @player.entity.$tm_empire_builder_request.$key != $Receipt.$key or @player.entity.$tm_empire_builder_request.$ship != $Ship or @player.entity.$tm_empire_builder_request.$station != $Station or @player.entity.$tm_empire_builder_request.$storage != $Station.buildstorage"><return /></do_if>
+        <run_actions ref="md.TM_Empire_Runtime.ReadGoalLifetime" result="$Reason"><param name="GoalCue" value="$Receipt.$goal" /></run_actions>
+        <do_if value="$Reason != 'available'"><return /></do_if>
+        <run_actions ref="md.TM_Empire_Runtime.CanActForGovernor" result="$Reason">
+          <param name="Actor" value="$Manager.$Governor" /><param name="Station" value="$Manager.$GovernorStation" /><param name="Module" value="$Manager.$GovernorModule" /><param name="ManagerCue" value="$Manager" />
+        </run_actions>
+        <do_if value="$Reason != 'available'"><return /></do_if>
+        <set_value name="player.entity.$tm_empire_builder_request.$state" exact="'recovery_approved'" />
+        <raise_lua_event name="'TM_Empire.RecoverBuilder'" />
+      </actions>
+    </library>
+    <cue name="BuilderWatch" namespace="this" checkinterval="15s">
+      <conditions>
+        <check_value value="@Builder.$Receipt.$state == 'sent' or @Builder.$Receipt.$state == 'unknown'" />
+      </conditions>
+      <delay exact="15s" />
+      <actions>
+        <do_if value="@Builder.$Receipt.$engine == 'native_hired'">
+          <do_if value="@player.entity.$tm_empire_builder_result.$key == Builder.$Receipt.$key">
+            <run_actions ref="ApplyHiredBuilderResult" />
+          </do_if>
+          <do_elseif value="@player.entity.$tm_empire_builder_request.$key == Builder.$Receipt.$key and @player.entity.$tm_empire_builder_request.$state == 'check_requested'">
+            <set_value name="player.entity.$tm_empire_builder_request.$budget" exact="Builder.$Receipt.$budget" />
+            <raise_lua_event name="'TM_Empire.QuoteBuilder'" />
+          </do_elseif>
+        </do_if>
+        <run_actions ref="RecoverLegacyHiredBuilder" />
+        <run_actions ref="ObserveOwnedBuilder" />
+        <reset_cue cue="this" />
+      </actions>
+    </cue>
+    <cue name="ValidationLoaded" instantiate="true" namespace="this">
+      <conditions>
+        <event_game_loaded />
+      </conditions>
+      <!-- Reset persisted validation immediately. This only invalidates MD
+           evidence and invokes no native/Lua effect. A delayed reset can hit
+           a new plan submitted after load instead of the saved receipt. -->
+      <actions>
+        <do_if value="@Request.$Receipt.$state == 'checking_blueprints' or @Request.$Receipt.$state == 'waiting_blueprints' or @Request.$Receipt.$state == 'checking_identity' or @Request.$Receipt.$state == 'blueprints_observed'">
+          <set_value name="Request.$Receipt.$state" exact="'checking_blueprints'" />
+          <set_value name="Request.$Receipt.$cursor" exact="1" />
+          <set_value name="Request.$Receipt.$checked" exact="0" />
+          <set_value name="Request.$Receipt.$nextattempt" exact="player.age" />
+          <set_value name="Request.$Receipt.$reason" exact="'plan_blueprints_require_load_revalidation'" />
+          <remove_value name="Request.$Receipt.$missing" />
+          <remove_value name="Request.$Receipt.$observed" />
+          <set_value name="Request.$Receipt.$entries" exact="[]" />
+        </do_if>
+      </actions>
+    </cue>
+    <library name="ReadValidatedPlan" purpose="run_actions" namespace="this">
+      <params>
+        <param name="Key" />
+        <param name="ManagerCue" />
+        <param name="GoalCue" />
+      </params>
+      <actions>
+        <set_value name="$Receipt" exact="@Request.$Receipt" />
+        <do_if value="not $Receipt or $Receipt.$key != $Key or $Receipt.$manager != $ManagerCue or $Receipt.$goal != $GoalCue">
+          <return value="table[$state='waiting', $reason='construction_validation_identity_changed']" />
+        </do_if>
+        <do_if value="$Receipt.$state == 'abandoned_before_effect'">
+          <return value="table[$state='abandoned_before_effect', $reason=$Receipt.$reason, $key=$Key]" />
+        </do_if>
+        <do_if value="not $ManagerCue.exists or not $GoalCue.exists">
+          <return value="table[$state='waiting', $reason='construction_goal_missing']" />
+        </do_if>
+        <run_actions ref="md.TM_Empire_Runtime.CanActForGovernor" result="$Reason">
+          <param name="Actor" value="$ManagerCue.$Governor" />
+          <param name="Station" value="$ManagerCue.$GovernorStation" />
+          <param name="Module" value="$ManagerCue.$GovernorModule" />
+          <param name="ManagerCue" value="$ManagerCue" />
+        </run_actions>
+        <do_if value="$Reason != 'available'">
+          <return value="table[$state='waiting', $reason=$Reason]" />
+        </do_if>
+        <do_if value="$Receipt.$state != 'blueprints_observed' or $Receipt.$checked != $Receipt.$total or $Receipt.$sequence.count != $Receipt.$total">
+          <return value="table[$state='waiting', $reason='whole_construction_plan_not_validated']" />
+        </do_if>
+        <do_if value="player.age gt $Receipt.$observed + 1min">
+          <set_value name="Request.$Receipt.$state" exact="'checking_blueprints'" />
+          <set_value name="Request.$Receipt.$cursor" exact="1" />
+          <set_value name="Request.$Receipt.$checked" exact="0" />
+          <set_value name="Request.$Receipt.$nextattempt" exact="player.age" />
+          <set_value name="Request.$Receipt.$entries" exact="[]" />
+          <return value="table[$state='waiting', $reason='plan_blueprints_require_fresh_validation']" />
+        </do_if>
+        <return value="table[$state='blueprints_observed', $reason='complete_native_plan_blueprints_observed', $key=$Key, $sequence=$Receipt.$sequence, $total=$Receipt.$total, $observed=$Receipt.$observed]" />
+      </actions>
+    </library>
+    <library name="RequestPlanValidation" purpose="run_actions" namespace="this">
+      <params>
+        <param name="ManagerCue" />
+        <param name="GoalCue" />
+        <param name="Sequence" />
+        <param name="Station" default="null" />
+      </params>
+      <actions>
+        <do_if value="@Request.$Receipt and Request.$Receipt.$state != 'abandoned_before_effect' and Request.$Receipt.$state != 'consumed'">
+          <return value="'previous_construction_request_unconsumed'" />
+        </do_if>
+        <do_if value="not $ManagerCue.exists or not $GoalCue.exists">
+          <return value="'construction_goal_missing'" />
+        </do_if>
+        <run_actions ref="md.TM_Empire_Runtime.CanActForGovernor" result="$Reason">
+          <param name="Actor" value="$ManagerCue.$Governor" />
+          <param name="Station" value="$ManagerCue.$GovernorStation" />
+          <param name="Module" value="$ManagerCue.$GovernorModule" />
+          <param name="ManagerCue" value="$ManagerCue" />
+        </run_actions>
+        <do_if value="$Reason != 'available'">
+          <return value="$Reason" />
+        </do_if>
+        <do_if value="typeof $Sequence != datatype.constructionsequence or not $Sequence.count">
+          <return value="'native_construction_sequence_missing'" />
+        </do_if>
+        <set_value name="Request.$Serial" exact="@Request.$Serial + 1" />
+        <set_value name="Request.$Receipt" exact="table[$state='checking_blueprints', $reason='native_plan_validation_pending', $key='construction_' + Request.$Serial + '_' + player.age, $manager=$ManagerCue, $goal=$GoalCue, $sequence=$Sequence, $station=$Station, $total=$Sequence.count, $cursor=1, $checked=0, $entries=[], $issued=player.age, $nextattempt=player.age]" />
+        <return value="Request.$Receipt.$key" />
+      </actions>
+    </library>
+    <library name="ValidateNextPlanPage" purpose="run_actions" namespace="this">
+      <actions>
+        <set_value name="$Receipt" exact="@Request.$Receipt" />
+        <do_if value="not $Receipt or ($Receipt.$state != 'checking_blueprints' and $Receipt.$state != 'waiting_blueprints' and $Receipt.$state != 'checking_identity')">
+          <return value="'no_plan_page_pending'" />
+        </do_if>
+        <do_if value="player.age lt $Receipt.$nextattempt">
+          <return value="'construction_validation_backoff'" />
+        </do_if>
+        <set_value name="$Manager" exact="$Receipt.$manager" />
+        <do_if value="not $Manager.exists or not $Receipt.$goal.exists">
+          <set_value name="Request.$Receipt.$state" exact="'abandoned_before_effect'" />
+          <set_value name="Request.$Receipt.$reason" exact="'construction_goal_ended'" />
+          <return value="'construction_goal_ended'" />
+        </do_if>
+        <run_actions ref="md.TM_Empire_Runtime.CanActForGovernor" result="$Reason">
+          <param name="Actor" value="$Manager.$Governor" />
+          <param name="Station" value="$Manager.$GovernorStation" />
+          <param name="Module" value="$Manager.$GovernorModule" />
+          <param name="ManagerCue" value="$Manager" />
+        </run_actions>
+        <do_if value="$Reason != 'available'">
+          <set_value name="Request.$Receipt.$state" exact="'abandoned_before_effect'" />
+          <set_value name="Request.$Receipt.$reason" exact="$Reason" />
+          <return value="$Reason" />
+        </do_if>
+        <do_if value="$Receipt.$sequence.count != $Receipt.$total">
+          <set_value name="Request.$Receipt.$state" exact="'abandoned_before_effect'" />
+          <set_value name="Request.$Receipt.$reason" exact="'construction_sequence_changed'" />
+          <return value="'construction_sequence_changed'" />
+        </do_if>
+        <do_if value="$Receipt.$state == 'checking_identity'">
+          <run_actions ref="CheckPlanIdentityPage" result="$Identity">
+            <param name="Sequence" value="$Receipt.$sequence" />
+            <param name="Start" value="$Receipt.$cursor" />
+            <param name="Entries" value="$Receipt.$entries" />
+          </run_actions>
+          <do_if value="$Identity.$state != 'page_observed'">
+            <set_value name="Request.$Receipt.$state" exact="'abandoned_before_effect'" />
+            <set_value name="Request.$Receipt.$reason" exact="$Identity.$reason" />
+            <return value="$Identity.$reason" />
+          </do_if>
+          <set_value name="Request.$Receipt.$cursor" exact="$Identity.$to + 1" />
+          <do_if value="$Identity.$to == $Receipt.$total">
+            <set_value name="Request.$Receipt.$state" exact="'blueprints_observed'" />
+            <set_value name="Request.$Receipt.$reason" exact="'complete_native_plan_blueprints_observed'" />
+            <set_value name="Request.$Receipt.$observed" exact="player.age" />
+          </do_if>
+          <return value="Request.$Receipt.$state" />
+        </do_if>
+        <run_actions ref="ReadPlanPage" result="$Page">
+          <param name="Sequence" value="$Receipt.$sequence" />
+          <param name="Start" value="$Receipt.$cursor" />
+          <param name="Station" value="@$Receipt.$station" />
+        </run_actions>
+        <do_if value="$Page.$state != 'page_observed'">
+          <set_value name="Request.$Receipt.$state" exact="'waiting_blueprints'" />
+          <set_value name="Request.$Receipt.$reason" exact="$Page.$reason" />
+          <set_value name="Request.$Receipt.$missing" exact="@$Page.$missing" />
+          <set_value name="Request.$Receipt.$nextattempt" exact="player.age + 1min" />
+          <return value="$Page.$reason" />
+        </do_if>
+        <do_if value="$Page.$from != $Receipt.$checked + 1 or $Page.$total != $Receipt.$total">
+          <return value="'construction_page_receipt_mismatch'" />
+        </do_if>
+        <set_value name="Request.$Receipt.$checked" exact="$Page.$to" />
+        <remove_value name="Request.$Receipt.$missing" />
+        <do_for_each name="$EntrySnapshot" in="$Page.$entries">
+          <append_to_list name="Request.$Receipt.$entries" exact="$EntrySnapshot" />
+        </do_for_each>
+        <set_value name="Request.$Receipt.$state" exact="'checking_blueprints'" />
+        <set_value name="Request.$Receipt.$cursor" exact="$Page.$to + 1" />
+        <do_if value="$Page.$to == $Receipt.$total">
+          <set_value name="Request.$Receipt.$state" exact="'checking_identity'" />
+          <set_value name="Request.$Receipt.$reason" exact="'whole_plan_identity_recheck_pending'" />
+          <set_value name="Request.$Receipt.$cursor" exact="1" />
+        </do_if>
+        <return value="Request.$Receipt.$state" />
+      </actions>
+    </library>
+    <cue name="PlanValidationWatch" namespace="this" checkinterval="5s">
+      <conditions>
+        <check_value value="@Request.$Receipt.$state == 'checking_blueprints' or @Request.$Receipt.$state == 'waiting_blueprints' or @Request.$Receipt.$state == 'checking_identity'" />
+      </conditions>
+      <delay exact="5s" />
+      <actions>
+        <run_actions ref="ValidateNextPlanPage" />
+        <reset_cue cue="this" />
+      </actions>
+    </cue>
+    <library name="ReadPlanPage" purpose="run_actions" namespace="this">
+      <params>
+        <param name="Sequence" />
+        <param name="Start" default="1" />
+        <param name="Station" default="null" />
+        <param name="ModulesOnly" default="false" />
+      </params>
+      <actions>
+        <do_if value="typeof $Sequence != datatype.constructionsequence or not $Sequence.count">
+          <return value="table[$state='waiting', $reason='native_construction_sequence_missing']" />
+        </do_if>
+        <do_if value="$Start lt 1 or $Start gt $Sequence.count">
+          <return value="table[$state='waiting', $reason='construction_page_outside_sequence']" />
+        </do_if>
+        <set_value name="$End" exact="[$Start + 31, $Sequence.count].min" />
+        <set_value name="$Missing" exact="[]" />
+        <set_value name="$Entries" exact="[]" />
+        <do_all exact="$End - $Start + 1" counter="$Offset">
+          <set_value name="$i" exact="$Start + $Offset - 1" />
+          <do_if value="not $Sequence.{$i}.exists or not $Sequence.{$i}.macro">
+            <return value="table[$state='waiting', $reason='construction_entry_invalid', $index=$i]" />
+          </do_if>
+          <set_value name="$Ware" exact="$Sequence.{$i}.macro.ware" />
+          <do_if value="not $Ware">
+            <return value="table[$state='waiting', $reason='module_build_ware_missing', $index=$i]" />
+          </do_if>
+          <set_value name="$Existing" exact="@$Station.planmodule.{$Sequence.{$i}.id}" />
+          <set_value name="$Loadout" exact="$Sequence.{$i}.loadout" />
+          <set_value name="$EquipmentWares" exact="if $Loadout then $Loadout.wares.list.clone else []" />
+          <do_if value="not $Existing.exists or $Existing.macro != $Sequence.{$i}.macro">
+            <do_if value="not player.blueprints.{$Ware}.any.exists and not $Missing.indexof.{$Ware}">
+              <append_to_list name="$Missing" exact="$Ware" />
+            </do_if>
+            <do_for_each name="$Equipment" in="$EquipmentWares">
+              <do_if value="not $ModulesOnly and $Equipment.hastag.equipment and not $Equipment.hastag.noblueprint and not player.blueprints.{$Equipment}.any.exists and not $Missing.indexof.{$Equipment}">
+                <append_to_list name="$Missing" exact="$Equipment" />
+              </do_if>
+            </do_for_each>
+          </do_if>
+          <append_to_list name="$Entries" exact="table[$id=$Sequence.{$i}.id, $macro=$Sequence.{$i}.macro, $stage=$Sequence.{$i}.stage, $has_loadout=($Loadout != null), $equipment=$EquipmentWares]" />
+        </do_all>
+        <return value="table[$state=if $Missing.count then 'waiting' else 'page_observed', $reason=if $Missing.count then 'required_blueprints_missing' else 'native_plan_page_blueprints_observed', $sequence=$Sequence, $from=$Start, $to=$End, $total=$Sequence.count, $next=if $End lt $Sequence.count then $End + 1 else null, $missing=$Missing, $entries=$Entries, $observed=player.age]" />
+      </actions>
+    </library>
+    <library name="CheckPlanIdentityPage" purpose="run_actions" namespace="this">
+      <params>
+        <param name="Sequence" />
+        <param name="Start" />
+        <param name="Entries" />
+      </params>
+      <actions>
+        <do_if value="$Sequence.count != $Entries.count or $Start lt 1 or $Start gt $Entries.count">
+          <return value="table[$state='waiting', $reason='construction_identity_count_changed']" />
+        </do_if>
+        <set_value name="$End" exact="[$Start + 31, $Entries.count].min" />
+        <do_all exact="$End - $Start + 1" counter="$Offset">
+          <set_value name="$i" exact="$Start + $Offset - 1" />
+          <set_value name="$Snapshot" exact="$Entries.{$i}" />
+          <do_if value="not $Sequence.{$i}.exists or $Sequence.{$i}.id != $Snapshot.$id or $Sequence.{$i}.macro != $Snapshot.$macro or $Sequence.{$i}.stage != $Snapshot.$stage">
+            <return value="table[$state='waiting', $reason='construction_entry_identity_changed', $index=$i]" />
+          </do_if>
+          <set_value name="$Loadout" exact="$Sequence.{$i}.loadout" />
+          <do_if value="not $Snapshot.$has_loadout? or ($Loadout != null) != $Snapshot.$has_loadout">
+            <return value="table[$state='waiting', $reason='construction_loadout_changed', $index=$i]" />
+          </do_if>
+          <set_value name="$Equipment" exact="if $Loadout then $Loadout.wares.list else []" />
+          <do_if value="$Equipment.count != $Snapshot.$equipment.count">
+            <return value="table[$state='waiting', $reason='construction_equipment_changed', $index=$i]" />
+          </do_if>
+          <do_for_each name="$Ware" in="$Equipment">
+            <do_if value="not $Snapshot.$equipment.indexof.{$Ware}">
+              <return value="table[$state='waiting', $reason='construction_equipment_changed', $index=$i]" />
+            </do_if>
+          </do_for_each>
+        </do_all>
+        <return value="table[$state='page_observed', $from=$Start, $to=$End]" />
+      </actions>
+    </library>
+    <library name="ReadExpansionPrerequisites" purpose="run_actions" namespace="this">
+      <params>
+        <param name="Station" />
+        <param name="Sequence" />
+      </params>
+      <actions>
+        <do_if value="not $Station.exists or not $Station.isplayerowned or not $Station.isclass.station or not $Station.buildstorage.exists">
+          <return value="table[$state='waiting', $reason='owned_station_buildstorage_unavailable']" />
+        </do_if>
+        <do_if value="typeof $Sequence != datatype.constructionsequence or not $Sequence.count">
+          <return value="table[$state='waiting', $reason='native_construction_sequence_missing']" />
+        </do_if>
+        <run_actions ref="ReadPlotLicence" result="$PlotReason">
+          <param name="Station" value="$Station" />
+        </run_actions>
+        <do_if value="$PlotReason != 'observed'">
+          <return value="table[$state='waiting', $reason=$PlotReason]" />
+        </do_if>
+        <set_value name="$Storage" exact="$Station.buildstorage" />
+        <do_if value="$Storage.builds.queued.count or $Storage.builds.inprogress.count">
+          <return value="table[$state='waiting', $reason='existing_station_build_requires_reconciliation']" />
+        </do_if>
+        <return value="table[$state='observed', $reason='native_plot_and_queue_observed', $station=$Station, $storage=$Storage, $plotpayment=$Station.paidbuildplot.payment, $plotprice=$Station.buildplot.price, $budget=$Storage.money, $requiresbuilder=$Station.requiresconstructionvessel.{$Sequence}, $observed=player.age]" />
+      </actions>
+    </library>
+    <library name="ReadPlotLicence" purpose="run_actions" namespace="this">
+      <params>
+        <param name="Station" />
+      </params>
+      <actions>
+        <do_if value="not $Station.exists or not $Station.isplayerowned or not $Station.paidbuildplot.exists or $Station.paidbuildplot.haspositionchanged">
+          <return value="'current_plot_licence_missing'" />
+        </do_if>
+        <set_value name="$Free" exact="$Station.sector.owner == faction.player or $Station.sector.owner == faction.ownerless or $Station.sector.owner == faction.xenon" />
+        <do_if value="not $Free and $Station.paidbuildplot.payment lt $Station.buildplot.price">
+          <return value="'current_plot_licence_missing'" />
+        </do_if>
+        <set_value name="$Bounds" exact="$Station.buildplot.max" />
+        <set_value name="$PaidBounds" exact="$Station.paidbuildplot.max" />
+        <set_value name="$Center" exact="$Station.buildplot.center" />
+        <set_value name="$PaidCenter" exact="$Station.paidbuildplot.center" />
+        <do_if value="$Bounds.x != $PaidBounds.x or $Bounds.y != $PaidBounds.y or $Bounds.z != $PaidBounds.z or $Center.x != $PaidCenter.x or $Center.y != $PaidCenter.y or $Center.z != $PaidCenter.z">
+          <return value="'plot_geometry_not_currently_licensed'" />
+        </do_if>
+        <return value="'observed'" />
+      </actions>
+    </library>
+  </cues>
+</mdscript>
+
+
+

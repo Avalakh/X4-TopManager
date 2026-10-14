@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='utf-8'?>
+<diff>
+  <add sel="/groups">
+    <group name="tm_empire_control_arg">
+      <select macro="tm_empire_control_arg_macro" />
+    </group>
+  </add>
+</diff>

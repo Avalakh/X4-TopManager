@@ -1,0 +1,219 @@
+{
+  "qualified_release": false,
+  "includes_adapted_manager": true,
+  "archive_sha256": "f8c66b4f63c409541843f8ff70459d4c13b2a14eb6f054e229b53a8da1caa8ea",
+  "files": [
+    {
+      "path": "tm_empire_management/aiscripts/build.shiptrader.xml",
+      "sha256": "9d93a173b7333ba4019fa41ceb338db41f58f538548131ffee78b49c59b1045f"
+    },
+    {
+      "path": "tm_empire_management/aiscripts/tm.order.assign.commander.xml",
+      "sha256": "4b5888793b3a07c21ecc3c707ed3efbd19142e6025c9b3c51f0219809c948436"
+    },
+    {
+      "path": "tm_empire_management/aiscripts/tm.order.deploy.staticdefensestrategy.xml",
+      "sha256": "bc5f0a727724a2a1cd95fa06702e348db325472dd4849228f36236b4f68e5f2f"
+    },
+    {
+      "path": "tm_empire_management/aiscripts/tm.order.deployobjectatposition.xml",
+      "sha256": "4a2dac879a0ffef553803fbf7b97aaedcbaa9d2d30051d8faba120af0548897b"
+    },
+    {
+      "path": "tm_empire_management/aiscripts/trade.find.commander.xml",
+      "sha256": "9d93a173b7333ba4019fa41ceb338db41f58f538548131ffee78b49c59b1045f"
+    },
+    {
+      "path": "tm_empire_management/assets/structures/defence/macros/tm_empire_control_arg_macro.xml",
+      "sha256": "52361d7d33115c4841978d450bf748588c85cc5811dee8a0d034abcfa03166b3"
+    },
+    {
+      "path": "tm_empire_management/assets/textures/ui/player_info/tm_empire_status.gz",
+      "sha256": "9603bb86a87208ca87a8e1ca7fe701acdd692f33e4005a2c74e6a3ea4889c12e"
+    },
+    {
+      "path": "tm_empire_management/content.xml",
+      "sha256": "b4853e17f067834cc610b97bb1fa70e02a1f62d5795df9d18057e30a3b762733"
+    },
+    {
+      "path": "tm_empire_management/index/macros.xml",
+      "sha256": "1ff004a71eb66ccea458dd11aa2677d4e9cc6c6b8f33ebf9dfd05fcabb4bd210"
+    },
+    {
+      "path": "tm_empire_management/libraries/icons.xml",
+      "sha256": "35e299ded778a3f86aa51b22ab372063652b5cd966360f76ff4d3df0bdf208ac"
+    },
+    {
+      "path": "tm_empire_management/libraries/modulegroups.xml",
+      "sha256": "f23c61a2e4edadfbc9cc587505dce95cb98488488c2590bc737c5bc4291f6947"
+    },
+    {
+      "path": "tm_empire_management/libraries/wares.xml",
+      "sha256": "7d26993e4e1e938b88d91b0190d0c3cedc398a5ff9781ea466e704bc4c5aabde"
+    },
+    {
+      "path": "tm_empire_management/md/tm_empire_assets.xml",
+      "sha256": "b89634f7e029c2103c203d269baf6deab74e016136c9464eda0d8a683a50704f"
+    },
+    {
+      "path": "tm_empire_management/md/tm_empire_construction.xml",
+      "sha256": "79dedd7761a7ca5b296d973bbea160e56986475037597cef83218ca76316acdb"
+    },
+    {
+      "path": "tm_empire_management/md/tm_empire_personnel.xml",
+      "sha256": "04f91fe7e0b82f44f20ae395aa77bffc6e021cd83e32d2eacdf30161b418db5c"
+    },
+    {
+      "path": "tm_empire_management/md/tm_empire_purchase.xml",
+      "sha256": "af2cf40e5f01ebb7a1fd5fd3ccc1ddaf1284dff0ebdf2e0ccde0c7dd3197f249"
+    },
+    {
+      "path": "tm_empire_management/md/tm_empire_recycling.xml",
+      "sha256": "15d12c39b4a781b0159ebea2955306e09283f4ca6657646fa4f9e316c3c639da"
+    },
+    {
+      "path": "tm_empire_management/md/tm_empire_roles.xml",
+      "sha256": "37528ea217e3076c2d04cb1bf7e68d57bd7eba44ec776e9cf14a24c7c6e10213"
+    },
+    {
+      "path": "tm_empire_management/md/tm_empire_runtime.xml",
+      "sha256": "b7ed197b4f6f369bb96323e9ce1786989eea09f4f90adcb2558c7a949e254f20"
+    },
+    {
+      "path": "tm_empire_management/md/tm_empire_supply.xml",
+      "sha256": "a49bfb324f92bbb08fbfefccd3796f090dedbecc37a3531c6f46506dd6d6f3c2"
+    },
+    {
+      "path": "tm_empire_management/md/tm_factiongoal_hold_space.xml",
+      "sha256": "66e815327647695cb8f464c74071f5ec45dd36220e39f1b46dcd4e4360efe11e"
+    },
+    {
+      "path": "tm_empire_management/md/tm_factiongoal_invade_space.xml",
+      "sha256": "504ca485b20a7753d3604a3e07e244186b94f7f837542380435209cd6c8e4998"
+    },
+    {
+      "path": "tm_empire_management/md/tm_factiongoal_patrolcoordinationservice.xml",
+      "sha256": "2a69adc93d2cb613bb0ba51ed9d65440a0a7e772a3682d3f5d8de4a622e08bb1"
+    },
+    {
+      "path": "tm_empire_management/md/tm_factiongoal_plunder.xml",
+      "sha256": "611dea9c08530af8c5ba7703c20d1cb3f3e52d8caf12c2b19901ca517b991c57"
+    },
+    {
+      "path": "tm_empire_management/md/tm_factionlogic.xml",
+      "sha256": "282b4466a6d977c4df3dfd26cdcd2404593cd7d4945a578ffcbf2f634f619706"
+    },
+    {
+      "path": "tm_empire_management/md/tm_factionlogic_economy.xml",
+      "sha256": "f38a6ce2b2733efef07675a501118e0af96ec1800ce6cc95c5b3f91227a39eae"
+    },
+    {
+      "path": "tm_empire_management/md/tm_factionlogic_staticdefense.xml",
+      "sha256": "c242a64a8123937ad09b054ae000582e5d2624cdef78cf2d1398cfd0b07fc114"
+    },
+    {
+      "path": "tm_empire_management/md/tm_factionlogic_stations.xml",
+      "sha256": "79215bbbb8c18a0363a2113a775d1f6be13d520b8edd084f3b3b31839ab3337a"
+    },
+    {
+      "path": "tm_empire_management/md/tm_factionsubgoal_buildstation.xml",
+      "sha256": "797279d4df2883ef45d483ebf13ca888802c179ea4bdef75739b15b1a692c0c4"
+    },
+    {
+      "path": "tm_empire_management/md/tm_factionsubgoal_defendarea.xml",
+      "sha256": "47bb6e3eaff65a8fdb7b54c003f893e9dff6089bc845d70f849e6d537bef8c82"
+    },
+    {
+      "path": "tm_empire_management/md/tm_factionsubgoal_recon.xml",
+      "sha256": "bbe10f3f2ed4b5266dde88979d71447c16843fa594cfb355d5fd0561e4f2224c"
+    },
+    {
+      "path": "tm_empire_management/md/tm_finalisestations.xml",
+      "sha256": "25238058db886ec593a7c7387e68ae30babf3a1154821b32687e1bb86177e892"
+    },
+    {
+      "path": "tm_empire_management/md/tm_job_helper.xml",
+      "sha256": "aa057e07df8b54904bfbac91652b0af1b334cd2afaccb514cc0b134016ed0b66"
+    },
+    {
+      "path": "tm_empire_management/t/0001-L007.xml",
+      "sha256": "2b1bc9dea77ef743a7d7d76187501e5461f5b02447cbe09ac748a16d02ca14e4"
+    },
+    {
+      "path": "tm_empire_management/t/0001-L044.xml",
+      "sha256": "f25492a024e6a1334f7c630dc15d9a78d96d61f21d174208e50c96e8818ce42c"
+    },
+    {
+      "path": "tm_empire_management/ui/construction_builder.lua",
+      "sha256": "7fa3e1b854dd9fb62242dc13e0bb8e65a87c0fc79d838a18084f4fb030964131"
+    },
+    {
+      "path": "tm_empire_management/ui/construction_funding.lua",
+      "sha256": "3560d29541fdeec81965956b5b40efa020146b99bbf6b660db08021ca359fb4a"
+    },
+    {
+      "path": "tm_empire_management/ui/construction_plot.lua",
+      "sha256": "aee9d9b43fc0209bb23333d62fa6d4f9d63bdca4c2a030715018ceb2d311912d"
+    },
+    {
+      "path": "tm_empire_management/ui/construction_plot_dispatch.lua",
+      "sha256": "c2fc9c9c82d88804d9873a9d1c3804796191f177f552c0a171f24a39d4a51e43"
+    },
+    {
+      "path": "tm_empire_management/ui/construction_reserve.lua",
+      "sha256": "f22f3ea23b43543e9a509904588efd3153fd72170617878a83945279f713b880"
+    },
+    {
+      "path": "tm_empire_management/ui/crew_service_hire.lua",
+      "sha256": "63fe5988164614843d9b20aed427ffc159da5c17f292ca3ad9cd25cabe0fa070"
+    },
+    {
+      "path": "tm_empire_management/ui/crew_service_plan.lua",
+      "sha256": "20d4bc0aee027edccebf84dc663fec76a5486af4054d7b2773f418d8e95ad63b"
+    },
+    {
+      "path": "tm_empire_management/ui/empire_status.lua",
+      "sha256": "cdba3263fc2dca31efb96eb3b59f36abc7e2801a366c3535608b4d3dd3f8d022"
+    },
+    {
+      "path": "tm_empire_management/ui/personnel_hire.lua",
+      "sha256": "6ed32c7d2ec9bba9cd818efd5479cb48ee4d39331bc6105002471c42ed531791"
+    },
+    {
+      "path": "tm_empire_management/ui/personnel_transfer.lua",
+      "sha256": "8a7d7cf8634fe3dea9b2d02aea53baa12c6b259262f6470edc96a39d6e6c605b"
+    },
+    {
+      "path": "tm_empire_management/ui/player_order_guard.lua",
+      "sha256": "b6cefdd63fe8d61344fa423f903a7e5bc521a003ef7a118b8664a5ef9813cb64"
+    },
+    {
+      "path": "tm_empire_management/ui/purchase_dispatch.lua",
+      "sha256": "21ae56415ccda9c794dda90e1981f2070e7ad9df3043bb1dfe92fed647aba47f"
+    },
+    {
+      "path": "tm_empire_management/ui/purchase_quote.lua",
+      "sha256": "f7b0a933f416613ee9b3660f483b12d01c3d93c7a7dc9e1cbadec065622f1c68"
+    },
+    {
+      "path": "tm_empire_management/ui/purchase_receipt.lua",
+      "sha256": "2e5a82f694c34a12fae03dede01c70024ef493006851eb020002b8a678812ecb"
+    },
+    {
+      "path": "tm_empire_management/ui/purchase_submit.lua",
+      "sha256": "2a93474370adcd5869f6593900c42a1aee0023a76319e336285cb2833f6b54c0"
+    },
+    {
+      "path": "tm_empire_management/ui/station_funding.lua",
+      "sha256": "4c5ea14be0839c27aa3075c2c64e5d37aa26b5b46a3923278d5b00b0455d71e7"
+    },
+    {
+      "path": "tm_empire_management/ui/trade_choice_quote.lua",
+      "sha256": "3e24e70d14eb346d9037e024b1924aa36195641aac5bd11190da33044de268fa"
+    },
+    {
+      "path": "tm_empire_management/ui.xml",
+      "sha256": "621babec8cd328c114da97630416590b98bf0c203715153e4acce652d66c06a7"
+    }
+  ]
+}

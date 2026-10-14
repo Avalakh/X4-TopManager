@@ -1,0 +1,511 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mdscript name="TM_Empire_Supply">
+  <cues>
+    <cue name="Request" namespace="this" />
+    <library name="QuoteRestock" purpose="run_actions" namespace="this">
+      <params>
+        <param name="ManagerCue" />
+        <param name="GoalCue" />
+        <param name="Ship" />
+        <param name="Builder" />
+        <param name="Macro" />
+        <param name="Amount" />
+        <param name="Budget" />
+      </params>
+      <actions>
+        <do_if value="@Request.$Receipt and Request.$Receipt.$state != 'consumed'">
+          <return value="'previous_supply_request_unconsumed'" />
+        </do_if>
+        <run_actions ref="md.TM_Empire_Runtime.CanUseOwnedShip" result="$Reason">
+          <param name="Ship" value="$Ship" />
+          <param name="ManagerCue" value="$ManagerCue" />
+          <param name="GoalCue" value="$GoalCue" />
+        </run_actions>
+        <do_if value="$Reason != 'available'">
+          <return value="$Reason" />
+        </do_if>
+        <do_if value="not $Builder.exists or not $Builder.isknown or not $Builder.isoperational or not $Builder.tradenpc.exists or typeof $Macro != datatype.macro or not $Macro.ware or $Amount lt 1 or typeof $Amount != datatype.integer or $Budget lt 0Cr or $Budget gt player.money">
+          <return value="'supply_quote_input_unavailable'" />
+        </do_if>
+        <find_station name="$Builders" space="$Builder.zone" canequipclass="$Ship.class" canbuildfor="faction.player" hascontrolentity="controlpost.shiptrader" knownto="faction.player" multiple="true" />
+        <do_if value="not $Builders.indexof.{$Builder}">
+          <return value="'known_supplier_cannot_equip_ship'" />
+        </do_if>
+        <set_value name="Request.$Serial" exact="@Request.$Serial + 1" />
+        <set_value name="$Key" exact="'supply_' + Request.$Serial + '_' + player.age" />
+        <set_value name="Request.$Receipt" exact="table[$state='quote_requested', $key=$Key, $manager=$ManagerCue, $goal=$GoalCue, $ship=$Ship, $builder=$Builder, $macro=$Macro, $amount=$Amount, $before=$Ship.ammostorage.{$Macro}.count, $budget=$Budget, $issued=player.age, $quote_docked=$Ship.dock.exists and $Ship.hascontext.{$Builder}]" />
+        <set_value name="player.entity.$tm_empire_supply_request" exact="table[$schema=1, $state='quote_requested', $key=$Key, $ship=$Ship, $shipyard=$Builder, $ware=$Macro.ware.id, $amount=$Amount, $budget=$Budget]" />
+        <raise_lua_event name="'TM_Empire.QuoteSupply'" />
+        <return value="$Key" />
+      </actions>
+    </library>
+    <library name="ReadRestockQuote" purpose="run_actions" namespace="this">
+      <params>
+        <param name="Key" />
+        <param name="ManagerCue" />
+        <param name="GoalCue" />
+      </params>
+      <actions>
+        <set_value name="$Receipt" exact="@Request.$Receipt" />
+        <do_if value="not $Receipt or $Receipt.$key != $Key or $Receipt.$manager != $ManagerCue or $Receipt.$goal != $GoalCue">
+          <return value="table[$state='unknown', $reason='supply_key_or_goal_mismatch']" />
+        </do_if>
+        <do_if value="$Receipt.$state != 'quote_requested' and $Receipt.$state != 'quoted'">
+          <return value="$Receipt" />
+        </do_if>
+        <run_actions ref="md.TM_Empire_Runtime.CanUseOwnedShip" result="$Reason">
+          <param name="Ship" value="$Receipt.$ship" />
+          <param name="ManagerCue" value="$ManagerCue" />
+          <param name="GoalCue" value="$GoalCue" />
+        </run_actions>
+        <do_if value="$Reason != 'available' or not $Receipt.$builder.exists or not $Receipt.$builder.isoperational or not $Receipt.$builder.isknown or $Receipt.$ship.ammostorage.{$Receipt.$macro}.count != $Receipt.$before">
+          <set_value name="$Receipt.$state" exact="'rejected_before_effect'" />
+          <set_value name="$Receipt.$reason" exact="if $Reason != 'available' then $Reason else if not $Receipt.$builder.exists or not $Receipt.$builder.isoperational or not $Receipt.$builder.isknown then 'known_supply_builder_unavailable' else 'supply_inventory_changed'" />
+          <return value="$Receipt" />
+        </do_if>
+        <set_value name="$Quote" exact="@player.entity.$tm_empire_supply_request" />
+        <do_if value="$Quote.$key != $Key or $Quote.$ship != $Receipt.$ship or $Quote.$shipyard != $Receipt.$builder">
+          <return value="table[$state='unknown', $reason='supply_quote_identity_changed']" />
+        </do_if>
+        <do_if value="$Quote.$state == 'quote_ready'">
+          <set_value name="$Receipt.$state" exact="'quoted'" />
+          <set_value name="$Receipt.$price" exact="$Quote.$price * 1Cr" />
+          <set_value name="$Receipt.$reason" exact="'native_supply_quote_only_not_paid'" />
+        </do_if>
+        <do_elseif value="$Quote.$state == 'quote_failed'">
+          <set_value name="$Receipt.$state" exact="'rejected_before_effect'" />
+          <set_value name="$Receipt.$reason" exact="$Quote.$reason" />
+        </do_elseif>
+        <return value="$Receipt" />
+      </actions>
+    </library>
+    <library name="ApproveRestockPayment" purpose="run_actions" namespace="this">
+      <params>
+        <param name="Key" />
+        <param name="ManagerCue" />
+        <param name="GoalCue" />
+      </params>
+      <actions>
+        <run_actions ref="ReadRestockQuote" result="$Receipt">
+          <param name="Key" value="$Key" />
+          <param name="ManagerCue" value="$ManagerCue" />
+          <param name="GoalCue" value="$GoalCue" />
+        </run_actions>
+        <do_if value="$Receipt.$state != 'quoted'">
+          <return value="$Receipt" />
+        </do_if>
+        <do_if value="not $Receipt.$ship.dock.exists or not $Receipt.$ship.hascontext.{$Receipt.$builder} or $Receipt.$ship.build.exists or $Receipt.$price lt 0Cr or $Receipt.$price gt $Receipt.$budget or $Receipt.$price gt player.money">
+          <return value="table[$state='waiting', $reason='supply_docking_or_budget_required']" />
+        </do_if>
+        <run_actions ref="md.TM_Empire_Runtime.ClaimOwnedShip" result="$Reason">
+          <param name="Ship" value="$Receipt.$ship" />
+          <param name="ManagerCue" value="$ManagerCue" />
+          <param name="GoalCue" value="$GoalCue" />
+        </run_actions>
+        <do_if value="$Reason != 'available'">
+          <return value="table[$state='waiting', $reason=$Reason]" />
+        </do_if>
+        <set_value name="$Receipt.$state" exact="'payment_approved'" />
+        <set_value name="player.entity.$tm_empire_supply_request.$state" exact="'payment_approved'" />
+        <raise_lua_event name="'TM_Empire.PaySupply'" />
+        <return value="$Receipt" />
+      </actions>
+    </library>
+    <library name="ReadRestockResult" purpose="run_actions" namespace="this">
+      <params>
+        <param name="Key" />
+        <param name="ManagerCue" />
+        <param name="GoalCue" />
+      </params>
+      <actions>
+        <set_value name="$Receipt" exact="@Request.$Receipt" />
+        <do_if value="not $Receipt or $Receipt.$key != $Key or $Receipt.$manager != $ManagerCue or $Receipt.$goal != $GoalCue">
+          <return value="table[$state='unknown', $reason='supply_key_or_goal_mismatch']" />
+        </do_if>
+        <set_value name="$Payment" exact="@player.entity.$tm_empire_supply_payment" />
+        <!-- A quote has no payment effect. Retire it when its authority ends;
+             any payment intent remains unknown and must never be replayed. -->
+        <do_if value="$Receipt.$state == 'quote_requested' or $Receipt.$state == 'quoted'">
+          <set_value name="$Authority" exact="'supply_authority_missing'" />
+          <do_if value="$Receipt.$manager.exists">
+            <run_actions ref="md.TM_Empire_Runtime.CanActForGovernor" result="$Authority">
+              <param name="Actor" value="@$Receipt.$manager.$Governor" />
+              <param name="Station" value="@$Receipt.$manager.$GovernorStation" />
+              <param name="Module" value="@$Receipt.$manager.$GovernorModule" />
+              <param name="ManagerCue" value="$Receipt.$manager" />
+            </run_actions>
+          </do_if>
+          <run_actions ref="md.TM_Empire_Runtime.ReadGoalLifetime" result="$Lifetime"><param name="GoalCue" value="$Receipt.$goal" /></run_actions>
+          <do_if value="$Authority != 'available' or $Lifetime != 'available'">
+            <do_if value="$Payment.$key == $Key and ($Payment.$state == 'payment_sent' or $Payment.$state == 'paid' or $Payment.$state == 'unknown' or $Payment.$state == 'build_recorded')">
+              <set_value name="$Receipt.$state" exact="'unknown'" />
+              <set_value name="$Receipt.$reason" exact="'supply_authority_lost_with_payment_intent'" />
+            </do_if>
+            <do_else>
+              <set_value name="$Receipt.$state" exact="'rejected_before_effect'" />
+              <set_value name="$Receipt.$reason" exact="'supply_authority_lost_before_payment'" />
+              <do_if value="@player.entity.$tm_empire_supply_request.$key == $Key">
+                <set_value name="player.entity.$tm_empire_supply_request.$state" exact="'revoked'" />
+                <set_value name="player.entity.$tm_empire_supply_request.$reason" exact="$Receipt.$reason" />
+              </do_if>
+            </do_else>
+          </do_if>
+        </do_if>
+        <do_if value="$Receipt.$state == 'payment_approved' and @player.entity.$tm_empire_supply_request.$state == 'revoked'">
+          <do_if value="$Payment.$key == $Key and ($Payment.$state == 'payment_sent' or $Payment.$state == 'paid' or $Payment.$state == 'unknown')">
+            <set_value name="$Receipt.$state" exact="'unknown'" />
+            <set_value name="$Receipt.$reason" exact="'supply_revoked_after_payment_intent'" />
+          </do_if>
+          <do_else>
+            <set_value name="$Receipt.$state" exact="'rejected_before_effect'" />
+            <set_value name="$Receipt.$reason" exact="'supply_approval_revoked_before_payment'" />
+          </do_else>
+        </do_if>
+        <do_if value="$Receipt.$state == 'payment_approved' and @player.entity.$tm_empire_supply_request.$state == 'payment_rejected'">
+          <set_value name="$Receipt.$state" exact="'rejected_before_effect'" />
+          <set_value name="$Receipt.$reason" exact="player.entity.$tm_empire_supply_request.$reason" />
+        </do_if>
+        <do_elseif value="$Receipt.$state == 'payment_approved' and $Payment.$key == $Key and $Payment.$state == 'unknown'">
+          <set_value name="$Receipt.$state" exact="'unknown'" />
+          <set_value name="$Receipt.$reason" exact="'supply_payment_unconfirmed'" />
+        </do_elseif>
+        <do_elseif value="$Receipt.$state == 'build_observed' and $Payment.$key == $Key and $Payment.$state == 'build_recorded' and $Payment.$ship == $Receipt.$ship and $Payment.$builder == $Receipt.$builder and $Payment.$paid * 1Cr == $Receipt.$price">
+          <!-- Preserve identity independently of the native build reference,
+               which expires when the completed queue entry is removed. -->
+          <do_if value="not @$Receipt.$buildtoken or @$Payment.$recordedbuild != $Receipt.$buildtoken">
+            <set_value name="$Receipt.$state" exact="'unknown'" />
+            <set_value name="$Receipt.$reason" exact="'native_supply_build_identity_unconfirmed'" />
+            <return value="$Receipt" />
+          </do_if>
+          <do_if value="$Receipt.$ship.exists and $Receipt.$ship.owner == faction.player and $Receipt.$ship.trueowner == faction.player">
+            <do_if value="not $Receipt.$build.exists and $Receipt.$ship.ammostorage.{$Receipt.$macro}.count ge $Receipt.$before + $Receipt.$amount">
+              <set_value name="$Receipt.$state" exact="'completed'" />
+              <set_value name="$Receipt.$reason" exact="'native_supply_delivery_observed'" />
+              <set_value name="$Receipt.$completed" exact="player.age" />
+            </do_if>
+            <do_elseif value="$Receipt.$build.exists and $Receipt.$build.transferredamount == $Receipt.$price">
+              <set_value name="$Receipt.$reason" exact="'native_supply_build_in_progress'" />
+            </do_elseif>
+            <do_else>
+              <set_value name="$Receipt.$state" exact="'unknown'" />
+              <set_value name="$Receipt.$reason" exact="'supply_inventory_or_paid_build_unconfirmed'" />
+            </do_else>
+          </do_if>
+          <do_else>
+            <set_value name="$Receipt.$state" exact="'unknown'" />
+            <set_value name="$Receipt.$reason" exact="'supply_ship_lost_or_transferred'" />
+          </do_else>
+        </do_elseif>
+        <return value="$Receipt" />
+      </actions>
+    </library>
+    <!-- Reconcile submitted effects after the domain goal stops. Retire its
+         terminal receipt only after old claims have already been released.
+         This watcher never quotes, pays, submits or issues orders. -->
+    <cue name="RestockResultWatch" namespace="this" checkinterval="15s">
+      <conditions>
+        <check_value value="@Request.$Receipt.$state == 'quote_requested' or @Request.$Receipt.$state == 'quoted' or @Request.$Receipt.$state == 'payment_approved' or @Request.$Receipt.$state == 'build_observed' or @Request.$Receipt.$state == 'completed' or @Request.$Receipt.$state == 'rejected_before_effect'" />
+      </conditions>
+      <delay exact="15s" />
+      <actions>
+        <set_value name="$Receipt" exact="@Request.$Receipt" />
+        <run_actions ref="ReadRestockResult">
+          <param name="Key" value="$Receipt.$key" />
+          <param name="ManagerCue" value="$Receipt.$manager" />
+          <param name="GoalCue" value="$Receipt.$goal" />
+        </run_actions>
+        <do_if value="$Receipt.$state == 'completed' or $Receipt.$state == 'rejected_before_effect'">
+          <run_actions ref="md.TM_Empire_Runtime.ReadGoalLifetime" result="$Lifetime"><param name="GoalCue" value="$Receipt.$goal" /></run_actions>
+          <set_value name="$Claim" exact="@global.$TM_EmpireComponentRecords.$claim.{$Receipt.$ship}" />
+          <!-- Retire only the old terminal bookkeeping after its orders have
+               already been released. Never stop a new owner's assignment. -->
+          <do_if value="($Lifetime != 'available' or $Receipt.$manager != @md.TM_Empire_Runtime.Registry.$ManagerCue or @md.TM_Empire_Runtime.Registry.$State != 'active') and (not $Claim or $Claim.$manager != $Receipt.$manager or $Claim.$goal != $Receipt.$goal)">
+            <run_actions ref="ConsumeRestockResult">
+              <param name="Key" value="$Receipt.$key" /><param name="ManagerCue" value="$Receipt.$manager" /><param name="GoalCue" value="$Receipt.$goal" />
+            </run_actions>
+          </do_if>
+        </do_if>
+        <reset_cue cue="this" />
+      </actions>
+    </cue>
+    <library name="StepRestockDelivery" purpose="run_actions" namespace="this">
+      <params>
+        <param name="Key" />
+        <param name="ManagerCue" />
+        <param name="GoalCue" />
+      </params>
+      <actions>
+        <run_actions ref="ReadRestockQuote" result="$Receipt">
+          <param name="Key" value="$Key" />
+          <param name="ManagerCue" value="$ManagerCue" />
+          <param name="GoalCue" value="$GoalCue" />
+        </run_actions>
+        <do_if value="$Receipt.$state == 'quoted'">
+          <do_if value="$Receipt.$ship.dock.exists and $Receipt.$ship.hascontext.{$Receipt.$builder}">
+            <!-- The approach quote is an estimate. Refresh once at the actual
+                 supplier, before any payment intent, using the same identity. -->
+            <do_if value="not @$Receipt.$quote_docked">
+              <do_if value="@player.entity.$tm_empire_supply_payment.$key == $Key">
+                <set_value name="$Receipt.$state" exact="'unknown'" />
+                <set_value name="$Receipt.$reason" exact="'supply_previous_payment_intent'" />
+                <return value="$Receipt" />
+              </do_if>
+              <set_value name="$Receipt.$quote_docked" exact="true" />
+              <set_value name="$Receipt.$state" exact="'quote_requested'" />
+              <set_value name="$Receipt.$reason" exact="'native_supply_quote_refresh_after_docking'" />
+              <set_value name="player.entity.$tm_empire_supply_request.$state" exact="'quote_requested'" />
+              <remove_value name="player.entity.$tm_empire_supply_request.$price" />
+              <raise_lua_event name="'TM_Empire.QuoteSupply'" />
+              <return value="$Receipt" />
+            </do_if>
+            <run_actions ref="ApproveRestockPayment" result="$Receipt">
+              <param name="Key" value="$Key" />
+              <param name="ManagerCue" value="$ManagerCue" />
+              <param name="GoalCue" value="$GoalCue" />
+            </run_actions>
+          </do_if>
+          <do_elseif value="not @$Receipt.$dockissued">
+            <run_actions ref="md.TM_Empire_Runtime.ClaimOwnedShip" result="$Reason">
+              <param name="Ship" value="$Receipt.$ship" />
+              <param name="ManagerCue" value="$ManagerCue" />
+              <param name="GoalCue" value="$GoalCue" />
+            </run_actions>
+            <do_if value="$Reason == 'available'">
+              <set_value name="$Receipt.$dockissued" exact="true" />
+              <set_value name="global.$TM_EmpireComponentRecords.$claim.{$Receipt.$ship}.$issuing" exact="true" />
+              <create_order name="$DockOrder" object="$Receipt.$ship" id="'DockAndWait'">
+                <param name="destination" value="$Receipt.$builder" />
+              </create_order>
+              <run_actions ref="md.TM_Empire_Runtime.RecordOwnedOrder" result="$Reason">
+                <param name="Ship" value="$Receipt.$ship" />
+                <param name="GoalCue" value="$GoalCue" />
+                <param name="Order" value="$DockOrder" />
+              </run_actions>
+              <set_value name="$Receipt.$dockorder" exact="$DockOrder" />
+              <do_if value="$Reason != 'sent'">
+                <set_value name="$Receipt.$state" exact="'unknown'" />
+                <set_value name="$Receipt.$reason" exact="$Reason" />
+              </do_if>
+            </do_if>
+            <do_else>
+              <set_value name="$Receipt.$reason" exact="$Reason" />
+            </do_else>
+          </do_elseif>
+          <do_elseif value="not $Receipt.$dockorder.exists">
+            <set_value name="$Receipt.$state" exact="'rejected_before_effect'" />
+            <set_value name="$Receipt.$reason" exact="'supply_docking_ended_without_arrival'" />
+          </do_elseif>
+        </do_if>
+        <do_elseif value="$Receipt.$state == 'payment_approved' or $Receipt.$state == 'build_observed'">
+          <run_actions ref="ReadRestockResult" result="$Receipt">
+            <param name="Key" value="$Key" />
+            <param name="ManagerCue" value="$ManagerCue" />
+            <param name="GoalCue" value="$GoalCue" />
+          </run_actions>
+        </do_elseif>
+        <do_if value="$Receipt.$state == 'completed' or $Receipt.$state == 'rejected_before_effect'">
+          <run_actions ref="ConsumeRestockResult" result="$Receipt">
+            <param name="Key" value="$Key" />
+            <param name="ManagerCue" value="$ManagerCue" />
+            <param name="GoalCue" value="$GoalCue" />
+          </run_actions>
+        </do_if>
+        <return value="$Receipt" />
+      </actions>
+    </library>
+    <library name="ConsumeRestockResult" purpose="run_actions" namespace="this">
+      <params>
+        <param name="Key" />
+        <param name="ManagerCue" />
+        <param name="GoalCue" />
+      </params>
+      <actions>
+        <run_actions ref="ReadRestockResult" result="$Receipt">
+          <param name="Key" value="$Key" />
+          <param name="ManagerCue" value="$ManagerCue" />
+          <param name="GoalCue" value="$GoalCue" />
+        </run_actions>
+        <do_if value="$Receipt.$state != 'completed' and $Receipt.$state != 'rejected_before_effect'">
+          <return value="$Receipt" />
+        </do_if>
+        <do_if value="$Receipt.$ship.exists and @global.$TM_EmpireComponentRecords.$claim.{$Receipt.$ship}.$manager == $ManagerCue and @global.$TM_EmpireComponentRecords.$claim.{$Receipt.$ship}.$goal == $GoalCue">
+          <run_actions ref="md.TM_Empire_Runtime.StopAndReleaseOwnedShip" result="$Release">
+            <param name="Ship" value="$Receipt.$ship" />
+            <param name="ManagerCue" value="$ManagerCue" />
+            <param name="GoalCue" value="$GoalCue" />
+          </run_actions>
+          <do_if value="$Release != 'released'">
+            <set_value name="$Receipt.$releasereason" exact="$Release" />
+            <return value="$Receipt" />
+          </do_if>
+          <remove_value name="$Receipt.$releasereason" />
+        </do_if>
+        <set_value name="$Receipt.$result" exact="table[$key=$Key, $state=$Receipt.$state, $reason=@$Receipt.$reason, $ship=$Receipt.$ship, $macro=$Receipt.$macro, $amount=$Receipt.$amount, $completed=@$Receipt.$completed]" />
+        <do_if value="$GoalCue.exists"><set_value name="$GoalCue.$tm_empire_supply_result" exact="$Receipt.$result" /></do_if>
+        <do_if value="@player.entity.$tm_empire_supply_payment.$key == $Key">
+          <set_value name="player.entity.$tm_empire_supply_payment.$state" exact="'consumed'" />
+        </do_if>
+        <set_value name="$Receipt.$outcome" exact="$Receipt.$state" />
+        <set_value name="$Receipt.$state" exact="'consumed'" />
+        <return value="$Receipt" />
+      </actions>
+    </library>
+    <cue name="RestoreSupply" instantiate="true" namespace="this">
+      <conditions><event_game_loaded /></conditions>
+      <actions>
+        <!-- Capture the saved receipt before any post-load request can replace it. -->
+        <signal_cue_instantly cue="RestoreSupplyReconcile" param="@Request.$Receipt.$key" />
+      </actions>
+    </cue>
+    <cue name="RestoreSupplyReconcile" instantiate="true" namespace="this">
+      <conditions><event_cue_signalled /></conditions>
+      <delay exact="5s" />
+      <actions>
+        <do_if value="event.param and event.param == @Request.$Receipt.$key">
+        <set_value name="$Receipt" exact="@Request.$Receipt" />
+        <set_value name="$Payment" exact="@player.entity.$tm_empire_supply_payment" />
+        <do_if value="$Receipt">
+          <do_if value="$Receipt.$state == 'consumed' and @$Receipt.$result.$state == 'completed'">
+            <set_value name="$Receipt.$reason" exact="'native_supply_delivery_observed'" />
+            <set_value name="$Receipt.$result.$reason" exact="$Receipt.$reason" />
+          </do_if>
+          <do_if value="$Receipt.$state == 'quote_requested' or $Receipt.$state == 'quoted'">
+            <set_value name="$Receipt.$state" exact="'quote_requested'" />
+            <set_value name="player.entity.$tm_empire_supply_request.$state" exact="'quote_requested'" />
+            <raise_lua_event name="'TM_Empire.QuoteSupply'" />
+          </do_if>
+          <do_elseif value="$Receipt.$state == 'payment_approved'">
+            <do_if value="$Payment.$key == $Receipt.$key and $Payment.$state == 'paid'">
+              <signal_cue cue="SupplyPaid" />
+            </do_if>
+            <do_else>
+              <set_value name="$Receipt.$state" exact="'unknown'" />
+              <set_value name="$Receipt.$reason" exact="'loaded_supply_approval_or_payment_unconfirmed'" />
+              <!-- Preserve any payment evidence, but do not leave the saved
+                   pre-payment approval executable after load. -->
+              <do_if value="@player.entity.$tm_empire_supply_request.$key == $Receipt.$key and @player.entity.$tm_empire_supply_request.$state == 'payment_approved'">
+                <set_value name="player.entity.$tm_empire_supply_request.$state" exact="'revoked'" />
+                <set_value name="player.entity.$tm_empire_supply_request.$reason" exact="'loaded_supply_approval_or_payment_unconfirmed'" />
+              </do_if>
+            </do_else>
+          </do_elseif>
+          <do_elseif value="$Receipt.$state == 'build_sent'">
+            <set_value name="$Receipt.$state" exact="'unknown'" />
+            <set_value name="$Receipt.$reason" exact="'loaded_supply_build_submission_unconfirmed'" />
+          </do_elseif>
+          <do_elseif value="$Receipt.$state == 'build_observed' and $Payment.$key == $Receipt.$key and $Payment.$state == 'paid'">
+            <raise_lua_event name="'TM_Empire.RecordSupplyPayment'" />
+          </do_elseif>
+        </do_if>
+              </do_if>
+      </actions>
+    </cue>
+    <cue name="SupplyPaid" instantiate="true" namespace="this">
+      <conditions>
+        <check_any>
+          <event_ui_triggered screen="'TM_Empire_Supply'" control="'PaymentSubmitted'" />
+          <event_cue_signalled />
+        </check_any>
+      </conditions>
+      <actions>
+        <set_value name="$Receipt" exact="@Request.$Receipt" />
+        <set_value name="$Payment" exact="@player.entity.$tm_empire_supply_payment" />
+        <do_if value="$Receipt.$state == 'payment_approved' and $Payment.$key == $Receipt.$key and $Payment.$state == 'paid' and $Payment.$ship == $Receipt.$ship and $Payment.$builder == $Receipt.$builder and $Payment.$paid * 1Cr == $Receipt.$price">
+          <run_actions ref="md.TM_Empire_Runtime.CanUseOwnedShip" result="$Reason">
+            <param name="Ship" value="$Receipt.$ship" />
+            <param name="ManagerCue" value="$Receipt.$manager" />
+            <param name="GoalCue" value="$Receipt.$goal" />
+          </run_actions>
+          <do_if value="$Reason == 'available' and $Receipt.$ship.dock.exists and $Receipt.$ship.hascontext.{$Receipt.$builder} and not $Receipt.$ship.build.exists and $Receipt.$ship.ammostorage.{$Receipt.$macro}.count == $Receipt.$before">
+            <set_value name="$Receipt.$state" exact="'build_sent'" />
+            <set_value name="$Ammo" exact="table[]" />
+            <do_for_each name="$AmmoMacro" valuename="$AmmoCount" in="$Receipt.$ship.ammostorage.missile.table">
+              <set_value name="$Ammo.{$AmmoMacro.ware}" exact="$AmmoCount" />
+            </do_for_each>
+            <do_for_each name="$AmmoMacro" valuename="$AmmoCount" in="$Receipt.$ship.ammostorage.deployable.table">
+              <set_value name="$Ammo.{$AmmoMacro.ware}" exact="$AmmoCount" />
+            </do_for_each>
+            <set_value name="$Ammo.{$Receipt.$macro.ware}" exact="$Receipt.$before + $Receipt.$amount" />
+            <add_build_to_modify_ship object="$Receipt.$builder" buildobject="$Receipt.$ship" ammo="$Ammo" price="$Receipt.$price" result="$Build" immediate="true" internal="true" />
+            <set_value name="$Receipt.$build" exact="$Build" />
+            <do_if value="$Build.exists and $Build.buildobject == $Receipt.$ship and $Build.object == $Receipt.$builder">
+              <set_value name="$Receipt.$state" exact="'build_observed'" />
+              <set_value name="$Receipt.$buildtoken" exact="'' + $Build" />
+              <set_value name="player.entity.$tm_empire_supply_payment.$buildtoken" exact="$Receipt.$buildtoken" />
+              <set_value name="player.entity.$tm_empire_supply_payment.$build" exact="$Build" />
+              <raise_lua_event name="'TM_Empire.RecordSupplyPayment'" />
+            </do_if>
+            <do_else>
+              <set_value name="$Receipt.$state" exact="'unknown'" />
+              <set_value name="$Receipt.$reason" exact="'native_supply_build_unconfirmed_after_payment'" />
+            </do_else>
+          </do_if>
+          <do_else>
+            <set_value name="$Receipt.$state" exact="'unknown'" />
+            <set_value name="$Receipt.$reason" exact="'supply_changed_after_payment'" />
+          </do_else>
+        </do_if>
+      </actions>
+    </cue>
+    <cue name="StationFunding" namespace="this" />
+    <library name="RequestStationFunding" purpose="run_actions" namespace="this">
+      <params><param name="ManagerCue" /><param name="GoalCue" /><param name="Station" /><param name="Budget" /></params>
+      <actions>
+        <run_actions ref="ObserveStationFunding" />
+        <do_if value="@StationFunding.$Receipt and StationFunding.$Receipt.$state != 'observed' and StationFunding.$Receipt.$state != 'rejected'"><return value="'previous_station_funding_unreconciled'" /></do_if>
+        <run_actions ref="md.TM_Empire_Runtime.CanActForGovernor" result="$Reason">
+          <param name="Actor" value="$ManagerCue.$Governor" /><param name="Station" value="$ManagerCue.$GovernorStation" /><param name="Module" value="$ManagerCue.$GovernorModule" /><param name="ManagerCue" value="$ManagerCue" />
+        </run_actions>
+        <do_if value="$Reason != 'available'"><return value="$Reason" /></do_if>
+        <run_actions ref="md.TM_Empire_Runtime.ReadGoalLifetime" result="$Reason"><param name="GoalCue" value="$GoalCue" /></run_actions>
+        <do_if value="$Reason != 'available'"><return value="$Reason" /></do_if>
+        <!-- Same production-account condition as native Upkeep_Management. -->
+        <do_if value="not $Station.exists or not $Station.isclass.station or not $Station.isplayerowned or not $Station.isoperational or not $Station.tradenpc.exists or not $Station.hasownaccount or $Station.istraderestricted or $Station.productionmoney le 0Cr or ($Station.money * 10) gt ($Station.productionmoney * 9)"><return value="'no_native_station_budget_need'" /></do_if>
+        <!-- GetComponentData exposes the recommended budget in whole credits.
+             Keep the MD quote and exact payment certificate in that same unit. -->
+        <set_value name="$Wanted" exact="(($Station.productionmoney)f / (1Cr)f + 0.5)i * 1Cr" /><set_value name="$Balance" exact="$Station.money" />
+        <do_if value="$Budget lt ($Wanted - $Balance) or player.money lt ($Wanted - $Balance)"><return value="'station_budget_missing'" /></do_if>
+        <set_value name="StationFunding.$Serial" exact="@StationFunding.$Serial + 1" />
+        <set_value name="$Key" exact="'station_funding_' + StationFunding.$Serial + '_' + player.age" />
+        <set_value name="StationFunding.$Receipt" exact="table[$key=$Key, $state='sent', $reason='Ожидается подтверждение перевода производственного бюджета станции ' + $Station.knownname, $manager=$ManagerCue, $goal=$GoalCue, $station=$Station, $employee=$Station.tradenpc, $wanted=$Wanted, $balance=$Balance, $amount=$Wanted - $Balance, $issued=player.age]" />
+        <set_value name="player.entity.$tm_empire_station_funding" exact="table[$schema=1, $key=$Key, $state='approved', $station=$Station, $wanted=$Wanted, $balance=$Balance, $budget=[$Budget, player.money].min]" />
+        <raise_lua_event name="'TM_Empire.FundStation'" />
+        <return value="$Key" />
+      </actions>
+    </library>
+    <library name="ObserveStationFunding" purpose="run_actions" namespace="this">
+      <actions>
+        <set_value name="$Receipt" exact="@StationFunding.$Receipt" />
+        <do_if value="not $Receipt or ($Receipt.$state != 'sent' and $Receipt.$state != 'unknown')"><return value="'no_station_funding_pending'" /></do_if>
+        <set_value name="$Payment" exact="@player.entity.$tm_empire_station_payment" />
+        <do_if value="@$Payment.$key == $Receipt.$key">
+          <do_if value="$Payment.$state == 'paid' and $Payment.$station == $Receipt.$station and $Payment.$paid * 1Cr == $Receipt.$amount and $Payment.$wanted * 1Cr == $Receipt.$wanted and $Payment.$stationbefore * 1Cr == $Receipt.$balance and ($Payment.$stationafter * 1Cr - $Payment.$stationbefore * 1Cr) == $Receipt.$amount and ($Payment.$before * 1Cr - $Payment.$after * 1Cr) == $Receipt.$amount">
+            <set_value name="StationFunding.$Receipt.$state" exact="'observed'" /><set_value name="StationFunding.$Receipt.$paid" exact="$Payment.$paid * 1Cr" /><set_value name="StationFunding.$Receipt.$observed" exact="player.age" />
+            <set_value name="StationFunding.$Receipt.$reason" exact="'Рабочий счёт станции ' + (if $Receipt.$station.exists then $Receipt.$station.knownname else '(объект утрачен после перевода)') + ' пополнен на ' + ($Receipt.$amount / 1Cr) + ' Cr до штатной производственной потребности; списание и зачисление подтверждены'" />
+            <set_value name="player.entity.$tm_empire_station_payment.$state" exact="'reconciled'" /><return value="'observed'" />
+          </do_if>
+          <set_value name="StationFunding.$Receipt.$state" exact="'unknown'" /><set_value name="StationFunding.$Receipt.$reason" exact="@$Payment.$reason" /><return value="'unknown'" />
+        </do_if>
+        <do_if value="@player.entity.$tm_empire_station_funding.$key == $Receipt.$key and (@player.entity.$tm_empire_station_funding.$state == 'rejected_before_payment' or @player.entity.$tm_empire_station_funding.$state == 'revoked')">
+          <set_value name="StationFunding.$Receipt.$state" exact="'rejected'" /><set_value name="StationFunding.$Receipt.$reason" exact="player.entity.$tm_empire_station_funding.$reason" /><return value="'rejected'" />
+        </do_if>
+        <do_if value="player.age gt $Receipt.$issued + 1min"><set_value name="StationFunding.$Receipt.$state" exact="'unknown'" /><set_value name="StationFunding.$Receipt.$reason" exact="'station_funding_effect_unconfirmed'" /></do_if>
+        <return value="$Receipt.$state" />
+      </actions>
+    </library>
+    <cue name="StationFundingWatch" namespace="this" checkinterval="15s">
+      <conditions><check_value value="@StationFunding.$Receipt.$state == 'sent' or @StationFunding.$Receipt.$state == 'unknown'" /></conditions>
+      <delay exact="15s" />
+      <actions>
+        <run_actions ref="ObserveStationFunding" />
+        <reset_cue cue="this" />
+      </actions>
+    </cue>
+    <cue name="StationFundingSubmitted" instantiate="true" namespace="this">
+      <conditions><event_ui_triggered screen="'TM_Empire_Supply'" control="'StationFundingSubmitted'" /></conditions>
+      <actions><run_actions ref="ObserveStationFunding" /></actions>
+    </cue>
+  </cues>
+</mdscript>
+
+

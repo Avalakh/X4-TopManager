@@ -1,0 +1,24 @@
+<?xml version='1.0' encoding='utf-8'?>
+<addon name="tm_empire_management">
+  <environment type="menus">
+    <file name="ui/empire_status.lua" />
+    <file name="ui/purchase_quote.lua" />
+    <file name="ui/player_order_guard.lua" />
+    <file name="ui/purchase_receipt.lua" />
+    <file name="ui/purchase_submit.lua" />
+    <file name="ui/purchase_dispatch.lua" />
+    <file name="ui/personnel_hire.lua" />
+    <file name="ui/crew_service_plan.lua" />
+    <file name="ui/crew_service_hire.lua" />
+    <file name="ui/personnel_transfer.lua" />
+    <file name="ui/construction_funding.lua" />
+    <file name="ui/station_funding.lua" />
+    <file name="ui/construction_builder.lua" />
+    <file name="ui/construction_plot.lua" />
+    <file name="ui/construction_reserve.lua" />
+    <file name="ui/construction_plot_dispatch.lua" />
+    <dependency name="ego_detailmonitor" />
+    <dependency name="kuertee_ui_extensions" />
+    <dependency name="sn_mod_support_apis" />
+  </environment>
+</addon>

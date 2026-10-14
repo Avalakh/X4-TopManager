@@ -1,0 +1,767 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mdscript name="TM_Empire_Purchase">
+  <cues>
+    <cue name="Tracked" namespace="this" />
+    <cue name="Request" namespace="this" />
+    <cue name="PurchaseLoaded" instantiate="true" namespace="this">
+      <conditions><event_game_loaded /></conditions>
+      <actions>
+        <!-- Capture the saved receipt before any post-load request can replace it. -->
+        <signal_cue_instantly cue="PurchaseLoadedReconcile" param="@Request.$Pending.$key" />
+      </actions>
+    </cue>
+    <cue name="PurchaseLoadedReconcile" instantiate="true" namespace="this">
+      <conditions><event_cue_signalled /></conditions>
+      <delay exact="5s" />
+      <actions>
+        <do_if value="event.param and event.param == @Request.$Pending.$key">
+        <run_actions ref="RecoverPurchaseAfterLoad" result="Request.$RecoveryResult" />
+        <set_value name="Request.$RecoveryObserved" exact="player.age" />
+              </do_if>
+      </actions>
+    </cue>
+    <library name="RecoverPurchaseAfterLoad" purpose="run_actions" namespace="this">
+      <actions>
+        <do_if value="not @Request.$Pending">
+          <return value="'no_purchase_request'" />
+        </do_if>
+        <set_value name="$Current" exact="@player.entity.$tm_empire_purchase_request" />
+        <set_value name="$Receipt" exact="@player.entity.$tm_empire_purchase_submission" />
+        <do_if value="not $Current or $Current.$schema != 1 or $Current.$key != Request.$Pending.$key">
+          <return value="'purchase_request_changed'" />
+        </do_if>
+        <do_if value="$Receipt and $Receipt.$key == $Current.$key">
+          <do_if value="$Receipt.$state == 'reconciled'">
+            <run_actions ref="FinalizeReconciledPurchase" />
+          </do_if>
+          <do_if value="$Receipt.$state == 'built'">
+            <do_if value="@Tracked.$Observation.$state == 'ready'">
+              <run_actions ref="ValidateCompletedPurchaseCertificate" result="$ReadyReason" />
+              <do_if value="$ReadyReason == 'available'">
+                <set_value name="Request.$Pending.$state" exact="'ready'" />
+                <remove_value name="Request.$Pending.$reason" />
+                <return value="'saved_native_completed_ship_recovered'" />
+              </do_if>
+            </do_if>
+            <run_actions ref="TrackMatchedPurchase" result="$RecoveredMatch" />
+            <do_if value="$RecoveredMatch == 'tracked' or $RecoveredMatch == 'already_tracked' or $RecoveredMatch == 'building' or $RecoveredMatch == 'queued' or $RecoveredMatch == 'ready'">
+              <return value="'saved_native_build_recovered'" />
+            </do_if>
+            <raise_lua_event name="'TM_Empire.MatchPurchase'" />
+            <do_if value="Request.$Pending.$state == 'delivered'">
+              <raise_lua_event name="'TM_Empire.ReconcilePurchase'" />
+            </do_if>
+          </do_if>
+          <return value="'purchase_effect_requires_reconciliation'" />
+        </do_if>
+        <do_if value="Tracked.$Build?">
+          <return value="'purchase_has_build'" />
+        </do_if>
+        <do_if value="$Current.$state != 'quote_requested' and $Current.$state != 'quote_ready' and $Current.$state != 'approved'">
+          <return value="'purchase_state_not_requotable'" />
+        </do_if>
+        <set_value name="player.entity.$tm_empire_purchase_request.$state" exact="'quote_requested'" />
+        <set_value name="Request.$Pending.$state" exact="'quote_requested'" />
+        <raise_lua_event name="'TM_Empire.ClearPreparedPurchase'" />
+        <raise_lua_event name="'TM_Empire.PreparePurchase'" />
+        <return value="'quote_requested'" />
+      </actions>
+    </library>
+    <library name="ReadPurchaseCandidates" purpose="run_actions" namespace="this">
+      <params>
+        <param name="Shipyard" />
+        <param name="Tags" />
+        <param name="Classes" />
+      </params>
+      <actions>
+        <do_if value="not $Shipyard.exists or not $Shipyard.isclass.station or not $Shipyard.isknown or not $Shipyard.isoperational">
+          <return value="table[$state='waiting', $reason='known_shipyard_unavailable', $macros=[]]" />
+        </do_if>
+        <get_ship_definition tags="$Tags" size="$Classes" macro="$Definitions" multiple="true" />
+        <get_ship_build_wares object="$Shipyard" result="$Wares" otherfaction="faction.player" requireblueprints="true" canbuild="true" />
+        <set_value name="$Candidates" exact="[]" />
+        <set_value name="$Truncated" exact="false" />
+        <do_all exact="$Definitions.count" counter="$i">
+          <set_value name="$Macro" exact="$Definitions.{$i}" />
+          <do_if value="$Macro.isclass.ship and $Wares.indexof.{$Macro.ware} and not $Candidates.indexof.{$Macro}">
+            <do_if value="$Candidates.count ge 64">
+              <set_value name="$Truncated" exact="true" />
+              <break />
+            </do_if>
+            <append_to_list name="$Candidates" exact="$Macro" />
+          </do_if>
+        </do_all>
+        <return value="table[$state=if $Candidates.count then 'observed' else 'waiting', $reason=if $Candidates.count then 'native_buildable_candidates' else 'no_accessible_ship_definition', $macros=$Candidates, $truncated=$Truncated]" />
+      </actions>
+    </library>
+    <library name="ReadPurchaseOptions" purpose="run_actions" namespace="this">
+      <params>
+        <param name="Tags" />
+        <param name="Classes" />
+      </params>
+      <actions>
+        <set_value name="$CategoryTags" exact="[]" />
+        <do_for_each name="$Tag" in="$Tags">
+          <do_if value="$Tag != tag.factionlogic">
+            <append_to_list name="$CategoryTags" exact="$Tag" />
+          </do_if>
+        </do_for_each>
+        <find_station name="$Shipyards" canbuildships="true" canbuildfor="faction.player" known="true" space="player.galaxy" multiple="true" />
+        <set_value name="$Options" exact="[]" />
+        <do_all exact="[32, $Shipyards.count].min" counter="$i">
+          <run_actions ref="ReadPurchaseCandidates" result="$Observation">
+            <param name="Shipyard" value="$Shipyards.{$i}" />
+            <param name="Tags" value="$CategoryTags" />
+            <param name="Classes" value="$Classes" />
+          </run_actions>
+          <do_for_each name="$Macro" in="$Observation.$macros">
+            <append_to_list name="$Options" exact="table[$macro=$Macro, $shipyard=$Shipyards.{$i}]" />
+            <do_if value="$Options.count ge 64">
+              <return value="$Options" />
+            </do_if>
+          </do_for_each>
+        </do_all>
+        <return value="$Options" />
+      </actions>
+    </library>
+    <library name="PreparePurchase" purpose="run_actions" namespace="this">
+      <params>
+        <param name="ManagerCue" />
+        <param name="GoalCue" />
+        <param name="Shipyard" />
+        <param name="Macro" />
+        <param name="Budget" />
+        <param name="Level" default="0.5" />
+        <param name="ActionRecord" default="null" />
+      </params>
+      <actions>
+        <do_if value="player.age lt @Request.$NextAttempt">
+          <return value="'purchase_backoff'" />
+        </do_if>
+        <do_if value="@Request.$LastResult.$state == 'delivered' and not @Request.$LastResult.$accepted">
+          <run_actions ref="ReconcileLegacyFreighterDelivery" result="Request.$LegacyRecoveryResult" />
+        </do_if>
+        <do_if value="@Request.$LastResult.$state == 'delivered' and not @Request.$LastResult.$accepted">
+          <return value="'previous_delivery_not_consumed'" />
+        </do_if>
+        <do_if value="@Request.$Pending or Tracked.$Build?">
+          <return value="'previous_purchase_unreconciled'" />
+        </do_if>
+        <do_if value="not $ManagerCue.exists or not $GoalCue.exists">
+          <return value="'purchase_task_missing'" />
+        </do_if>
+        <run_actions ref="md.TM_Empire_Runtime.CanActForGovernor" result="$Reason">
+          <param name="Actor" value="$ManagerCue.$Governor" />
+          <param name="Station" value="$ManagerCue.$GovernorStation" />
+          <param name="Module" value="$ManagerCue.$GovernorModule" />
+          <param name="ManagerCue" value="$ManagerCue" />
+        </run_actions>
+        <do_if value="$Reason != 'available'">
+          <return value="$Reason" />
+        </do_if>
+        <do_if value="not $Shipyard.exists or not $Shipyard.isclass.station or not $Shipyard.isknown or not $Shipyard.isoperational or not $Macro.isclass.ship">
+          <return value="'purchase_asset_unavailable'" />
+        </do_if>
+        <do_if value="$Budget le 0Cr or $Budget gt player.money or $Level lt 0 or $Level gt 1">
+          <return value="'purchase_budget_or_level_invalid'" />
+        </do_if>
+        <get_ship_build_wares object="$Shipyard" result="$Wares" otherfaction="faction.player" requireblueprints="true" canbuild="true" />
+        <do_if value="not $Wares.indexof.{$Macro.ware}">
+          <return value="'blueprint_or_build_access_missing'" />
+        </do_if>
+        <set_value name="Request.$Sequence" exact="@Request.$Sequence + 1" />
+        <set_value name="Request.$Pending" exact="table[$state='quote_requested', $issued=player.age, $manager=$ManagerCue, $goal=$GoalCue, $shipyard=$Shipyard, $macro=$Macro, $budget=$Budget, $actionrecord=$ActionRecord, $key='purchase_' + Request.$Sequence + '_' + player.age]" />
+        <do_if value="typeof $ActionRecord == datatype.table">
+          <set_value name="$ActionRecord.$TM_PurchaseKey" exact="Request.$Pending.$key" />
+          <set_value name="$ActionRecord.$TM_PurchaseState" exact="'pending'" />
+        </do_if>
+        <set_value name="player.entity.$tm_empire_purchase_candidates" exact="[]" />
+        <remove_value name="player.entity.$tm_empire_purchase_match" />
+        <set_value name="player.entity.$tm_empire_purchase_request" exact="table[$schema=1, $state='quote_requested', $key=Request.$Pending.$key, $shipyard=$Shipyard, $macro=$Macro.id, $budget=$Budget, $level=$Level]" />
+        <raise_lua_event name="'TM_Empire.PreparePurchase'" />
+        <return value="'quote_requested'" />
+      </actions>
+    </library>
+    <cue name="QuoteReady" instantiate="true" namespace="this">
+      <conditions>
+        <event_ui_triggered screen="'TM_Empire_Purchase'" control="'QuoteReady'" />
+      </conditions>
+      <actions>
+        <set_value name="$Key" exact="@Request.$Pending.$key" />
+        <run_actions ref="ApprovePurchase" result="$Reason" />
+        <do_if value="$Reason != 'approved'">
+          <run_actions ref="CancelUnsubmittedPurchase">
+            <param name="Key" value="$Key" />
+            <param name="Reason" value="$Reason" />
+          </run_actions>
+        </do_if>
+      </actions>
+    </cue>
+    <library name="CancelUnsubmittedPurchase" purpose="run_actions" namespace="this">
+      <params>
+        <param name="Key" />
+        <param name="Reason" />
+      </params>
+      <actions>
+        <do_if value="not @Request.$Pending or Request.$Pending.$key != $Key">
+          <return value="'purchase_request_changed'" />
+        </do_if>
+        <do_if value="Tracked.$Build?">
+          <return value="'purchase_has_build'" />
+        </do_if>
+        <set_value name="$Receipt" exact="@player.entity.$tm_empire_purchase_submission" />
+        <do_if value="$Receipt and $Receipt.$key == $Key">
+          <return value="'purchase_effect_requires_reconciliation'" />
+        </do_if>
+        <set_value name="$Current" exact="@player.entity.$tm_empire_purchase_request" />
+        <do_if value="not $Current or $Current.$key != $Key">
+          <return value="'purchase_request_changed'" />
+        </do_if>
+        <do_if value="$Current.$state == 'approved' or $Current.$state == 'built' or $Current.$state == 'payment_sent' or $Current.$state == 'unknown'">
+          <return value="'purchase_effect_requires_reconciliation'" />
+        </do_if>
+        <set_value name="Request.$LastResult" exact="table[$state='waiting', $key=$Key, $goal=Request.$Pending.$goal, $reason=$Reason, $time=player.age]" />
+        <set_value name="Request.$LastResult.$expected_budget" exact="Request.$Pending.$budget" />
+        <set_value name="Request.$LastResult.$offered_budget" exact="@$Current.$budget" />
+        <set_value name="Request.$LastResult.$expected_macro" exact="Request.$Pending.$macro.id" />
+        <set_value name="Request.$LastResult.$offered_macro" exact="@$Current.$macro" />
+        <do_if value="typeof @Request.$Pending.$actionrecord == datatype.table">
+          <set_value name="Request.$Pending.$actionrecord.$TM_PurchaseState" exact="'failed'" />
+          <set_value name="Request.$Pending.$actionrecord.$WaitReason" exact="$Reason" />
+        </do_if>
+        <set_value name="Request.$NextAttempt" exact="player.age + 1min" />
+        <set_value name="player.entity.$tm_empire_purchase_request.$state" exact="'abandoned_before_payment'" />
+        <remove_value name="Request.$Pending" />
+        <raise_lua_event name="'TM_Empire.ClearPreparedPurchase'" />
+        <return value="'abandoned_before_payment'" />
+      </actions>
+    </library>
+    <library name="ApprovePurchase" purpose="run_actions" namespace="this">
+      <actions>
+        <do_if value="not @Request.$Pending">
+          <return value="'no_purchase_request'" />
+        </do_if>
+        <set_value name="$Offer" exact="@player.entity.$tm_empire_purchase_request" />
+        <do_if value="not $Offer or $Offer.$schema != 1 or $Offer.$key != Request.$Pending.$key">
+          <return value="'purchase_request_changed'" />
+        </do_if>
+        <do_if value="$Offer.$state != 'quote_ready'">
+          <return value="'quote_not_ready'" />
+        </do_if>
+        <set_value name="$Manager" exact="Request.$Pending.$manager" />
+        <do_if value="not $Manager.exists or not Request.$Pending.$goal.exists">
+          <return value="'purchase_task_missing'" />
+        </do_if>
+        <run_actions ref="md.TM_Empire_Runtime.ReadGoalLifetime" result="$Reason"><param name="GoalCue" value="Request.$Pending.$goal" /></run_actions>
+        <do_if value="$Reason != 'available'"><return value="$Reason" /></do_if>
+        <run_actions ref="md.TM_Empire_Runtime.CanActForGovernor" result="$Reason">
+          <param name="Actor" value="$Manager.$Governor" />
+          <param name="Station" value="$Manager.$GovernorStation" />
+          <param name="Module" value="$Manager.$GovernorModule" />
+          <param name="ManagerCue" value="$Manager" />
+        </run_actions>
+        <do_if value="$Reason != 'available'">
+          <return value="$Reason" />
+        </do_if>
+        <set_value name="$Shipyard" exact="Request.$Pending.$shipyard" />
+        <do_if value="not $Shipyard.exists or not $Shipyard.isknown or not $Shipyard.isoperational">
+          <return value="'purchase_asset_unavailable'" />
+        </do_if>
+        <do_if value="$Offer.$shipyard != $Shipyard">
+          <return value="'purchase_offer_shipyard_changed'" />
+        </do_if>
+        <do_if value="$Offer.$macro != Request.$Pending.$macro.id">
+          <return value="'purchase_offer_macro_changed'" />
+        </do_if>
+        <do_if value="$Offer.$budget * 1Cr != Request.$Pending.$budget">
+          <return value="'purchase_offer_budget_changed'" />
+        </do_if>
+        <do_if value="not $Offer.$paid? or $Offer.$paid le 0 or $Offer.$paid * 1Cr gt Request.$Pending.$budget or $Offer.$paid * 1Cr gt player.money">
+          <return value="'purchase_price_or_money_changed'" />
+        </do_if>
+        <get_ship_build_wares object="$Shipyard" result="$Wares" otherfaction="faction.player" requireblueprints="true" canbuild="true" />
+        <do_if value="not $Wares.indexof.{Request.$Pending.$macro.ware}">
+          <return value="'blueprint_or_build_access_missing'" />
+        </do_if>
+        <set_value name="player.entity.$tm_empire_purchase_request.$state" exact="'approved'" />
+        <set_value name="Request.$Pending.$state" exact="'approved'" />
+        <raise_lua_event name="'TM_Empire.SubmitPurchase'" />
+        <return value="'approved'" />
+      </actions>
+    </library>
+    <cue name="BuildAdded" instantiate="true" namespace="this">
+      <conditions>
+        <event_player_build_added />
+        <check_value value="@Request.$Pending and event.param2 == Request.$Pending.$shipyard and event.param.macro == Request.$Pending.$macro" />
+      </conditions>
+      <actions>
+        <do_if value="player.entity.$tm_empire_purchase_candidates.count lt 16">
+          <append_to_list name="player.entity.$tm_empire_purchase_candidates" exact="table[$build=event.param, $shipyard=event.param2]" />
+          <raise_lua_event name="'TM_Empire.MatchPurchase'" />
+        </do_if>
+        <do_else>
+          <set_value name="Request.$Pending.$reason" exact="'build_correlation_capacity_exceeded'" />
+        </do_else>
+      </actions>
+    </cue>
+    <cue name="PurchaseSubmitted" instantiate="true" namespace="this">
+      <conditions>
+        <event_ui_triggered screen="'TM_Empire_Purchase'" control="'PurchaseSubmitted'" />
+      </conditions>
+      <actions>
+        <do_if value="@player.entity.$tm_empire_purchase_request.$state == 'submission_failed'">
+          <run_actions ref="CancelUnsubmittedPurchase">
+            <param name="Key" value="@Request.$Pending.$key" />
+            <param name="Reason" value="@player.entity.$tm_empire_purchase_request.$reason" />
+          </run_actions>
+        </do_if>
+        <do_else>
+          <raise_lua_event name="'TM_Empire.MatchPurchase'" />
+        </do_else>
+      </actions>
+    </cue>
+    <cue name="BuildMatched" instantiate="true" namespace="this">
+      <conditions>
+        <event_ui_triggered screen="'TM_Empire_Purchase'" control="'BuildMatched'" />
+      </conditions>
+      <actions>
+        <run_actions ref="TrackMatchedPurchase" />
+      </actions>
+    </cue>
+    <library name="TrackMatchedPurchase" purpose="run_actions" namespace="this">
+      <actions>
+        <set_value name="$Match" exact="@player.entity.$tm_empire_purchase_match" />
+        <do_if value="not @Request.$Pending or not $Match or $Match.$key != Request.$Pending.$key">
+          <return value="'purchase_match_changed'" />
+        </do_if>
+        <do_if value="$Match.$shipyard != Request.$Pending.$shipyard or $Match.$macro != Request.$Pending.$macro.id">
+          <return value="'purchase_match_identity_changed'" />
+        </do_if>
+        <run_actions ref="ResolveMatchedBuild" result="$MatchedBuild" />
+        <do_if value="typeof $MatchedBuild != datatype.build">
+          <set_value name="Request.$Pending.$state" exact="'unknown'" />
+          <set_value name="Request.$Pending.$reason" exact="'typed_build_candidate_missing'" />
+          <return value="'typed_build_candidate_missing'" />
+        </do_if>
+        <run_actions ref="TrackBuild" result="$Reason">
+          <param name="Build" value="$MatchedBuild" />
+          <param name="Shipyard" value="$Match.$shipyard" />
+          <param name="Macro" value="Request.$Pending.$macro" />
+          <param name="ExpectedPrice" value="$Match.$price * 1Cr" />
+          <param name="ExpectedCrewPrice" value="$Match.$crewprice * 1Cr" />
+        </run_actions>
+        <do_if value="$Reason == 'tracked' or $Reason == 'already_tracked'">
+          <set_value name="Request.$Pending.$state" exact="Tracked.$Observation.$state" />
+          <remove_value name="Request.$Pending.$reason" />
+        </do_if>
+        <do_else>
+          <set_value name="Request.$Pending.$state" exact="'unknown'" />
+          <set_value name="Request.$Pending.$reason" exact="$Reason" />
+        </do_else>
+        <return value="$Reason" />
+      </actions>
+    </library>
+    <library name="ResolveMatchedBuild" purpose="run_actions" namespace="this">
+      <actions>
+        <set_value name="$Match" exact="@player.entity.$tm_empire_purchase_match" />
+        <set_value name="$Submission" exact="@player.entity.$tm_empire_purchase_submission" />
+        <set_value name="$Candidates" exact="@player.entity.$tm_empire_purchase_candidates" />
+        <do_if value="not @Request.$Pending or not $Match or not $Submission or $Match.$key != Request.$Pending.$key or $Submission.$key != $Match.$key or $Submission.$id != $Match.$id or typeof $Candidates != datatype.list">
+          <return value="null" />
+        </do_if>
+        <!-- Pre-release legacy certificate: exactly one native candidate was
+             previously matched to this paid ID. No world/ship search. -->
+        <do_if value="not $Match.$candidateindex? and $Candidates.count == 1">
+          <set_value name="$LegacyBuild" exact="@$Candidates.{1}.$build" />
+          <do_if value="typeof $LegacyBuild == datatype.build and $LegacyBuild.exists and $LegacyBuild.isshipbuild and $LegacyBuild.faction == faction.player and $LegacyBuild.object == Request.$Pending.$shipyard and $LegacyBuild.macro == Request.$Pending.$macro and $LegacyBuild.price == $Match.$price * 1Cr and $LegacyBuild.transferredamount == ($Match.$price + $Match.$crewprice) * 1Cr and $Match.$macro == Request.$Pending.$macro.id and $Match.$shipyard == Request.$Pending.$shipyard">
+            <set_value name="player.entity.$tm_empire_purchase_match.$candidateindex" exact="1" />
+            <set_value name="$Match.$candidateindex" exact="1" />
+          </do_if>
+        </do_if>
+        <do_if value="typeof @$Match.$candidateindex != datatype.integer and typeof @$Match.$candidateindex != datatype.float and typeof @$Match.$candidateindex != datatype.largeint and typeof @$Match.$candidateindex != datatype.largefloat">
+          <return value="null" />
+        </do_if>
+        <do_if value="$Match.$candidateindex != ($Match.$candidateindex)i or $Match.$candidateindex lt 1 or $Match.$candidateindex gt 16 or $Match.$candidateindex gt $Candidates.count">
+          <return value="null" />
+        </do_if>
+        <set_value name="$Candidate" exact="$Candidates.{$Match.$candidateindex}" />
+        <do_if value="typeof @$Candidate.$build != datatype.build or $Candidate.$shipyard != Request.$Pending.$shipyard or $Match.$shipyard != $Candidate.$shipyard or $Match.$macro != Request.$Pending.$macro.id">
+          <return value="null" />
+        </do_if>
+        <return value="$Candidate.$build" />
+      </actions>
+    </library>
+    <cue name="PaidMatchWatch" namespace="this" checkinterval="15s">
+      <conditions>
+        <check_value value="@Request.$Pending and not Tracked.$Build? and @player.entity.$tm_empire_purchase_submission.$state == 'built'" />
+      </conditions>
+      <delay exact="15s" />
+      <actions>
+        <run_actions ref="RecoverPurchaseAfterLoad" result="Request.$RecoveryResult" />
+        <set_value name="Request.$RecoveryObserved" exact="player.age" />
+        <reset_cue cue="this" />
+      </actions>
+    </cue>
+    <library name="TrackBuild" purpose="run_actions" namespace="this">
+      <params>
+        <param name="Build" />
+        <param name="Shipyard" />
+        <param name="Macro" />
+        <param name="ExpectedPrice" />
+        <param name="ExpectedCrewPrice" default="0Cr" />
+      </params>
+      <actions>
+        <do_if value="typeof $Build != datatype.build or not $Build.exists">
+          <return value="'build_handle_missing'" />
+        </do_if>
+        <do_if value="@Tracked.$LastBuild.exists and Tracked.$LastBuild == $Build">
+          <return value="'build_already_delivered'" />
+        </do_if>
+        <do_if value="Tracked.$Build?">
+          <do_if value="Tracked.$Build == $Build">
+            <return value="'already_tracked'" />
+          </do_if>
+          <return value="'previous_build_unreconciled'" />
+        </do_if>
+        <run_actions ref="ReadBuild" result="$Observation">
+          <param name="Build" value="$Build" />
+          <param name="Shipyard" value="$Shipyard" />
+          <param name="Macro" value="$Macro" />
+          <param name="ExpectedPrice" value="$ExpectedPrice" />
+          <param name="ExpectedCrewPrice" value="$ExpectedCrewPrice" />
+        </run_actions>
+        <do_if value="$Observation.$state == 'unknown' or $Observation.$state == 'cancelled'">
+          <return value="$Observation.$reason" />
+        </do_if>
+        <set_value name="Tracked.$Build" exact="$Build" />
+        <set_value name="Tracked.$Shipyard" exact="$Shipyard" />
+        <set_value name="Tracked.$Macro" exact="$Macro" />
+        <set_value name="Tracked.$Price" exact="$ExpectedPrice" />
+        <set_value name="Tracked.$CrewPrice" exact="$ExpectedCrewPrice" />
+        <set_value name="Tracked.$Observation" exact="$Observation" />
+        <return value="'tracked'" />
+      </actions>
+    </library>
+    <library name="ValidateCompletedPurchaseCertificate" purpose="run_actions" namespace="this">
+      <actions>
+        <set_value name="$Pending" exact="@Request.$Pending" />
+        <set_value name="$Receipt" exact="@player.entity.$tm_empire_purchase_submission" />
+        <set_value name="$Match" exact="@player.entity.$tm_empire_purchase_match" />
+        <set_value name="$Candidates" exact="@player.entity.$tm_empire_purchase_candidates" />
+        <set_value name="$Observation" exact="@Tracked.$Observation" />
+        <do_if value="not $Pending or not $Receipt or not $Match or $Receipt.$schema != 1 or $Receipt.$state != 'built' or $Receipt.$key != $Pending.$key or $Match.$key != $Pending.$key or $Receipt.$id != $Match.$id"><return value="'completed_purchase_certificate_changed'" /></do_if>
+        <do_if value="$Observation.$state != 'ready' or $Observation.$reason != 'native_built_event' or $Observation.$paid != ($Match.$price + $Match.$crewprice) * 1Cr or $Receipt.$paid * 1Cr != $Observation.$paid"><return value="'completed_purchase_event_unconfirmed'" /></do_if>
+        <do_if value="Tracked.$Shipyard != $Pending.$shipyard or $Match.$shipyard != Tracked.$Shipyard or $Receipt.$shipyard != Tracked.$Shipyard or Tracked.$Macro != $Pending.$macro or $Match.$macro != Tracked.$Macro.id or $Receipt.$macro != Tracked.$Macro.id or Tracked.$Price != $Match.$price * 1Cr or Tracked.$CrewPrice != $Match.$crewprice * 1Cr or $Receipt.$price != $Match.$price or $Receipt.$crewprice != $Match.$crewprice"><return value="'completed_purchase_identity_changed'" /></do_if>
+        <do_if value="typeof $Candidates != datatype.list or not $Match.$candidateindex? or $Match.$candidateindex != ($Match.$candidateindex)i or $Match.$candidateindex lt 1 or $Match.$candidateindex gt 16 or $Match.$candidateindex gt $Candidates.count"><return value="'completed_purchase_candidate_missing'" /></do_if>
+        <set_value name="$Candidate" exact="$Candidates.{$Match.$candidateindex}" />
+        <do_if value="typeof @$Candidate.$build != datatype.build or $Candidate.$build != Tracked.$Build or $Candidate.$shipyard != Tracked.$Shipyard"><return value="'completed_purchase_candidate_changed'" /></do_if>
+        <set_value name="$Ship" exact="$Observation.$ship" />
+        <do_if value="not $Ship.exists or not $Ship.isplayerowned or not $Ship.isoperational or $Ship.macro != Tracked.$Macro"><return value="'completed_ship_no_longer_available'" /></do_if>
+        <return value="'available'" />
+      </actions>
+    </library>
+    <library name="ObserveTracked" purpose="run_actions" namespace="this">
+      <actions>
+        <do_if value="Tracked.$Observation.$state == 'ready'">
+          <run_actions ref="ValidateCompletedPurchaseCertificate" result="$ReadyReason" />
+          <do_if value="$ReadyReason != 'available'"><return value="table[$state='unknown', $reason=$ReadyReason]" /></do_if>
+          <set_value name="$Ship" exact="Tracked.$Observation.$ship" />
+          <do_if value="not $Ship.exists or not $Ship.isplayerowned or $Ship.macro != Tracked.$Macro or not $Ship.isoperational">
+            <return value="table[$state='unknown', $reason='completed_ship_no_longer_available']" />
+          </do_if>
+          <return value="Tracked.$Observation" />
+        </do_if>
+        <do_if value="not Tracked.$Build?"><return value="table[$state='unknown', $reason='no_tracked_build']" /></do_if>
+        <do_if value="Tracked.$Observation.$state == 'cancelled'">
+          <return value="Tracked.$Observation" />
+        </do_if>
+        <run_actions ref="ReadBuild" result="$Observation">
+          <param name="Build" value="Tracked.$Build" />
+          <param name="Shipyard" value="Tracked.$Shipyard" />
+          <param name="Macro" value="Tracked.$Macro" />
+          <param name="ExpectedPrice" value="Tracked.$Price" />
+          <param name="ExpectedCrewPrice" value="Tracked.$CrewPrice" />
+        </run_actions>
+        <set_value name="Tracked.$Observation" exact="$Observation" />
+        <return value="$Observation" />
+      </actions>
+    </library>
+    <library name="DeliverCompletedShip" purpose="run_actions" namespace="this">
+      <params>
+        <param name="Build" />
+        <param name="ManagerCue" />
+        <param name="GoalCue" />
+      </params>
+      <actions>
+        <do_if value="(not Tracked.$Build? and @Tracked.$Observation.$state != 'ready') or Tracked.$Build != $Build">
+          <return value="table[$state='unknown', $reason='tracked_build_changed']" />
+        </do_if>
+        <run_actions ref="ObserveTracked" result="$Observation" />
+        <do_if value="$Observation.$state != 'ready'">
+          <return value="$Observation" />
+        </do_if>
+        <set_value name="$Ship" exact="$Observation.$ship" />
+        <run_actions ref="md.TM_Empire_Runtime.ClaimOwnedShip" result="$Reason">
+          <param name="Ship" value="$Ship" />
+          <param name="ManagerCue" value="$ManagerCue" />
+          <param name="GoalCue" value="$GoalCue" />
+          <param name="PurchaseKey" value="@Request.$Pending.$key" />
+        </run_actions>
+        <do_if value="$Reason != 'available'">
+          <return value="table[$state='waiting', $ship=$Ship, $reason=$Reason]" />
+        </do_if>
+        <set_value name="Tracked.$LastBuild" exact="$Build" />
+        <set_value name="Tracked.$LastDelivery" exact="table[$state='delivered', $ship=$Ship, $goal=$GoalCue, $manager=$ManagerCue, $paid=$Observation.$paid, $time=player.age]" />
+        <remove_value name="Tracked.$Build" />
+        <remove_value name="Tracked.$Shipyard" />
+        <remove_value name="Tracked.$Macro" />
+        <remove_value name="Tracked.$Price" />
+        <remove_value name="Tracked.$CrewPrice" />
+        <remove_value name="Tracked.$Observation" />
+        <return value="Tracked.$LastDelivery" />
+      </actions>
+    </library>
+    <library name="CompletePurchase" purpose="run_actions" namespace="this">
+      <actions>
+        <set_value name="Request.$CompletionObserved" exact="player.age" />
+        <set_value name="Request.$CompletionKey" exact="@Request.$Pending.$key" />
+        <set_value name="Request.$CompletionGoal" exact="@Request.$Pending.$goal" />
+        <do_if value="not @Request.$Pending or (not Tracked.$Build? and @Tracked.$Observation.$state != 'ready')">
+          <set_value name="Request.$CompletionResult" exact="table[$state='unknown', $reason='no_tracked_purchase']" />
+          <return value="Request.$CompletionResult" />
+        </do_if>
+        <set_value name="$Match" exact="@player.entity.$tm_empire_purchase_match" />
+        <run_actions ref="ResolveMatchedBuild" result="$MatchedBuild" />
+        <do_if value="not $Match or $Match.$key != Request.$Pending.$key or $MatchedBuild != Tracked.$Build">
+          <set_value name="Request.$CompletionResult" exact="table[$state='unknown', $reason='purchase_match_changed']" />
+          <return value="Request.$CompletionResult" />
+        </do_if>
+        <run_actions ref="DeliverCompletedShip" result="$Delivery">
+          <param name="Build" value="Tracked.$Build" />
+          <param name="ManagerCue" value="Request.$Pending.$manager" />
+          <param name="GoalCue" value="Request.$Pending.$goal" />
+        </run_actions>
+        <set_value name="Request.$CompletionResult" exact="$Delivery" />
+        <do_if value="$Delivery.$state != 'delivered'">
+          <return value="$Delivery" />
+        </do_if>
+        <set_value name="Request.$Pending.$state" exact="'delivered'" />
+        <set_value name="player.entity.$tm_empire_purchase_delivery" exact="table[$schema=1, $key=Request.$Pending.$key, $id=$Match.$id, $ship=$Delivery.$ship, $macro=$Match.$macro, $paid=$Delivery.$paid]" />
+        <raise_lua_event name="'TM_Empire.ReconcilePurchase'" />
+        <return value="$Delivery" />
+      </actions>
+    </library>
+    <cue name="PurchaseReconciled" instantiate="true" namespace="this">
+      <conditions>
+        <event_ui_triggered screen="'TM_Empire_Purchase'" control="'PurchaseReconciled'" />
+        <check_value value="@Request.$Pending.$state == 'delivered' and @player.entity.$tm_empire_purchase_submission.$state == 'reconciled' and player.entity.$tm_empire_purchase_submission.$key == Request.$Pending.$key" />
+      </conditions>
+      <actions>
+        <run_actions ref="FinalizeReconciledPurchase" />
+      </actions>
+    </cue>
+    <library name="FinalizeReconciledPurchase" purpose="run_actions" namespace="this">
+      <actions>
+        <do_if value="@Request.$Pending.$state != 'delivered' or @player.entity.$tm_empire_purchase_submission.$state != 'reconciled' or player.entity.$tm_empire_purchase_submission.$key != @Request.$Pending.$key">
+          <return value="'delivery_not_reconciled'" />
+        </do_if>
+        <set_value name="Request.$LastResult" exact="Tracked.$LastDelivery" />
+        <set_value name="Request.$LastResult.$key" exact="Request.$Pending.$key" />
+        <remove_value name="Request.$Pending" />
+        <remove_value name="player.entity.$tm_empire_purchase_candidates" />
+        <remove_value name="player.entity.$tm_empire_purchase_match" />
+        <return value="'delivery_reconciled'" />
+      </actions>
+    </library>
+    <!-- Reconcile pre-handoff saved requests only. Never issue an order or pay again. -->
+    <library name="ReconcileLegacyFreighterDelivery" purpose="run_actions" namespace="this">
+      <actions>
+        <set_value name="$Delivery" exact="@Request.$LastResult" />
+        <set_value name="$Goal" exact="@$Delivery.$goal" />
+        <set_value name="$Ship" exact="@$Delivery.$ship" />
+        <set_value name="$Manager" exact="@$Delivery.$manager" />
+        <do_if value="@$Delivery.$state != 'delivered' or @$Delivery.$accepted or @$Delivery.$paid le 0Cr or @Request.$Pending or Tracked.$Build? or md.TM_Empire_Runtime.Registry.$State != 'active' or not $Goal.exists or $Goal.name != 'Request_Freighter' or $Goal.parent != @$Manager.$tm_empire_economy_cue or @$Goal.PurchasedFreighterObserved.exists or @$Goal.$PurchaseKey != @$Delivery.$key or $Manager != @md.TM_Empire_Runtime.Registry.$ManagerCue or @$Goal.$TM_ManagerCue != $Manager">
+          <return value="'legacy_delivery_not_applicable'" />
+        </do_if>
+        <set_value name="$Requester" exact="@$Goal.$Requester" />
+        <set_value name="$Claim" exact="@global.$TM_EmpireComponentRecords.$claim.{$Ship}" />
+        <do_if value="not $Requester.isplayerowned or not $Requester.isclass.station or not $Requester.isoperational or not $Ship.isplayerowned or $Ship.commander != $Requester or not $Goal.parent.exists or not $Claim or $Claim.$manager != $Manager">
+          <return value="'legacy_delivery_assignment_changed'" />
+        </do_if>
+        <do_if value="$Claim.$goal != $Goal and not ($Claim.$goal == $Goal.parent and @$Claim.$previousgoal == $Goal)"><return value="'legacy_delivery_claim_changed'" /></do_if>
+        <run_actions ref="md.TM_Empire_Runtime.ReadOwnedOrderEvidence" result="$Evidence"><param name="Ship" value="$Ship" /><param name="Goal" value="$Claim.$goal" /><param name="Manager" value="$Manager" /></run_actions>
+        <do_if value="not $Evidence.$complete or not $Evidence.$confirmed"><return value="$Evidence.$reason" /></do_if>
+        <set_value name="$RoutineObserved" exact="false" />
+        <do_for_each name="$Order" in="$Claim.$orders">
+          <do_if value="$Order.exists and $Order.object == $Ship and ($Ship.order == $Order or $Ship.defaultorder == $Order or $Ship.orders.indexof.{$Order}) and ($Order.id == 'TradeRoutine' or $Order.id == 'MiningRoutine' or $Order.id == 'SalvageRoutine') and not $Order.isoverride and not $Order.haspriority"><set_value name="$RoutineObserved" exact="true" /><break /></do_if>
+        </do_for_each>
+        <do_if value="not $RoutineObserved"><return value="'legacy_delivery_routine_unconfirmed'" /></do_if>
+        <!-- A station can replace its default behavior after receiving the ship.
+             Acknowledge the existing claim without commandeering that behavior. -->
+        <run_actions ref="AcknowledgeDelivery" result="$Acknowledged"><param name="Key" value="$Delivery.$key" /><param name="GoalCue" value="$Goal" /><param name="Ship" value="$Ship" /><param name="TransferredClaimGoal" value="if $Claim.$goal == $Goal.parent then $Goal.parent else null" /></run_actions>
+        <do_if value="$Acknowledged == 'accepted'">
+          <set_value name="$Goal.$ActionDefinition.$Ship" exact="$Ship" />
+          <set_value name="$Goal.$ActionDefinition.$TM_PurchaseState" exact="'delivered'" />
+          <set_value name="$Goal.$ActionDefinition.$WaitReason" exact="'native_economic_order_observed'" />
+          <set_value name="Request.$LastResult.$reconciliation" exact="'legacy_native_assignment_observed'" />
+        </do_if>
+        <return value="$Acknowledged" />
+      </actions>
+    </library>
+    <library name="AcknowledgeDelivery" purpose="run_actions" namespace="this">
+      <params>
+        <param name="Key" />
+        <param name="GoalCue" />
+        <param name="Ship" />
+        <param name="TransferredClaimGoal" default="null" />
+      </params>
+      <actions>
+        <do_if value="not $GoalCue.exists or not $Ship.exists or not $Ship.isplayerowned">
+          <return value="'delivery_recipient_unavailable'" />
+        </do_if>
+        <do_if value="@Request.$LastResult.$key != $Key or Request.$LastResult.$goal != $GoalCue or Request.$LastResult.$ship != $Ship or Request.$LastResult.$state != 'delivered'">
+          <return value="'delivery_identity_changed'" />
+        </do_if>
+        <do_if value="$TransferredClaimGoal">
+          <do_if value="not $TransferredClaimGoal.exists or @global.$TM_EmpireComponentRecords.$claim.{$Ship}.$goal != $TransferredClaimGoal or @global.$TM_EmpireComponentRecords.$claim.{$Ship}.$previousgoal != $GoalCue or @global.$TM_EmpireComponentRecords.$claim.{$Ship}.$manager != @Request.$LastResult.$manager or not @Request.$LastResult.$manager">
+            <return value="'delivery_handoff_changed'" />
+          </do_if>
+        </do_if>
+        <do_elseif value="@global.$TM_EmpireComponentRecords.$claim.{$Ship}.$goal != $GoalCue">
+          <return value="'delivery_claim_changed'" />
+        </do_elseif>
+        <set_value name="Request.$LastResult.$accepted" exact="true" />
+        <set_value name="Request.$LastResult.$acceptedtime" exact="player.age" />
+        <return value="'accepted'" />
+      </actions>
+    </library>
+    <cue name="OrphanPurchaseWatch" namespace="this" checkinterval="15s">
+      <conditions>
+        <check_any>
+          <check_value value="@Request.$Pending and not Request.$Pending.$goal.exists and (Tracked.$Build? or @Tracked.$Observation.$state == 'ready')" />
+          <check_value value="@Request.$LastResult.$state == 'delivered' and not @Request.$LastResult.$accepted and not Request.$LastResult.$goal.exists" />
+        </check_any>
+      </conditions>
+      <delay exact="15s" />
+      <actions>
+        <run_actions ref="ReconcileOrphanReady" />
+        <run_actions ref="ReconcileAbandonedDelivery" />
+        <reset_cue cue="this" />
+      </actions>
+    </cue>
+    <library name="ReconcileAbandonedDelivery" purpose="run_actions" namespace="this">
+      <actions>
+        <do_if value="@Request.$LastResult.$state != 'delivered' or @Request.$LastResult.$accepted or Request.$LastResult.$goal.exists">
+          <return value="'delivery_still_owned_by_task'" />
+        </do_if>
+        <set_value name="$Ship" exact="Request.$LastResult.$ship" />
+        <do_if value="$Ship.exists and $Ship.isplayerowned">
+          <run_actions ref="md.TM_Empire_Runtime.ReleaseOwnedClaim" result="$Reason">
+            <param name="Ship" value="$Ship" />
+            <param name="GoalCue" value="Request.$LastResult.$goal" />
+          </run_actions>
+          <do_if value="$Reason != 'released'">
+            <return value="$Reason" />
+          </do_if>
+          <set_value name="Request.$LastResult.$state" exact="'orphaned_ready'" />
+        </do_if>
+        <do_else>
+          <set_value name="Request.$LastResult.$state" exact="'delivered_asset_lost'" />
+        </do_else>
+        <set_value name="Request.$LastResult.$reason" exact="'requesting_goal_ended'" />
+        <return value="Request.$LastResult.$state" />
+      </actions>
+    </library>
+    <library name="ReconcileOrphanReady" purpose="run_actions" namespace="this">
+      <actions>
+        <do_if value="not @Request.$Pending or Request.$Pending.$goal.exists or (not Tracked.$Build? and @Tracked.$Observation.$state != 'ready')">
+          <return value="'purchase_recipient_still_present'" />
+        </do_if>
+        <set_value name="$Match" exact="@player.entity.$tm_empire_purchase_match" />
+        <run_actions ref="ResolveMatchedBuild" result="$MatchedBuild" />
+        <do_if value="not $Match or $Match.$key != Request.$Pending.$key or $MatchedBuild != Tracked.$Build">
+          <return value="'purchase_match_changed'" />
+        </do_if>
+        <run_actions ref="ObserveTracked" result="$Observation" />
+        <do_if value="$Observation.$state != 'ready'">
+          <return value="$Observation.$state" />
+        </do_if>
+        <do_if value="$Observation.$paid != ($Match.$price + $Match.$crewprice) * 1Cr">
+          <return value="'orphan_payment_unconfirmed'" />
+        </do_if>
+        <set_value name="Tracked.$LastBuild" exact="Tracked.$Build" />
+        <set_value name="Tracked.$LastDelivery" exact="table[$state='orphaned_ready', $ship=$Observation.$ship, $goal=Request.$Pending.$goal, $paid=$Observation.$paid, $time=player.age, $reason='requesting_goal_ended']" />
+        <set_value name="Request.$Pending.$state" exact="'delivered'" />
+        <set_value name="player.entity.$tm_empire_purchase_delivery" exact="table[$schema=1, $key=Request.$Pending.$key, $id=$Match.$id, $ship=$Observation.$ship, $macro=$Match.$macro, $paid=$Observation.$paid]" />
+        <remove_value name="Tracked.$Build" />
+        <remove_value name="Tracked.$Shipyard" />
+        <remove_value name="Tracked.$Macro" />
+        <remove_value name="Tracked.$Price" />
+        <remove_value name="Tracked.$CrewPrice" />
+        <remove_value name="Tracked.$Observation" />
+        <raise_lua_event name="'TM_Empire.ReconcilePurchase'" />
+        <return value="'orphaned_ready'" />
+      </actions>
+    </library>
+    <cue name="BuiltShip" instantiate="true" namespace="this">
+      <conditions>
+        <event_player_built_ship />
+        <check_value value="Tracked.$Build? and event.param2 == Tracked.$Build" />
+      </conditions>
+      <actions>
+        <do_if value="event.param.exists and event.param.isplayerowned and event.param.macro == Tracked.$Macro and event.param.isoperational">
+          <set_value name="Tracked.$Observation" exact="table[$state='ready', $ship=event.param, $paid=Tracked.$Observation.$paid, $reason='native_built_event']" />
+        </do_if>
+        <do_else>
+          <set_value name="Tracked.$Observation" exact="table[$state='unknown', $reason='finished_ship_identity_mismatch']" />
+        </do_else>
+      </actions>
+    </cue>
+    <cue name="CancelledBuild" instantiate="true" namespace="this">
+      <conditions>
+        <event_player_build_cancelled />
+        <check_value value="Tracked.$Build? and event.param == Tracked.$Build" />
+      </conditions>
+      <actions>
+        <set_value name="Tracked.$Observation" exact="table[$state='cancelled', $reason='native_build_cancelled', $paid=Tracked.$Observation.$paid]" />
+      </actions>
+    </cue>
+    <library name="ReadBuild" purpose="run_actions" namespace="this">
+      <params>
+        <param name="Build" />
+        <param name="Shipyard" />
+        <param name="Macro" />
+        <param name="ExpectedPrice" />
+        <param name="ExpectedCrewPrice" default="0Cr" />
+      </params>
+      <actions>
+        <do_if value="typeof $Build != datatype.build or not $Build.exists">
+          <return value="table[$state='unknown', $reason='build_handle_missing']" />
+        </do_if>
+        <do_if value="not $Shipyard.exists or not $Build.isshipbuild">
+          <return value="table[$state='unknown', $reason='build_type_or_shipyard_invalid']" />
+        </do_if>
+        <do_if value="$Build.iscancelled">
+          <return value="table[$state='cancelled', $reason='native_build_cancelled', $paid=$Build.transferredamount]" />
+        </do_if>
+        <do_if value="$Build.object != $Shipyard or $Build.faction != faction.player or $Build.macro != $Macro">
+          <return value="table[$state='unknown', $reason='build_identity_mismatch']" />
+        </do_if>
+        <do_if value="$ExpectedPrice lt 0Cr or $ExpectedCrewPrice lt 0Cr or $Build.price != $ExpectedPrice">
+          <return value="table[$state='unknown', $reason='price_mismatch']" />
+        </do_if>
+        <do_if value="not $Shipyard.isplayerowned and ($ExpectedPrice le 0Cr or $Build.transferredamount != ($ExpectedPrice + $ExpectedCrewPrice))">
+          <return value="table[$state='unknown', $reason='payment_unconfirmed', $paid=$Build.transferredamount]" />
+        </do_if>
+        <do_if value="$Build.construction.exists and $Build.construction.isplayerowned and $Build.construction.macro == $Macro and $Build.construction.isoperational">
+          <return value="table[$state='ready', $ship=$Build.construction, $paid=$Build.transferredamount]" />
+        </do_if>
+        <do_if value="$Build.isprocessing">
+          <return value="table[$state='building', $paid=$Build.transferredamount]" />
+        </do_if>
+        <return value="table[$state='queued', $paid=$Build.transferredamount]" />
+      </actions>
+    </library>
+  </cues>
+</mdscript>
+

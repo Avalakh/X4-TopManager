@@ -1,0 +1,1332 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mdscript name="TM_Empire_Personnel">
+  <cues>
+    <cue name="Transfer" namespace="this" />
+    <cue name="Training" namespace="this" />
+    <cue name="Hire" namespace="this" />
+    <cue name="Service" namespace="this" />
+    <library name="StepPersonnel" purpose="run_actions" namespace="this">
+      <params>
+        <param name="ManagerCue" />
+        <param name="GoalCue" />
+      </params>
+      <actions>
+        <run_actions ref="md.TM_Empire_Runtime.CanActForGovernor" result="$Reason">
+          <param name="Actor" value="$ManagerCue.$Governor" />
+          <param name="Station" value="$ManagerCue.$GovernorStation" />
+          <param name="Module" value="$ManagerCue.$GovernorModule" />
+          <param name="ManagerCue" value="$ManagerCue" />
+        </run_actions>
+        <do_if value="$Reason != 'available'">
+          <set_value name="$GoalCue.$Reason" exact="$Reason" />
+          <return value="$Reason" />
+        </do_if>
+        <do_if value="not Service.$NewCaptainQueue?"><set_value name="Service.$NewCaptainQueue" exact="[]" /></do_if>
+        <do_if value="not Service.$NewCaptainUntil?"><set_value name="Service.$NewCaptainUntil" exact="table[]" /></do_if>
+        <do_if value="not $GoalCue.$Assets? or not $GoalCue.$CrewSources? or not $GoalCue.$ServiceCarriers? or player.age ge $GoalCue.$RefreshAfter">
+          <find_station_by_true_owner name="$Assets" faction="faction.player" space="player.galaxy" multiple="true" />
+          <find_ship_by_true_owner name="$Assets" faction="faction.player" space="player.galaxy" multiple="true" unit="false" append="true" />
+          <set_value name="$GoalCue.$Assets" exact="$Assets" />
+          <set_value name="$CrewSources" exact="[]" />
+          <set_value name="$ServiceCarriers" exact="[]" />
+          <set_value name="$PrioritySource" exact="@$GoalCue.$PriorityCrewSource" />
+          <do_if value="$PrioritySource.exists and $PrioritySource.isplayerowned and $PrioritySource.people.list.count gt 1">
+            <append_to_list name="$CrewSources" exact="$PrioritySource" />
+            <set_value name="$GoalCue.$SourceIndex" exact="0" />
+          </do_if>
+          <do_for_each name="$CandidateSource" in="$Assets">
+            <do_if value="$CandidateSource.exists and $CandidateSource.isplayerowned and $CandidateSource != $PrioritySource and $CandidateSource.people.list.count gt 1">
+              <append_to_list name="$CrewSources" exact="$CandidateSource" />
+            </do_if>
+            <do_if value="$CandidateSource.exists and $CandidateSource.isclass.ship and $CandidateSource.isplayerowned and $CandidateSource.people.free and (not @$CandidateSource.order.id or $CandidateSource.order.id == 'Wait')">
+              <set_value name="$CandidatePilot" exact="@$CandidateSource.assignedcontrolentity.{controlpost.aipilot}" />
+              <do_if value="$CandidatePilot.exists and $CandidatePilot.container == $CandidateSource and not $CandidatePilot.isintransit and not @$CandidatePilot.podarrivaltime and not $CandidatePilot.istransferscheduled">
+                <append_to_list name="$ServiceCarriers" exact="$CandidateSource" />
+              </do_if>
+            </do_if>
+          </do_for_each>
+          <set_value name="$GoalCue.$CrewSources" exact="$CrewSources" />
+          <set_value name="$GoalCue.$ServiceCarriers" exact="$ServiceCarriers" />
+          <do_if value="not $GoalCue.$Index?">
+            <set_value name="$GoalCue.$Index" exact="1" />
+          </do_if>
+          <do_if value="$GoalCue.$PersonCursors?">
+            <do_for_each name="$OldSource" in="$GoalCue.$PersonCursors.keys.list">
+              <do_if value="not $Assets.indexof.{$OldSource}">
+                <remove_value name="$GoalCue.$PersonCursors.{$OldSource}" />
+              </do_if>
+            </do_for_each>
+          </do_if>
+          <set_value name="$GoalCue.$RefreshAfter" exact="player.age + 10min" />
+        </do_if>
+        <do_if value="not $GoalCue.$Assets.count">
+          <return value="'no_owned_personnel_targets'" />
+        </do_if>
+        <do_if value="@Service.$Receipt.$state == 'observed' and @Service.$Receipt.$fillpending and @Service.$Receipt.$source.exists and @Service.$Receipt.$source.people.free">
+          <run_actions ref="RequestServiceCrew" result="$FillReason">
+            <param name="ManagerCue" value="$ManagerCue" /><param name="GoalCue" value="$GoalCue" />
+            <param name="Target" value="Service.$Receipt.$target" /><param name="PreferredSource" value="Service.$Receipt.$source" />
+          </run_actions>
+          <do_if value="$FillReason == 'sent'"><return value="'sent'" /></do_if>
+          <set_value name="Service.$Receipt.$fillpending" exact="false" />
+        </do_if>
+        <do_if value="$GoalCue.$Index gt $GoalCue.$Assets.count">
+          <set_value name="$GoalCue.$Index" exact="1" />
+          <set_value name="$GoalCue.$SourceRound" exact="@$GoalCue.$SourceRound + 1" />
+        </do_if>
+        <set_value name="$Target" exact="$GoalCue.$Assets.{$GoalCue.$Index}" />
+        <set_value name="$GoalCue.$Index" exact="$GoalCue.$Index + 1" />
+        <!-- Alternate the ordinary bounded scan with prerequisites reported
+             by existing domain goals. This is the same personnel executor. -->
+        <set_value name="$GoalCue.$NeedTurn" exact="not @$GoalCue.$NeedTurn" />
+        <run_actions ref="md.TM_Empire_Runtime.EnsurePersonnelPrerequisites" />
+        <set_value name="$Needs" exact="global.$TM_EmpireComponentRecords.$personnel_prerequisites" />
+        <set_value name="$NeedShips" exact="$Needs.keys.list" />
+        <do_if value="@Service.$NewCaptainQueue.count and $NeedShips.count">
+          <set_value name="$NewCarrier" exact="Service.$NewCaptainQueue.{1}" />
+          <do_if value="not $NewCarrier.exists or player.age ge @Service.$NewCaptainUntil.{$NewCarrier}">
+            <remove_from_list name="Service.$NewCaptainQueue" exact="$NewCarrier" multiple="false" />
+          </do_if>
+          <do_else>
+          <set_value name="$NewVacancy" exact="null" />
+          <do_for_each name="$NeedShip" in="$NeedShips">
+            <do_if value="$NeedShip != $NewCarrier and $NeedShip.exists and $NeedShip.isplayerowned and $NeedShip.isoperational and $NeedShip.controlposts.free.indexof.{controlpost.aipilot}">
+              <set_value name="$NewVacancy" exact="$NeedShip" /><break />
+            </do_if>
+          </do_for_each>
+          <do_if value="$NewVacancy">
+            <run_actions ref="RequestServiceCrew" result="$ServiceReason">
+              <param name="ManagerCue" value="$ManagerCue" /><param name="GoalCue" value="$GoalCue" />
+              <param name="Target" value="$NewVacancy" /><param name="PreferredSource" value="$NewCarrier" />
+            </run_actions>
+            <do_if value="$ServiceReason == 'sent'">
+              <remove_from_list name="Service.$NewCaptainQueue" exact="$NewCarrier" multiple="false" />
+              <return value="'sent'" />
+            </do_if>
+            <do_if value="$ServiceReason == 'previous_crew_service_unreconciled'">
+              <!-- The paid service order stays pending, while confirmed crew
+                   from an earlier ship may fill other captain posts. -->
+              <set_value name="$NewCarrier" exact="null" />
+            </do_if>
+          </do_if>
+          <do_if value="$NewCarrier.exists"><remove_from_list name="Service.$NewCaptainQueue" exact="$NewCarrier" multiple="false" /></do_if>
+          </do_else>
+        </do_if>
+        <do_if value="$GoalCue.$NeedTurn and $NeedShips.count">
+          <do_all exact="[8, $NeedShips.count].min">
+            <set_value name="$GoalCue.$NeedCursor" exact="@$GoalCue.$NeedCursor % $NeedShips.count + 1" />
+            <set_value name="$NeedShip" exact="$NeedShips.{$GoalCue.$NeedCursor}" />
+            <set_value name="$Need" exact="@$Needs.{$NeedShip}" />
+            <do_if value="typeof $Need != datatype.table or not @$Need.$manager or not @$Need.$goal">
+              <remove_value name="$Needs.{$NeedShip}" /><continue />
+            </do_if>
+            <do_if value="$Need.$manager != $ManagerCue or not $NeedShip.exists or not $NeedShip.isplayerowned or not $NeedShip.isoperational or not $NeedShip.controlposts.free.indexof.{controlpost.aipilot}">
+              <remove_value name="$Needs.{$NeedShip}" /><continue />
+            </do_if>
+            <run_actions ref="md.TM_Empire_Runtime.ReadGoalLifetime" result="$NeedLifetime"><param name="GoalCue" value="$Need.$goal" /></run_actions>
+            <do_if value="$NeedLifetime != 'available'"><remove_value name="$Needs.{$NeedShip}" /><continue /></do_if>
+            <run_actions ref="md.TM_Empire_Runtime.CanUseOwnedShip" result="$NeedEligibility">
+              <param name="Ship" value="$NeedShip" />
+              <param name="ManagerCue" value="$ManagerCue" />
+              <param name="GoalCue" value="$Need.$goal" />
+            </run_actions>
+            <do_if value="$NeedEligibility != 'ship_pilot_arrival_required'"><continue /></do_if>
+            <set_value name="$Target" exact="$NeedShip" /><break />
+          </do_all>
+        </do_if>
+        <!-- An older paid Equip can belong to a ship that lost its pilot.
+             Fill that post first so the existing purchase can travel. -->
+        <do_if value="@Service.$Receipt.$state == 'built' and @Service.$Receipt.$source.exists and Service.$Receipt.$source.isplayerowned and Service.$Receipt.$source.controlposts.free.indexof.{controlpost.aipilot} and Service.$Receipt.$source != player.controlled">
+          <set_value name="$Target" exact="Service.$Receipt.$source" />
+        </do_if>
+        <set_value name="$GoalCue.$Target" exact="$Target" />
+        <do_if value="not $Target.exists or not $Target.isplayerowned or not $Target.isoperational">
+          <return value="'personnel_target_lost'" />
+        </do_if>
+        <do_if value="$Target == player.controlled">
+          <set_value name="$GoalCue.$Reason" exact="'player_helm'" />
+          <return value="'player_helm'" />
+        </do_if>
+        <set_value name="$Post" exact="null" />
+        <do_if value="$Target.isclass.station and $Target.controlposts.free.indexof.{controlpost.manager}">
+          <set_value name="$Post" exact="controlpost.manager" />
+        </do_if>
+        <do_elseif value="$Target.isclass.station and $Target.canequipships and $Target.controlposts.free.indexof.{controlpost.shiptrader}">
+          <set_value name="$Post" exact="controlpost.shiptrader" />
+        </do_elseif>
+        <do_elseif value="$Target.isclass.ship and $Target.controlposts.free.indexof.{controlpost.aipilot}">
+          <set_value name="$Post" exact="controlpost.aipilot" />
+        </do_elseif>
+        <do_if value="not $Post">
+          <do_if value="$Target.isclass.station">
+            <run_actions ref="ReadStationSkillNeed" result="$Need">
+              <param name="Station" value="$Target" />
+            </run_actions>
+            <do_if value="$Need.$state == 'training_needed'">
+              <set_value name="$Employee" exact="$Target.assignedcontrolentity.{controlpost.manager}" />
+              <run_actions ref="RequestSeminar" result="$Reason">
+                <param name="ManagerCue" value="$ManagerCue" />
+                <param name="GoalCue" value="$GoalCue" />
+                <param name="Source" value="$Target" />
+                <param name="Person" value="$Employee.npctemplate" />
+                <param name="Actor" value="$Employee" />
+                <param name="Skill" value="skilltype.management" />
+                <param name="RequiredSkill" value="$Need.$requiredskill" />
+              </run_actions>
+              <set_value name="$GoalCue.$Reason" exact="$Reason" />
+              <set_value name="$GoalCue.$TrainingEvidence" exact="$Need" />
+              <return value="$Reason" />
+            </do_if>
+          </do_if>
+          <set_value name="$Pilot" exact="@$Target.assignedcontrolentity.{controlpost.aipilot}" />
+          <set_value name="$Required" exact="0" />
+          <do_if value="$Target.isclass.ship and @global.$TM_EmpireComponentRecords.$claim.{$Target}.$manager == $ManagerCue and $Pilot.exists">
+            <do_for_each name="$Order" in="@global.$TM_EmpireComponentRecords.$claim.{$Target}.$orders">
+              <do_if value="$Order.exists and $Order.object == $Target">
+                <set_value name="$Required" exact="[$Required, $Order.requiredskill].max" />
+              </do_if>
+            </do_for_each>
+            <do_if value="$Pilot.combinedskill lt $Required">
+              <do_if value="$Pilot.skill.piloting lt 15">
+                <run_actions ref="RequestSeminar" result="$Reason">
+                  <param name="ManagerCue" value="$ManagerCue" />
+                  <param name="GoalCue" value="$GoalCue" />
+                  <param name="Source" value="$Target" />
+                  <param name="Person" value="$Pilot.npctemplate" />
+                  <param name="Actor" value="$Pilot" />
+                  <param name="Skill" value="skilltype.piloting" />
+                  <param name="RequiredSkill" value="$Pilot.skill.piloting + 1" />
+                </run_actions>
+              </do_if>
+              <do_else>
+                <set_value name="$Reason" exact="'native_experience_required_for_combined_skill'" />
+              </do_else>
+              <set_value name="$GoalCue.$Reason" exact="$Reason" />
+              <set_value name="$GoalCue.$RequiredCombinedSkill" exact="$Required" />
+              <return value="$Reason" />
+            </do_if>
+          </do_if>
+          <set_value name="$GoalCue.$Reason" exact="'required_control_posts_present'" />
+          <return value="'required_control_posts_present'" />
+        </do_if>
+        <set_value name="$GoalCue.$Post" exact="$Post" />
+        <set_value name="$CrewSources" exact="@$GoalCue.$CrewSources" />
+        <do_if value="not $CrewSources.count"><set_value name="$GoalCue.$CrewScanWrapped" exact="true" /></do_if>
+        <do_all exact="[4, @$CrewSources.count].min">
+        <set_value name="$PreviousSourceIndex" exact="@$GoalCue.$SourceIndex" />
+        <set_value name="$GoalCue.$SourceIndex" exact="@$GoalCue.$SourceIndex % $CrewSources.count + 1" />
+        <do_if value="$PreviousSourceIndex gt 0 and $GoalCue.$SourceIndex == 1"><set_value name="$GoalCue.$CrewScanWrapped" exact="true" /></do_if>
+        <set_value name="$Source" exact="$CrewSources.{$GoalCue.$SourceIndex}" />
+        <do_if value="$Source.exists and $Source.isplayerowned and $Source != $Target and $Source != player.controlled and $Source.people.list.count gt 1 and not (($Source == @Service.$Receipt.$source) and (@Service.$Receipt.$state == 'sent' or @Service.$Receipt.$state == 'built' or @Service.$Receipt.$state == 'unknown'))">
+          <set_value name="$GoalCue.$TransferScanEvidence" exact="table[$target=$Target, $source=$Source, $observed=player.age, $checked=0, $reason='source_selected']" />
+          <set_value name="$People" exact="$Source.people.list" />
+          <do_if value="not $GoalCue.$PersonCursors?">
+            <set_value name="$GoalCue.$PersonCursors" exact="table[]" />
+          </do_if>
+          <set_value name="$Start" exact="@$GoalCue.$PersonCursors.{$Source}" />
+          <set_value name="$GoalCue.$PersonCursors.{$Source}" exact="$Start + [16, $People.count].min" />
+          <do_all exact="[16, $People.count].min" counter="$i">
+            <set_value name="$Person" exact="$People.{($Start + $i - 1) % $People.count + 1}" />
+            <do_if value="$Post == controlpost.aipilot and $Source.people.{$Person}.role != entityrole.service">
+              <continue />
+            </do_if>
+            <run_actions ref="RequestTransfer" result="$Reason">
+              <param name="ManagerCue" value="$ManagerCue" />
+              <param name="GoalCue" value="$GoalCue" />
+              <param name="Source" value="$Source" />
+              <param name="Person" value="$Person" />
+              <param name="Target" value="$Target" />
+              <param name="Post" value="$Post" />
+            </run_actions>
+            <set_value name="$GoalCue.$TransferScanEvidence.$checked" operation="add" exact="1" />
+            <set_value name="$GoalCue.$TransferScanEvidence.$reason" exact="$Reason" />
+            <do_if value="$Reason == 'sent'">
+              <set_value name="$GoalCue.$CrewScanWrapped" exact="false" />
+              <set_value name="$GoalCue.$Reason" exact="'native_transfer_pending'" />
+              <return value="'sent'" />
+            </do_if>
+            <do_if value="$Reason == 'previous_personnel_transfer_unreconciled'">
+              <!-- Preserve the unresolved transfer, but unrelated vacancies
+                   may still use the stock paid-hiring path below. -->
+              <do_if value="@Transfer.$Receipt.$target == $Target and @Transfer.$Receipt.$post == $Post">
+                <set_value name="$GoalCue.$Reason" exact="$Reason" />
+                <return value="$Reason" />
+              </do_if>
+              <break />
+            </do_if>
+          </do_all>
+        </do_if>
+        </do_all>
+        <do_if value="$Post == controlpost.aipilot and @$GoalCue.$CrewScanWrapped">
+          <run_actions ref="RequestServiceCrew" result="$ServiceReason">
+            <param name="ManagerCue" value="$ManagerCue" />
+            <param name="GoalCue" value="$GoalCue" />
+            <param name="Target" value="$Target" />
+          </run_actions>
+          <do_if value="$ServiceReason == 'sent' or $ServiceReason == 'previous_crew_service_unreconciled'">
+            <set_value name="$GoalCue.$CrewScanWrapped" exact="false" />
+            <set_value name="$GoalCue.$Reason" exact="$ServiceReason" />
+            <return value="$ServiceReason" />
+          </do_if>
+        </do_if>
+        <do_if value="not $GoalCue.$HireStations? or player.age ge @$GoalCue.$HireRefreshAfter">
+          <find_station name="$Stations" known="true" space="player.galaxy" multiple="true">
+            <match owner="faction.player" negate="true" />
+            <match_relation_to object="player.entity" comparison="ge" relation="dock" />
+          </find_station>
+          <set_value name="$GoalCue.$HireStations" exact="$Stations" />
+          <set_value name="$GoalCue.$HireRefreshAfter" exact="player.age + 10min" />
+        </do_if>
+        <do_if value="$GoalCue.$HireStations.count">
+          <!-- A bounded station batch avoids spending a complete 30s tick on
+               a location with only protected control NPCs. Max64 candidates. -->
+          <do_all exact="[4, $GoalCue.$HireStations.count].min">
+          <set_value name="$GoalCue.$HireIndex" exact="@$GoalCue.$HireIndex % $GoalCue.$HireStations.count + 1" />
+          <!-- Advance the NPC page once per complete station round. A shared
+               cursor incremented for each station can permanently omit half
+               of a station's candidates (two stations with 32 NPCs/16 page). -->
+          <do_if value="not $GoalCue.$HirePersonPage?"><set_value name="$GoalCue.$HirePersonPage" exact="0" /></do_if>
+          <do_elseif value="$GoalCue.$HireIndex == 1"><set_value name="$GoalCue.$HirePersonPage" operation="add" exact="16" /></do_elseif>
+          <set_value name="$Station" exact="$GoalCue.$HireStations.{$GoalCue.$HireIndex}" />
+          <set_value name="$GoalCue.$HireScanEvidence" exact="table[$station=$Station, $observed=player.age, $target=$Target, $post=$Post, $page=$GoalCue.$HirePersonPage, $checked=0, $reason='known_station_unavailable']" />
+          <do_if value="$Station.exists and $Station.isknown and $Station.isoperational">
+            <find_object_component name="$Candidates" object="$Station" class="class.npc" recursive="true" multiple="true" />
+            <set_value name="$GoalCue.$HireScanEvidence.$reason" exact="'no_candidates_in_current_station'" />
+            <do_if value="$Candidates.count">
+              <set_value name="$Start" exact="$GoalCue.$HirePersonPage" />
+              <do_all exact="[16, $Candidates.count].min" counter="$i">
+                <set_value name="$Candidate" exact="$Candidates.{($Start + $i - 1) % $Candidates.count + 1}" />
+                <run_actions ref="RequestHire" result="$Reason">
+                  <param name="ManagerCue" value="$ManagerCue" />
+                  <param name="GoalCue" value="$GoalCue" />
+                  <param name="Actor" value="$Candidate" />
+                  <param name="Target" value="$Target" />
+                  <param name="Post" value="$Post" />
+                  <param name="Budget" value="player.money" />
+                </run_actions>
+                <set_value name="$GoalCue.$HireScanEvidence.$checked" operation="add" exact="1" />
+                <set_value name="$GoalCue.$HireScanEvidence.$reason" exact="$Reason" />
+                <set_value name="$GoalCue.$HireScanEvidence.$candidate" exact="$Candidate" />
+                <do_if value="$Reason == 'sent' or $Reason == 'previous_hire_unreconciled'">
+                  <set_value name="$GoalCue.$Reason" exact="$Reason" />
+                  <return value="$Reason" />
+                </do_if>
+              </do_all>
+            </do_if>
+          </do_if>
+          </do_all>
+        </do_if>
+        <set_value name="$GoalCue.$Reason" exact="'no_available_employee_in_current_batch'" />
+        <return value="$GoalCue.$Reason" />
+      </actions>
+    </library>
+    <library name="RequestServiceCrew" purpose="run_actions" namespace="this">
+      <params>
+        <param name="ManagerCue" /><param name="GoalCue" /><param name="Target" /><param name="PreferredSource" default="null" />
+      </params>
+      <actions>
+        <do_if value="@Service.$Receipt.$state == 'sent' or @Service.$Receipt.$state == 'built' or @Service.$Receipt.$state == 'unknown'">
+          <return value="'previous_crew_service_unreconciled'" />
+        </do_if>
+        <run_actions ref="md.TM_Empire_Runtime.CanActForGovernor" result="$Reason">
+          <param name="Actor" value="$ManagerCue.$Governor" /><param name="Station" value="$ManagerCue.$GovernorStation" />
+          <param name="Module" value="$ManagerCue.$GovernorModule" /><param name="ManagerCue" value="$ManagerCue" />
+        </run_actions>
+        <do_if value="$Reason != 'available'"><return value="$Reason" /></do_if>
+        <run_actions ref="md.TM_Empire_Runtime.ReadGoalLifetime" result="$Reason"><param name="GoalCue" value="$GoalCue" /></run_actions>
+        <do_if value="$Reason != 'available'"><return value="$Reason" /></do_if>
+        <set_value name="$Carriers" exact="@$GoalCue.$ServiceCarriers" />
+        <set_value name="$Source" exact="null" />
+        <do_if value="$PreferredSource.exists"><set_value name="$Source" exact="$PreferredSource" /></do_if>
+        <do_else>
+          <do_all exact="[8, $Carriers.count].min">
+            <set_value name="$GoalCue.$ServiceSourceIndex" exact="@$GoalCue.$ServiceSourceIndex % $Carriers.count + 1" />
+            <set_value name="$Candidate" exact="$Carriers.{$GoalCue.$ServiceSourceIndex}" />
+            <do_if value="not $Candidate.exists or not $Candidate.isclass.ship or not $Candidate.isplayerowned or not $Candidate.isoperational or $Candidate == $Target or $Candidate == player.controlled or not $Candidate.people.free"><continue /></do_if>
+            <do_if value="@$Candidate.order.id and $Candidate.order.id != 'Wait'"><continue /></do_if>
+            <set_value name="$Pilot" exact="@$Candidate.assignedcontrolentity.{controlpost.aipilot}" />
+            <do_if value="not $Pilot.exists or $Pilot.container != $Candidate or $Pilot.isintransit or @$Pilot.podarrivaltime or $Pilot.istransferscheduled"><continue /></do_if>
+            <run_actions ref="CheckPersonnelShipControl" result="$Reason"><param name="Target" value="$Candidate" /></run_actions>
+            <do_if value="$Reason != 'available'"><continue /></do_if>
+            <set_value name="$Source" exact="$Candidate" /><break />
+          </do_all>
+        </do_else>
+        <do_if value="not $Source"><return value="'no_safe_crew_service_carrier_in_current_batch'" /></do_if>
+        <do_if value="not $Source.isclass.ship or not $Source.isplayerowned or not $Source.isoperational or $Source == $Target or $Source == player.controlled or not $Source.people.free or (@$Source.order.id and $Source.order.id != 'Wait' and $Source.order.id != 'DockAndWait')"><return value="'crew_service_carrier_no_longer_free'" /></do_if>
+        <set_value name="$Pilot" exact="@$Source.assignedcontrolentity.{controlpost.aipilot}" />
+        <do_if value="not $Pilot.exists or $Pilot.container != $Source or $Pilot.isintransit or @$Pilot.podarrivaltime or $Pilot.istransferscheduled"><return value="'crew_service_pilot_unavailable'" /></do_if>
+        <run_actions ref="CheckPersonnelShipControl" result="$Reason"><param name="Target" value="$Source" /></run_actions>
+        <do_if value="$Reason != 'available'"><return value="$Reason" /></do_if>
+        <do_if value="not $GoalCue.$ServiceYards? or player.age ge @$GoalCue.$ServiceYardsRefreshAfter">
+          <find_station name="$Yards" canequipships="true" known="true" space="player.galaxy" multiple="true">
+            <match_relation_to object="player.entity" comparison="ge" relation="dock" />
+          </find_station>
+          <set_value name="$GoalCue.$ServiceYards" exact="$Yards" />
+          <set_value name="$GoalCue.$ServiceYardsRefreshAfter" exact="player.age + 10min" />
+        </do_if>
+        <do_if value="not $GoalCue.$ServiceYards.count"><return value="'no_known_equipment_dock'" /></do_if>
+        <do_if value="$PreferredSource.exists and @Service.$Receipt.$source == $PreferredSource and @Service.$Receipt.$yard.exists">
+          <set_value name="$Yard" exact="Service.$Receipt.$yard" />
+        </do_if>
+        <do_else>
+          <set_value name="$GoalCue.$ServiceYardIndex" exact="@$GoalCue.$ServiceYardIndex % $GoalCue.$ServiceYards.count + 1" />
+          <set_value name="$Yard" exact="$GoalCue.$ServiceYards.{$GoalCue.$ServiceYardIndex}" />
+        </do_else>
+        <do_if value="not $Yard.exists or not $Yard.isoperational"><return value="'equipment_dock_unavailable'" /></do_if>
+        <set_value name="$Amount" exact="[16, $Source.people.free].min" />
+        <set_value name="$ServiceBefore" exact="0" />
+        <do_for_each name="$CrewMember" in="$Source.people.list">
+          <do_if value="$Source.people.{$CrewMember}.role == entityrole.service">
+            <set_value name="$ServiceBefore" operation="add" exact="1" />
+          </do_if>
+        </do_for_each>
+        <set_value name="Service.$Sequence" exact="@Service.$Sequence + 1" />
+        <set_value name="$Key" exact="'service_' + Service.$Sequence + '_' + player.age" />
+        <set_value name="Service.$Receipt" exact="table[$state='sent', $key=$Key, $source=$Source, $yard=$Yard, $target=$Target, $manager=$ManagerCue, $goal=$GoalCue, $issued=player.age, $before=$Source.people.list.count, $servicebefore=$ServiceBefore, $amount=$Amount, $fillpending=($Source.people.free gt $Amount)]" />
+        <set_value name="player.entity.$tm_empire_crew_service_request" exact="table[$schema=1, $state='approved', $key=$Key, $ship=$Source, $yard=$Yard, $yards=$GoalCue.$ServiceYards, $amount=$Amount, $budget=player.money/1Cr]" />
+        <raise_lua_event name="'TM_Empire.HireServiceCrew'" />
+        <return value="'sent'" />
+      </actions>
+    </library>
+    <cue name="CrewServiceSubmitted" instantiate="true" namespace="this">
+      <conditions><event_ui_triggered screen="'TM_Empire_Personnel'" control="'CrewServiceSubmitted'" /></conditions>
+      <actions><run_actions ref="ObserveServiceCrew" /></actions>
+    </cue>
+    <library name="ObserveServiceCrew" purpose="run_actions" namespace="this">
+      <actions>
+        <set_value name="$Receipt" exact="@Service.$Receipt" />
+        <do_if value="not $Receipt.$key?"><return value="'no_crew_service_order'" /></do_if>
+        <set_value name="$Native" exact="@player.entity.$tm_empire_crew_service_receipt" />
+        <set_value name="$Request" exact="@player.entity.$tm_empire_crew_service_request" />
+        <do_if value="$Native.$key == $Receipt.$key and $Native.$state == 'built' and $Receipt.$source.exists and $Receipt.$amount? and $Receipt.$source.people.list.count ge $Receipt.$before + $Receipt.$amount and ($Receipt.$servicebefore? or ($Receipt.$before == 0 and not $Receipt.$source.orders.count))">
+          <set_value name="$ServiceNow" exact="0" />
+          <do_for_each name="$CrewMember" in="$Receipt.$source.people.list">
+            <do_if value="$Receipt.$source.people.{$CrewMember}.role == entityrole.service">
+              <set_value name="$ServiceNow" operation="add" exact="1" />
+            </do_if>
+          </do_for_each>
+          <!-- Pre-v9 paid receipts did not store a service baseline. For an
+               initially empty ship, a completed Equip and the full exact
+               service count still prove delivery without another payment. -->
+          <do_if value="$ServiceNow ge (if $Receipt.$servicebefore? then $Receipt.$servicebefore + $Receipt.$amount else $Receipt.$amount)">
+            <set_value name="Service.$Receipt.$state" exact="'observed'" />
+            <set_value name="Service.$Receipt.$observed" exact="player.age" />
+            <set_value name="player.entity.$tm_empire_crew_service_receipt.$state" exact="'observed'" />
+            <set_value name="$Receipt.$goal.$PriorityCrewSource" exact="$Receipt.$source" />
+            <set_value name="$Receipt.$goal.$SourceIndex" exact="0" />
+            <set_value name="$Receipt.$goal.$RefreshAfter" exact="0s" />
+            <return value="'observed'" />
+          </do_if>
+        </do_if>
+        <do_if value="$Request.$key == $Receipt.$key and $Request.$state == 'rejected_before_payment'">
+          <set_value name="Service.$Receipt.$state" exact="'rejected'" />
+          <set_value name="Service.$Receipt.$reason" exact="$Request.$reason" />
+          <return value="'rejected'" />
+        </do_if>
+        <do_if value="$Native.$key == $Receipt.$key and $Native.$state == 'unknown'">
+          <set_value name="Service.$Receipt.$state" exact="'unknown'" />
+          <return value="'unknown'" />
+        </do_if>
+        <do_if value="$Native.$key == $Receipt.$key and $Native.$state == 'built'">
+          <set_value name="Service.$Receipt.$state" exact="'built'" />
+          <set_value name="Service.$Receipt.$yard" exact="$Native.$yard" />
+          <set_value name="$PaidEquipQueued" exact="false" />
+          <do_for_each name="$QueuedOrder" in="$Receipt.$source.orders">
+            <do_if value="$QueuedOrder.id == 'Equip'">
+              <set_value name="$PaidEquipQueued" exact="true" /><break />
+            </do_if>
+          </do_for_each>
+          <!-- A paid crew order can outlive an older manager-owned idle role in
+               a saved game. Yield only that verified claim, then let the
+               normal paid-order observer send its source to the dock. -->
+          <do_if value="not @$Receipt.$dockissued and $Receipt.$source.exists and $Receipt.$source.isplayerowned and $Receipt.$source != player.controlled and @$Receipt.$source.order.id and $Receipt.$source.order.id != 'Wait' and $Receipt.$source.order.id != 'DockAndWait' and @global.$TM_EmpireComponentRecords.$claim.{$Receipt.$source}.$manager == $Receipt.$manager">
+            <run_actions ref="md.TM_Empire_Runtime.YieldIdleWorkClaim" result="$YieldReason">
+              <param name="Ship" value="$Receipt.$source" /><param name="ManagerCue" value="$Receipt.$manager" /><param name="PaidServiceKey" value="$Receipt.$key" />
+            </run_actions>
+            <set_value name="Service.$Receipt.$yieldreason" exact="$YieldReason" />
+          </do_if>
+          <do_if value="not @$Receipt.$dockissued and not $PaidEquipQueued and $Receipt.$source.exists and $Receipt.$yard.exists and $Receipt.$source.isplayerowned and $Receipt.$source != player.controlled and (not @$Receipt.$source.dock.exists or @$Receipt.$source.dock.container != $Receipt.$yard) and (not @$Receipt.$source.order.id or $Receipt.$source.order.id == 'Wait')">
+            <run_actions ref="CheckPersonnelShipControl" result="$DockReason"><param name="Target" value="$Receipt.$source" /></run_actions>
+            <do_if value="$DockReason == 'available'">
+              <create_order name="$DockOrder" object="$Receipt.$source" id="'DockAndWait'" immediate="true"><param name="destination" value="$Receipt.$yard" /></create_order>
+              <set_value name="Service.$Receipt.$dockissued" exact="true" />
+              <set_value name="Service.$Receipt.$dockorder" exact="$DockOrder" />
+            </do_if>
+          </do_if>
+          <return value="'built'" />
+        </do_if>
+        <return value="'sent'" />
+      </actions>
+    </library>
+    <cue name="CrewServiceWatch" namespace="this" checkinterval="5s">
+      <conditions><check_value value="@Service.$Receipt.$state == 'sent' or @Service.$Receipt.$state == 'built' or @Service.$Receipt.$state == 'unknown'" /></conditions>
+      <delay exact="5s" />
+      <actions><run_actions ref="ObserveServiceCrew" /><reset_cue cue="this" /></actions>
+    </cue>
+    <library name="ReadStationSkillNeed" purpose="run_actions" namespace="this">
+      <params>
+        <param name="Station" />
+      </params>
+      <actions>
+        <do_if value="not $Station.exists or not $Station.isplayerowned or not $Station.isoperational">
+          <return value="table[$state='waiting', $reason='station_unavailable']" />
+        </do_if>
+        <set_value name="$Manager" exact="@$Station.assignedcontrolentity.{controlpost.manager}" />
+        <do_if value="not $Manager.exists or $Manager.isintransit or $Manager.istransferscheduled">
+          <return value="table[$state='waiting', $reason='station_manager_unavailable']" />
+        </do_if>
+        <generate_shortage_reports object="$Station" insufficient="$Shortages" shortage="$ShortageDetails" overflow="$OverflowDetails" type="class.production" />
+        <do_if value="not $Shortages">
+          <return value="table[$state='waiting', $reason='native_shortage_report_unavailable', $observed=player.age]" />
+        </do_if>
+        <set_value name="$Wares" exact="$Shortages.keys.list" />
+        <set_value name="$Traders" exact="$Station.subordinates.{assignment.trade}" />
+        <do_if value="$Traders.count gt 32">
+          <return value="table[$state='waiting', $reason='carrier_skill_scan_incomplete', $observed=player.age]" />
+        </do_if>
+        <do_all exact="[8, $Wares.count].min" counter="$i">
+          <set_value name="$Ware" exact="$Wares.{$i}" />
+          <set_value name="$EffectiveSkill" exact="$Manager.skill.management" />
+          <set_value name="$HasCarrier" exact="false" />
+          <do_all exact="[32, $Traders.count].min" counter="$j">
+            <set_value name="$Trader" exact="$Traders.{$j}" />
+            <do_if value="$Trader.exists and $Trader.isplayerowned and $Trader.isoperational and $Trader != player.controlled and $Trader.cargo.{$Ware}.max and $Trader.pilot.exists">
+              <set_value name="$HasCarrier" exact="true" />
+              <set_value name="$EffectiveSkill" exact="[$EffectiveSkill, $Trader.pilot.skill.piloting].max" />
+            </do_if>
+          </do_all>
+          <do_if value="$HasCarrier">
+            <find_sell_offer result="$Offers" wares="$Ware" space="player.galaxy" tradepartner="$Station" multiple="true">
+              <match_seller tradesknownto="faction.player">
+                <match_relation_to object="player.entity" comparison="ge" relation="dock" />
+              </match_seller>
+              <offeramount min="1" />
+            </find_sell_offer>
+            <do_if value="$Offers.count gt 32">
+              <continue />
+            </do_if>
+            <set_value name="$NearestDistance" exact="-1" />
+            <set_value name="$Supplier" exact="null" />
+            <do_all exact="[32, $Offers.count].min" counter="$j">
+              <set_value name="$Offer" exact="$Offers.{$j}" />
+              <set_value name="$Distance" exact="$Station.gatedistance.{$Offer.owner}" />
+              <do_if value="$Offer.owner.exists and $Offer.owner.isoperational and $Distance ge 0 and $Offer.unitprice le $Station.money and ($NearestDistance lt 0 or $Distance lt $NearestDistance)">
+                <set_value name="$NearestDistance" exact="$Distance" />
+                <set_value name="$Supplier" exact="$Offer.owner" />
+              </do_if>
+            </do_all>
+            <do_if value="$NearestDistance gt $EffectiveSkill / 3 and $NearestDistance le 5">
+              <return value="table[$state='training_needed', $reason='known_supply_outside_native_skill_range', $station=$Station, $manager=$Manager, $ware=$Ware, $supplier=$Supplier, $distance=$NearestDistance, $effectiveskill=$EffectiveSkill, $requiredskill=$NearestDistance * 3, $observed=player.age]" />
+            </do_if>
+          </do_if>
+        </do_all>
+        <return value="table[$state='waiting', $reason='no_range_training_need_in_current_batch', $observed=player.age]" />
+      </actions>
+    </library>
+    <library name="CheckPersonnelShipControl" purpose="run_actions" namespace="this">
+      <params><param name="Target" /></params>
+      <actions>
+        <do_if value="$Target == player.controlled"><return value="'player_helm'" /></do_if>
+        <do_if value="$Target.isclass.ship">
+          <do_if value="$Target.hasorderloop or @$Target.order.isoverride or @$Target.order.haspriority"><return value="'manual_or_priority_order'" /></do_if>
+          <do_if value="$Target.orders.count gt 32"><return value="'order_queue_inspection_incomplete'" /></do_if>
+          <do_for_each name="$Order" in="$Target.orders">
+            <do_if value="$Order.exists and $Order.object == $Target and ($Order.isoverride or $Order.haspriority)"><return value="'manual_or_priority_order'" /></do_if>
+          </do_for_each>
+        </do_if>
+        <return value="'available'" />
+      </actions>
+    </library>
+    <library name="RequestHire" purpose="run_actions" namespace="this">
+      <params>
+        <param name="ManagerCue" />
+        <param name="GoalCue" />
+        <param name="Actor" />
+        <param name="Target" />
+        <param name="Post" />
+        <param name="Budget" />
+      </params>
+      <actions>
+        <do_if value="@Hire.$Receipt.$state == 'sent' or @Hire.$Receipt.$state == 'unknown'">
+          <return value="'previous_hire_unreconciled'" />
+        </do_if>
+        <do_if value="(@Transfer.$Receipt.$state == 'sent' or @Transfer.$Receipt.$state == 'unknown') and @Transfer.$Receipt.$target == $Target and @Transfer.$Receipt.$post == $Post">
+          <return value="'destination_post_transfer_unreconciled'" />
+        </do_if>
+        <do_if value="not $ManagerCue.exists or not $GoalCue.exists">
+          <return value="'personnel_goal_unavailable'" />
+        </do_if>
+        <run_actions ref="md.TM_Empire_Runtime.ReadGoalLifetime" result="$Reason"><param name="GoalCue" value="$GoalCue" /></run_actions>
+        <do_if value="$Reason != 'available'"><return value="$Reason" /></do_if>
+        <run_actions ref="md.TM_Empire_Runtime.CanActForGovernor" result="$Reason">
+          <param name="Actor" value="$ManagerCue.$Governor" />
+          <param name="Station" value="$ManagerCue.$GovernorStation" />
+          <param name="Module" value="$ManagerCue.$GovernorModule" />
+          <param name="ManagerCue" value="$ManagerCue" />
+        </run_actions>
+        <do_if value="$Reason != 'available'">
+          <return value="$Reason" />
+        </do_if>
+        <do_if value="not $Actor.exists or $Actor.isplayerowned or $Actor.iscontrolentity or not @$Actor.role.hirable or not $Actor.isremotecommable or @$Actor.$MissionOfferState">
+          <return value="'known_hireable_actor_unavailable'" />
+        </do_if>
+        <set_value name="$Source" exact="$Actor.roleobject" />
+        <do_if value="not $Source.exists or not $Source.isclass.station or not $Source.isknown or not $Source.isoperational or not $Actor.$HiringFee? or $Actor.isintransit or @$Actor.podarrivaltime or $Actor.istransferscheduled">
+          <return value="'native_hire_unavailable'" />
+        </do_if>
+        <do_if value="not $Target.exists or not $Target.isplayerowned or not $Target.isoperational or not $Target.controlposts.free.indexof.{$Post}">
+          <return value="'destination_post_not_free'" />
+        </do_if>
+        <do_if value="$Target == player.controlled">
+          <return value="'player_helm'" />
+        </do_if>
+        <do_if value="$Budget lt 0Cr or $Budget gt player.money">
+          <return value="'invalid_hiring_budget'" />
+        </do_if>
+        <run_actions ref="CheckPersonnelShipControl" result="$Reason"><param name="Target" value="$Target" /></run_actions>
+        <do_if value="$Reason != 'available'"><return value="$Reason" /></do_if>
+        <assign_hired_actor actor="$Actor" target="$Target" post="$Post" check="true" success="$Possible" failed="$Failure" />
+        <do_if value="not $Possible">
+          <return value="if $Failure then $Failure else 'native_hire_rejected'" />
+        </do_if>
+        <set_value name="Hire.$Sequence" exact="@Hire.$Sequence + 1" />
+        <set_value name="$Key" exact="'hire_' + Hire.$Sequence + '_' + player.age" />
+        <set_value name="Hire.$Receipt" exact="table[$state='sent', $key=$Key, $actor=$Actor, $seed=$Actor.seed, $source=$Source, $target=$Target, $post=$Post, $manager=$ManagerCue, $goal=$GoalCue, $issued=player.age, $reason='native_hire_payment_pending']" />
+        <set_value name="Hire.$Receipt.$governor" exact="$ManagerCue.$Governor" />
+        <set_value name="Hire.$Receipt.$governorstation" exact="$ManagerCue.$GovernorStation" />
+        <set_value name="Hire.$Receipt.$governormodule" exact="$ManagerCue.$GovernorModule" />
+        <set_value name="player.entity.$tm_empire_hire_request" exact="table[$schema=1, $state='approved', $key=$Key, $actor=$Actor, $source=$Source, $target=$Target, $fee=$Actor.$HiringFee, $budget=$Budget]" />
+        <raise_lua_event name="'TM_Empire.PayHire'" />
+        <return value="'sent'" />
+      </actions>
+    </library>
+    <cue name="HirePaid" instantiate="true" namespace="this">
+      <conditions>
+        <event_ui_triggered screen="'TM_Empire_Personnel'" control="'HirePaid'" />
+      </conditions>
+      <actions>
+        <run_actions ref="AssignPaidHire" />
+      </actions>
+    </cue>
+    <library name="AssignPaidHire" purpose="run_actions" namespace="this">
+      <actions>
+        <set_value name="$Receipt" exact="@Hire.$Receipt" />
+        <do_if value="not $Receipt or @$Receipt.$assignmentissued">
+          <return value="'hire_assignment_already_issued'" />
+        </do_if>
+        <set_value name="$Payment" exact="@player.entity.$tm_empire_hire_payment" />
+        <do_if value="@player.entity.$tm_empire_hire_request.$key == $Receipt.$key and player.entity.$tm_empire_hire_request.$state == 'revoked' and (not $Payment or $Payment.$key != $Receipt.$key)">
+          <!-- No persisted payment intent for this key: the cancelled approval
+               is safe to retire without fabricating a refund or arrival. -->
+          <set_value name="Hire.$Receipt.$state" exact="'rejected'" />
+          <set_value name="Hire.$Receipt.$reason" exact="'hire_approval_revoked_before_payment'" />
+          <return value="'rejected_before_payment'" />
+        </do_if>
+        <do_if value="@player.entity.$tm_empire_hire_request.$key == $Receipt.$key and player.entity.$tm_empire_hire_request.$state == 'rejected_before_payment' and (not $Payment or $Payment.$key != $Receipt.$key)">
+          <set_value name="Hire.$Receipt.$state" exact="'rejected'" />
+          <set_value name="Hire.$Receipt.$reason" exact="player.entity.$tm_empire_hire_request.$reason" />
+          <return value="'rejected_before_payment'" />
+        </do_if>
+        <do_if value="not $Payment or $Payment.$key != $Receipt.$key or $Payment.$actor != $Receipt.$actor or $Payment.$source != $Receipt.$source or $Payment.$state != 'paid'">
+          <return value="'hire_payment_unconfirmed'" />
+        </do_if>
+        <!-- Confirmed payment and physical arrival are separate facts. -->
+        <set_value name="Hire.$Receipt.$paid" exact="$Payment.$paid * 1Cr" />
+        <set_value name="$Manager" exact="$Receipt.$manager" />
+        <do_if value="not $Manager.exists or not $Receipt.$goal.exists">
+          <return value="'paid_hire_goal_unavailable'" />
+        </do_if>
+        <run_actions ref="md.TM_Empire_Runtime.ReadGoalLifetime" result="$Reason"><param name="GoalCue" value="$Receipt.$goal" /></run_actions>
+        <do_if value="$Reason != 'available'"><return value="$Reason" /></do_if>
+        <do_if value="$Receipt.$governor? and ($Receipt.$governor != $Manager.$Governor or $Receipt.$governorstation != $Manager.$GovernorStation or $Receipt.$governormodule != $Manager.$GovernorModule)">
+          <return value="'paid_hire_governor_changed'" />
+        </do_if>
+        <run_actions ref="md.TM_Empire_Runtime.CanActForGovernor" result="$Reason">
+          <param name="Actor" value="$Manager.$Governor" />
+          <param name="Station" value="$Manager.$GovernorStation" />
+          <param name="Module" value="$Manager.$GovernorModule" />
+          <param name="ManagerCue" value="$Manager" />
+        </run_actions>
+        <do_if value="$Reason != 'available'">
+          <return value="$Reason" />
+        </do_if>
+        <set_value name="$Target" exact="$Receipt.$target" />
+        <set_value name="$Actor" exact="$Receipt.$actor" />
+        <do_if value="not $Receipt.$source.exists or not $Receipt.$source.isknown or not $Receipt.$source.isoperational or not $Actor.exists or $Actor.seed != $Receipt.$seed or not $Actor.isremotecommable">
+          <return value="'paid_hire_candidate_changed'" />
+        </do_if>
+        <do_if value="not $Actor.exists or $Actor.isplayerowned or $Actor.iscontrolentity or $Actor.roleobject != $Receipt.$source or $Actor.isintransit or @$Actor.podarrivaltime or $Actor.istransferscheduled or not @$Actor.role.hirable or @$Actor.$MissionOfferState or not $Target.exists or not $Target.isplayerowned or not $Target.isoperational or $Target == player.controlled or not $Target.controlposts.free.indexof.{$Receipt.$post}">
+          <return value="'paid_hire_assignment_changed'" />
+        </do_if>
+        <!-- The quote check preceded asynchronous payment. Recheck the native
+             capacity/appointment contract now, before consuming the actor. -->
+        <run_actions ref="CheckPersonnelShipControl" result="$Reason"><param name="Target" value="$Target" /></run_actions>
+        <do_if value="$Reason != 'available'"><return value="$Reason" /></do_if>
+        <assign_hired_actor actor="$Actor" target="$Target" post="$Receipt.$post" check="true" success="$Possible" failed="$Failure" />
+        <do_if value="not $Possible">
+          <return value="if $Failure then $Failure else 'paid_hire_native_check_rejected'" />
+        </do_if>
+        <set_value name="Hire.$Receipt.$assignmentissued" exact="true" />
+        <assign_hired_actor actor="$Actor" target="$Target" post="$Receipt.$post" success="$Accepted" failed="$Failure" />
+        <do_if value="not $Accepted">
+          <set_value name="Hire.$Receipt.$state" exact="'unknown'" />
+          <set_value name="Hire.$Receipt.$reason" exact="if $Failure then $Failure else 'paid_hire_rejected'" />
+          <return value="'unknown'" />
+        </do_if>
+        <set_value name="Hire.$Receipt.$reason" exact="'native_hire_arrival_pending'" />
+        <return value="'sent'" />
+      </actions>
+    </library>
+    <library name="ObserveHire" purpose="run_actions" namespace="this">
+      <actions>
+        <set_value name="$Receipt" exact="@Hire.$Receipt" />
+        <do_if value="not $Receipt or ($Receipt.$state != 'sent' and $Receipt.$state != 'unknown')">
+          <return value="'no_pending_hire'" />
+        </do_if>
+        <set_value name="$Payment" exact="@player.entity.$tm_empire_hire_payment" />
+        <do_if value="not @$Receipt.$assignmentissued">
+          <run_actions ref="AssignPaidHire" result="$Reason" />
+          <set_value name="Hire.$Receipt.$reason" exact="$Reason" />
+        </do_if>
+        <set_value name="$Target" exact="$Receipt.$target" />
+        <set_value name="$Employee" exact="@$Target.assignedcontrolentity.{$Receipt.$post}" />
+        <do_if value="@Hire.$Receipt.$assignmentissued and $Employee.exists and (not $Receipt.$seed? or $Employee.seed != $Receipt.$seed)">
+          <set_value name="Hire.$Receipt.$state" exact="'unknown'" />
+          <set_value name="Hire.$Receipt.$reason" exact="'hire_employee_identity_changed'" />
+          <return value="'unknown'" />
+        </do_if>
+        <!-- The assigned native control post binds this employee to Target;
+             a control entity may have no passenger roleobject. Physical arrival
+             and any non-null conflicting roleobject are still checked. -->
+        <do_if value="@Hire.$Receipt.$assignmentissued and $Payment.$key == $Receipt.$key and $Payment.$state == 'paid' and $Target.exists and $Target.isplayerowned and $Target.isoperational and $Employee.exists and $Employee.isplayerowned and $Receipt.$seed? and $Employee.seed == $Receipt.$seed and $Employee.controlpost == $Receipt.$post and (not @$Employee.roleobject or $Employee.roleobject == $Target) and $Employee.container == $Target and (not $Target.isclass.station or $Employee.station == $Target) and not $Employee.isintransit and not @$Employee.podarrivaltime and not $Employee.istransferscheduled">
+          <set_value name="Hire.$Receipt.$state" exact="'observed'" />
+          <set_value name="Hire.$Receipt.$employee" exact="$Employee" />
+          <set_value name="Hire.$Receipt.$observed" exact="player.age" />
+          <set_value name="Hire.$Receipt.$paid" exact="$Payment.$paid * 1Cr" />
+          <set_value name="Hire.$Receipt.$reason" exact="'native_paid_hire_arrival_observed'" />
+          <set_value name="player.entity.$tm_empire_hire_payment.$state" exact="'reconciled'" />
+          <set_value name="player.entity.$tm_empire_hire_payment.$employee" exact="$Employee" />
+          <return value="'observed'" />
+        </do_if>
+        <do_if value="@Hire.$Receipt.$state == 'rejected'">
+          <return value="'rejected_before_payment'" />
+        </do_if>
+        <do_if value="player.age gt $Receipt.$issued + 10min">
+          <set_value name="Hire.$Receipt.$state" exact="'unknown'" />
+        </do_if>
+        <return value="Hire.$Receipt.$state" />
+      </actions>
+    </library>
+    <cue name="HireWatch" namespace="this" checkinterval="15s">
+      <conditions>
+        <check_value value="@Hire.$Receipt.$state == 'sent' or @Hire.$Receipt.$state == 'unknown'" />
+      </conditions>
+      <delay exact="15s" />
+      <actions>
+        <run_actions ref="ObserveHire" />
+        <reset_cue cue="this" />
+      </actions>
+    </cue>
+    <library name="RequestSeminar" purpose="run_actions" namespace="this">
+      <params>
+        <param name="ManagerCue" />
+        <param name="GoalCue" />
+        <param name="Source" />
+        <param name="Person" />
+        <param name="Skill" />
+        <param name="RequiredSkill" />
+        <param name="Actor" default="null" />
+      </params>
+      <actions>
+        <do_if value="@Training.$Receipt.$state == 'sent' or @Training.$Receipt.$state == 'unknown'">
+          <return value="'previous_training_unreconciled'" />
+        </do_if>
+        <run_actions ref="md.TM_Empire_Runtime.ReadGoalLifetime" result="$Reason"><param name="GoalCue" value="$GoalCue" /></run_actions>
+        <do_if value="$Reason != 'available'"><return value="$Reason" /></do_if>
+        <do_if value="not $ManagerCue.exists or not $GoalCue.exists">
+          <return value="'personnel_goal_unavailable'" />
+        </do_if>
+        <run_actions ref="md.TM_Empire_Runtime.CanActForGovernor" result="$Reason">
+          <param name="Actor" value="$ManagerCue.$Governor" />
+          <param name="Station" value="$ManagerCue.$GovernorStation" />
+          <param name="Module" value="$ManagerCue.$GovernorModule" />
+          <param name="ManagerCue" value="$ManagerCue" />
+        </run_actions>
+        <do_if value="$Reason != 'available'">
+          <return value="$Reason" />
+        </do_if>
+        <do_if value="not $Source.exists or not $Source.isplayerowned or not $Source.isoperational">
+          <return value="'training_person_unavailable'" />
+        </do_if>
+        <do_if value="$Source == player.controlled">
+          <return value="'player_helm'" />
+        </do_if>
+        <run_actions ref="CheckPersonnelShipControl" result="$Reason"><param name="Target" value="$Source" /></run_actions>
+        <do_if value="$Reason != 'available'"><return value="$Reason" /></do_if>
+        <do_if value="$Skill != skilltype.management and $Skill != skilltype.piloting">
+          <return value="'unsupported_native_seminar'" />
+        </do_if>
+        <do_if value="$RequiredSkill le 0 or $RequiredSkill gt 15">
+          <return value="'invalid_required_skill'" />
+        </do_if>
+        <set_value name="$Post" exact="null" />
+        <do_if value="$Actor.exists">
+          <set_value name="$Post" exact="if $Skill == skilltype.management then controlpost.manager else controlpost.aipilot" />
+          <do_if value="$Source.assignedcontrolentity.{$Post} != $Actor or $Actor.npctemplate != $Person or $Actor.isintransit or @$Actor.podarrivaltime">
+            <return value="'training_person_unavailable'" />
+          </do_if>
+        </do_if>
+        <do_else>
+          <do_if value="not $Source.people.{$Person}.exists">
+            <return value="'training_person_unavailable'" />
+          </do_if>
+          <do_if value="$Source.people.{$Person}.isintransit or @$Source.people.{$Person}.podarrivaltime or $Source.people.{$Person}.istransferscheduled or $Source.people.{$Person}.isbusy or $Source.people.{$Person}.ismissionactor">
+            <return value="'training_person_busy'" />
+          </do_if>
+          <set_value name="$Actor" exact="@$Source.roleentity.{$Person}" />
+        </do_else>
+        <do_if value="(@Transfer.$Receipt.$state == 'sent' or @Transfer.$Receipt.$state == 'unknown') and Transfer.$Receipt.$person == $Person">
+          <return value="'training_person_in_transfer'" />
+        </do_if>
+        <set_value name="$Before" exact="if $Actor.exists then $Actor.skill.{$Skill} else $Source.people.{$Person}.skill.{$Skill}" />
+        <do_if value="$Before ge $RequiredSkill">
+          <return value="'required_skill_already_observed'" />
+        </do_if>
+        <set_value name="$Stars" exact="$Before / 3" />
+        <set_value name="$Tier" exact="if $Stars ge 4 then 4 else if $Stars == 3 then 3 else if $Stars == 2 then 2 else if $Stars == 1 then 1 else 0" />
+        <set_value name="$Seminars" exact="if $Skill == skilltype.management then [ware.inv_seminar_management_0, ware.inv_seminar_management_1, ware.inv_seminar_management_2, ware.inv_seminar_management_3, ware.inv_seminar_management_4] else [ware.inv_seminar_piloting_0, ware.inv_seminar_piloting_1, ware.inv_seminar_piloting_2, ware.inv_seminar_piloting_3, ware.inv_seminar_piloting_4]" />
+        <set_value name="$Ware" exact="$Seminars.{$Tier + 1}" />
+        <set_value name="$InventoryBefore" exact="player.entity.inventory.{$Ware}.count" />
+        <do_if value="$InventoryBefore le 0">
+          <return value="'required_seminar_missing'" />
+        </do_if>
+        <set_value name="$Increase" exact="if $Before gt 12 then 15 - $Before else 3" />
+        <set_value name="Training.$Receipt" exact="table[$state='sent', $goal=$GoalCue, $manager=$ManagerCue, $source=$Source, $person=$Person, $seed=if $Actor.exists then $Actor.seed else $Source.people.{$Person}.seed, $actor=$Actor, $post=$Post, $skill=$Skill, $before=$Before, $expected=$Before + $Increase, $ware=$Ware, $inventorybefore=$InventoryBefore, $issued=player.age, $reason='native_seminar_pending']" />
+        <do_if value="$Actor.exists">
+          <add_skill entity="$Actor" type="$Skill" exact="$Increase" />
+        </do_if>
+        <do_else>
+          <add_skill object="$Source" template="$Person" type="$Skill" exact="$Increase" />
+        </do_else>
+        <remove_inventory ware="$Ware" />
+        <run_actions ref="ObserveSeminar" result="$Result" />
+        <return value="$Result" />
+      </actions>
+    </library>
+    <library name="ObserveSeminar" purpose="run_actions" namespace="this">
+      <actions>
+        <set_value name="$Receipt" exact="@Training.$Receipt" />
+        <do_if value="not $Receipt or ($Receipt.$state != 'sent' and $Receipt.$state != 'unknown')">
+          <return value="'no_pending_training'" />
+        </do_if>
+        <set_value name="$Source" exact="$Receipt.$source" />
+        <set_value name="$Person" exact="$Receipt.$person" />
+        <set_value name="$Actor" exact="if @$Receipt.$post then @$Receipt.$actor else @$Source.roleentity.{$Person}" />
+        <set_value name="$SamePerson" exact="if @$Receipt.$post then $Source.exists and $Actor.exists and $Source.assignedcontrolentity.{$Receipt.$post} == $Actor and $Actor.npctemplate == $Person else @$Source.people.{$Person}.exists" />
+        <!-- A personnel template can be reused; skill and inventory alone do
+             not prove that this seminar belonged to the original employee.
+             Retain legacy receipts without inventing a historical seed. -->
+        <do_if value="$Receipt.$seed? and $SamePerson">
+          <set_value name="$SamePerson" exact="if $Actor.exists then $Actor.seed == $Receipt.$seed else $Source.people.{$Person}.seed == $Receipt.$seed" />
+          <do_if value="not $SamePerson">
+            <set_value name="$Receipt.$state" exact="'unknown'" />
+            <set_value name="$Receipt.$reason" exact="'training_employee_identity_changed'" />
+            <return value="'unknown'" />
+          </do_if>
+        </do_if>
+        <set_value name="$ObservedSkill" exact="if $Actor.exists then $Actor.skill.{$Receipt.$skill} else @$Source.people.{$Person}.skill.{$Receipt.$skill}" />
+        <do_if value="$Source.exists and $Source.isplayerowned and $SamePerson and $ObservedSkill == $Receipt.$expected and player.entity.inventory.{$Receipt.$ware}.count == $Receipt.$inventorybefore - 1">
+          <set_value name="Training.$Receipt.$state" exact="'observed'" />
+          <set_value name="Training.$Receipt.$observed" exact="player.age" />
+          <set_value name="Training.$Receipt.$reason" exact="'native_seminar_consumption_and_skill_observed'" />
+          <return value="'observed'" />
+        </do_if>
+        <set_value name="Training.$Receipt.$state" exact="'unknown'" />
+        <set_value name="Training.$Receipt.$reason" exact="'seminar_consumption_or_skill_unconfirmed'" />
+        <return value="'unknown'" />
+      </actions>
+    </library>
+    <library name="RequestTransfer" purpose="run_actions" namespace="this">
+      <params>
+        <param name="ManagerCue" />
+        <param name="GoalCue" />
+        <param name="Source" />
+        <param name="Person" />
+        <param name="Target" />
+        <param name="Post" default="null" />
+        <param name="Role" default="null" />
+      </params>
+      <actions>
+        <do_if value="@Transfer.$Receipt.$state == 'sent' or @Transfer.$Receipt.$state == 'unknown'">
+          <return value="'previous_personnel_transfer_unreconciled'" />
+        </do_if>
+        <do_if value="$Post and (@Hire.$Receipt.$state == 'sent' or @Hire.$Receipt.$state == 'unknown') and @Hire.$Receipt.$target == $Target and @Hire.$Receipt.$post == $Post">
+          <return value="'destination_post_hire_unreconciled'" />
+        </do_if>
+        <do_if value="not $ManagerCue.exists or not $GoalCue.exists">
+          <return value="'personnel_goal_unavailable'" />
+        </do_if>
+        <run_actions ref="md.TM_Empire_Runtime.CanActForGovernor" result="$Reason">
+          <param name="Actor" value="$ManagerCue.$Governor" />
+          <param name="Station" value="$ManagerCue.$GovernorStation" />
+          <param name="Module" value="$ManagerCue.$GovernorModule" />
+          <param name="ManagerCue" value="$ManagerCue" />
+        </run_actions>
+        <do_if value="$Reason != 'available'">
+          <return value="$Reason" />
+        </do_if>
+        <do_if value="not $Source.exists or not $Target.exists or not $Source.isplayerowned or not $Target.isplayerowned or not $Source.isoperational or not $Target.isoperational">
+          <return value="'personnel_asset_unavailable'" />
+        </do_if>
+        <do_if value="$Source == player.controlled or $Target == player.controlled">
+          <return value="'player_helm'" />
+        </do_if>
+        <run_actions ref="md.TM_Empire_Runtime.ReadGoalLifetime" result="$Reason"><param name="GoalCue" value="$GoalCue" /></run_actions>
+        <do_if value="$Reason != 'available'"><return value="$Reason" /></do_if>
+        <do_if value="not $Source.people.{$Person}.exists">
+          <return value="'person_missing_at_source'" />
+        </do_if>
+        <do_if value="(@Training.$Receipt.$state == 'sent' or @Training.$Receipt.$state == 'unknown') and Training.$Receipt.$person == $Person">
+          <return value="'person_training_unreconciled'" />
+        </do_if>
+        <do_if value="$Source.people.{$Person}.isintransit or @$Source.people.{$Person}.podarrivaltime or $Source.people.{$Person}.istransferscheduled or $Source.people.{$Person}.isbusy or $Source.people.{$Person}.ismissionactor or $Source.people.{$Person}.istemporary">
+          <return value="'person_not_available'" />
+        </do_if>
+        <set_value name="$Actor" exact="@$Source.roleentity.{$Person}" />
+        <do_if value="$Actor.exists and ($Actor.controlpost or $Actor == @md.TM_Empire_Runtime.Registry.$Governor)">
+          <return value="'person_has_protected_post'" />
+        </do_if>
+        <do_for_each name="$ExistingPost" in="$Source.controlposts.all">
+          <do_if value="@$Source.assignedcontrolentity.{$ExistingPost}.npctemplate == $Person">
+            <return value="'person_has_protected_post'" />
+          </do_if>
+        </do_for_each>
+        <do_if value="@md.TM_Empire_Runtime.Registry.$Governor.npctemplate == $Person">
+          <return value="'person_is_empire_governor'" />
+        </do_if>
+        <do_if value="(not $Post and not $Role) or ($Post and $Role)">
+          <return value="'transfer_post_or_role_required'" />
+        </do_if>
+        <!-- Personnel effects must respect manual/emergency ship orders.
+             Inspect only this source/destination pair, never the whole empire. -->
+        <do_for_each name="$ControlShip" in="[$Source, $Target]">
+          <run_actions ref="CheckPersonnelShipControl" result="$Reason"><param name="Target" value="$ControlShip" /></run_actions>
+          <do_if value="$Reason != 'available'"><return value="$Reason" /></do_if>
+        </do_for_each>
+        <do_if value="$Post">
+          <do_if value="not $Target.controlposts.free.indexof.{$Post}">
+            <return value="'destination_post_not_free'" />
+          </do_if>
+          <assign_hired_actor actor="[$Source, $Person]" target="$Target" post="$Post" check="true" success="$Possible" failed="$Failure" />
+        </do_if>
+        <do_else>
+          <do_if value="($Role != entityrole.service and $Role != entityrole.marine) or not $Target.isclass.ship or not $Target.people.free">
+            <return value="'destination_crew_role_or_capacity_unavailable'" />
+          </do_if>
+          <assign_hired_actor actor="[$Source, $Person]" target="$Target" role="$Role" check="true" success="$Possible" failed="$Failure" />
+        </do_else>
+        <do_if value="not $Possible">
+          <return value="if $Failure then $Failure else 'native_assignment_rejected'" />
+        </do_if>
+        <set_value name="Transfer.$Receipt" exact="table[$state='sent', $manager=$ManagerCue, $governor=$ManagerCue.$Governor, $governorstation=$ManagerCue.$GovernorStation, $governormodule=$ManagerCue.$GovernorModule, $goal=$GoalCue, $source=$Source, $person=$Person, $seed=$Source.people.{$Person}.seed, $sourcerole=$Source.people.{$Person}.role, $target=$Target, $post=$Post, $role=$Role, $issued=player.age, $reason='native_transfer_pending']" />
+        <do_if value="$Role">
+          <set_value name="Transfer.$Serial" exact="@Transfer.$Serial + 1" />
+          <set_value name="Transfer.$Receipt.$key" exact="'crew_assignment_' + Transfer.$Serial + '_' + player.age" />
+          <set_value name="Transfer.$Receipt.$engine" exact="'native_assignment'" />
+          <set_value name="Transfer.$Receipt.$reason" exact="'native_crew_assignment_pending'" />
+          <!-- Same NPCAssigned handler as the stock individual crew dialogue.
+               It owns role/template movement and the actual transfer route. -->
+          <assign_hired_actor actor="[$Source, $Person]" target="$Target" role="$Role" success="$Accepted" failed="$Failure" />
+        </do_if>
+        <do_else>
+          <assign_hired_actor actor="[$Source, $Person]" target="$Target" post="$Post" success="$Accepted" failed="$Failure" />
+        </do_else>
+        <do_if value="not $Accepted">
+          <set_value name="Transfer.$Receipt.$state" exact="'rejected'" />
+          <set_value name="Transfer.$Receipt.$reason" exact="if $Failure then $Failure else 'native_assignment_rejected'" />
+          <return value="Transfer.$Receipt.$reason" />
+        </do_if>
+        <return value="'sent'" />
+      </actions>
+    </library>
+    <cue name="CrewExchangeChecked" instantiate="true">
+      <conditions><event_ui_triggered screen="'TM_Empire_Personnel'" control="'CrewChecked'" /></conditions>
+      <actions><run_actions ref="ApplyCrewExchangeCheck" /></actions>
+    </cue>
+    <library name="ApplyCrewExchangeCheck" purpose="run_actions" namespace="this">
+      <actions>
+        <set_value name="$Receipt" exact="@Transfer.$Receipt" />
+        <set_value name="$Request" exact="@player.entity.$tm_empire_crew_exchange_request" />
+        <set_value name="$Result" exact="@player.entity.$tm_empire_crew_exchange_result" />
+        <do_if value="not $Receipt or @$Receipt.$engine != 'native_bulk' or not $Request or not $Result or $Request.$key != $Receipt.$key or $Result.$key != $Receipt.$key or $Request.$state != 'check_requested'"><return /></do_if>
+        <do_if value="$Result.$state != 'checked'">
+          <set_value name="$Receipt.$state" exact="'rejected'" /><set_value name="$Receipt.$reason" exact="$Result.$reason" />
+          <set_value name="$Request.$state" exact="'rejected'" /><return />
+        </do_if>
+        <set_value name="$Manager" exact="$Receipt.$manager" />
+        <run_actions ref="md.TM_Empire_Runtime.CanActForGovernor" result="$Reason">
+          <param name="Actor" value="$Manager.$Governor" /><param name="Station" value="$Manager.$GovernorStation" /><param name="Module" value="$Manager.$GovernorModule" /><param name="ManagerCue" value="$Manager" />
+        </run_actions>
+        <do_if value="$Reason != 'available' or $Request.$source != $Receipt.$source or $Request.$target != $Receipt.$target or not $Receipt.$source.people.{$Receipt.$person}.exists or @md.TM_Empire_Runtime.Registry.$Governor.npctemplate == $Receipt.$person">
+          <set_value name="$Request.$state" exact="'rejected'" />
+          <set_value name="$Receipt.$state" exact="'rejected'" /><set_value name="$Receipt.$reason" exact="'crew_exchange_authorization_changed'" /><return />
+        </do_if>
+        <run_actions ref="md.TM_Empire_Runtime.ReadGoalLifetime" result="$Reason"><param name="GoalCue" value="$Receipt.$goal" /></run_actions>
+        <do_if value="$Reason != 'available' or not $Receipt.$source.exists or not $Receipt.$target.exists or not $Receipt.$source.isplayerowned or not $Receipt.$target.isplayerowned or not $Receipt.$source.isoperational or not $Receipt.$target.isoperational or $Receipt.$source == player.controlled or $Receipt.$target == player.controlled or $Manager.$Governor != $Receipt.$governor or $Manager.$GovernorStation != $Receipt.$governorstation or $Manager.$GovernorModule != $Receipt.$governormodule or $Request.$role != (if $Receipt.$role == entityrole.service then 'service' else if $Receipt.$role == entityrole.marine then 'marine' else 'unsupported')">
+          <set_value name="$Request.$state" exact="'rejected'" /><set_value name="$Receipt.$state" exact="'rejected'" /><set_value name="$Receipt.$reason" exact="if $Reason != 'available' then $Reason else if $Receipt.$source == player.controlled or $Receipt.$target == player.controlled then 'player_helm' else 'crew_exchange_authorization_changed'" /><return />
+        </do_if>
+        <do_if value="$Request.$seed != '' + $Receipt.$source.people.{$Receipt.$person}.seed or $Receipt.$source.people.{$Receipt.$person}.isintransit or $Receipt.$source.people.{$Receipt.$person}.istransferscheduled or @$Receipt.$source.people.{$Receipt.$person}.podarrivaltime or $Receipt.$source.people.{$Receipt.$person}.isbusy or $Receipt.$source.people.{$Receipt.$person}.ismissionactor or $Receipt.$source.people.{$Receipt.$person}.istemporary or @$Receipt.$source.roleentity.{$Receipt.$person}.controlpost">
+          <set_value name="$Request.$state" exact="'rejected'" />
+          <set_value name="$Receipt.$state" exact="'rejected'" /><set_value name="$Receipt.$reason" exact="'crew_exchange_employee_unavailable'" /><return />
+        </do_if>
+        <!-- Saved legacy preflight requests still use the bulk bridge. Apply
+             the same current ship-control guard before authorising its effect. -->
+        <do_for_each name="$ControlShip" in="[$Receipt.$source, $Receipt.$target]">
+          <run_actions ref="CheckPersonnelShipControl" result="$Reason"><param name="Target" value="$ControlShip" /></run_actions>
+          <do_if value="$Reason != 'available'">
+            <set_value name="$Request.$state" exact="'rejected'" />
+            <set_value name="$Receipt.$state" exact="'rejected'" />
+            <set_value name="$Receipt.$reason" exact="$Reason" />
+            <return />
+          </do_if>
+        </do_for_each>
+        <set_value name="$Request.$state" exact="'approved'" />
+        <raise_lua_event name="'TM_Empire.SubmitCrewExchange'" />
+      </actions>
+    </library>
+    <cue name="CrewExchangeSubmitted" instantiate="true">
+      <conditions><event_ui_triggered screen="'TM_Empire_Personnel'" control="'CrewSubmitted'" /></conditions>
+      <actions><run_actions ref="ApplyCrewExchangeSubmission" /></actions>
+    </cue>
+    <library name="ApplyCrewExchangeSubmission" purpose="run_actions" namespace="this">
+      <actions>
+        <set_value name="$Receipt" exact="@Transfer.$Receipt" />
+        <set_value name="$Result" exact="@player.entity.$tm_empire_crew_exchange_result" />
+        <do_if value="not $Receipt or @$Receipt.$engine != 'native_bulk' or not $Result or $Result.$key != $Receipt.$key or ($Receipt.$state != 'sent' and $Receipt.$state != 'unknown')"><return /></do_if>
+        <set_value name="$Receipt.$state" exact="if $Result.$state == 'rejected_before_effect' then 'rejected' else if $Result.$state == 'sent' then 'sent' else 'unknown'" />
+        <set_value name="$Receipt.$reason" exact="if $Result.$state == 'sent' then 'native_bulk_crew_exchange_pending' else $Result.$reason" />
+      </actions>
+    </library>
+    <library name="RelocateRecyclingManager" purpose="run_actions" namespace="this">
+      <params>
+        <param name="ManagerCue" />
+        <param name="GoalCue" />
+        <param name="Source" />
+        <param name="Target" />
+      </params>
+      <actions>
+        <do_if value="@Transfer.$Receipt.$state == 'sent' or @Transfer.$Receipt.$state == 'unknown'">
+          <return value="'previous_personnel_transfer_unreconciled'" />
+        </do_if>
+        <run_actions ref="md.TM_Empire_Runtime.CanActForGovernor" result="$Reason">
+          <param name="Actor" value="$ManagerCue.$Governor" />
+          <param name="Station" value="$ManagerCue.$GovernorStation" />
+          <param name="Module" value="$ManagerCue.$GovernorModule" />
+          <param name="ManagerCue" value="$ManagerCue" />
+        </run_actions>
+        <do_if value="$Reason != 'available'">
+          <return value="$Reason" />
+        </do_if>
+        <do_if value="not $GoalCue.exists or @$GoalCue.$tm_empire_recycling_evacuation.$station != $Source or @$GoalCue.$tm_empire_recycling_evacuation.$manager != $ManagerCue">
+          <return value="'recycling_evacuation_goal_mismatch'" />
+        </do_if>
+        <do_if value="not $Source.exists or not $Target.exists or not $Source.isplayerowned or not $Target.isplayerowned or not $Target.isoperational or not $Target.isclass.station or $Source == $Target or $Source == player.headquarters or $Source == $ManagerCue.$GovernorStation">
+          <return value="'recycling_manager_destination_unavailable'" />
+        </do_if>
+        <set_value name="$Actor" exact="@$Source.assignedcontrolentity.{controlpost.manager}" />
+        <find_module name="$GovernorModules" object="$Source" macro="macro.tm_empire_control_arg_macro" multiple="true" />
+        <do_if value="$GovernorModules.count or @global.$TM_EmpireComponentRecords.$construction_claim.{$Target}.$state == 'recycling_queue_sent'">
+          <return value="'recycling_manager_protected_source_or_destination'" />
+        </do_if>
+        <do_if value="not $Actor.exists or not $Actor.isplayerowned or $Actor == $ManagerCue.$Governor or $Actor.controlpost != controlpost.manager or $Actor.container != $Source or $Actor.isintransit or @$Actor.podarrivaltime or $Actor.istransferscheduled or $Actor.ismissionactor or $Actor.istemporary">
+          <return value="'recycling_manager_not_available'" />
+        </do_if>
+        <do_if value="not $Target.controlposts.free.indexof.{controlpost.manager}">
+          <return value="'destination_manager_post_not_free'" />
+        </do_if>
+        <assign_hired_actor actor="$Actor" target="$Target" post="controlpost.manager" check="true" success="$Possible" failed="$Failure" />
+        <do_if value="not $Possible">
+          <return value="if $Failure then $Failure else 'native_manager_relocation_rejected'" />
+        </do_if>
+        <set_value name="Transfer.$Receipt" exact="table[$state='sent', $manager=$ManagerCue, $goal=$GoalCue, $source=$Source, $person=$Actor.npctemplate, $seed=$Actor.seed, $actor=$Actor, $target=$Target, $post=controlpost.manager, $issued=player.age, $reason='recycling_manager_transfer_pending']" />
+        <assign_hired_actor actor="$Actor" target="$Target" post="controlpost.manager" success="$Accepted" failed="$Failure" />
+        <do_if value="not $Accepted">
+          <set_value name="Transfer.$Receipt.$state" exact="'unknown'" />
+          <set_value name="Transfer.$Receipt.$reason" exact="if $Failure then $Failure else 'recycling_manager_transfer_unconfirmed'" />
+          <return value="'unknown'" />
+        </do_if>
+        <return value="'sent'" />
+      </actions>
+    </library>
+    <library name="ObserveTransfer" purpose="run_actions" namespace="this">
+      <actions>
+        <set_value name="$Receipt" exact="@Transfer.$Receipt" />
+        <do_if value="not $Receipt or ($Receipt.$state != 'sent' and $Receipt.$state != 'unknown')">
+          <return value="'no_pending_transfer'" />
+        </do_if>
+        <do_if value="@$Receipt.$engine == 'native_bulk' and @player.entity.$tm_empire_crew_exchange_request.$key == $Receipt.$key and @player.entity.$tm_empire_crew_exchange_request.$state == 'revoked'">
+          <set_value name="$Submission" exact="@player.entity.$tm_empire_crew_exchange_result" />
+          <!-- Lua writes unknown before the native effect. Preserve any such
+               outcome; only an unsubmitted approval can be safely rejected. -->
+          <do_if value="not $Submission or @$Submission.$key != $Receipt.$key or ($Submission.$state != 'sent' and $Submission.$state != 'unknown')">
+            <set_value name="$Receipt.$state" exact="'rejected'" />
+            <set_value name="$Receipt.$reason" exact="'crew_exchange_revoked_before_effect'" />
+            <return value="'rejected'" />
+          </do_if>
+        </do_if>
+        <set_value name="$Source" exact="$Receipt.$source" />
+        <set_value name="$Target" exact="$Receipt.$target" />
+        <set_value name="$Person" exact="$Receipt.$person" />
+        <do_if value="not $Target.exists or not $Target.isplayerowned or not $Target.isoperational">
+          <set_value name="Transfer.$Receipt.$state" exact="'unknown'" />
+          <set_value name="Transfer.$Receipt.$reason" exact="'transfer_destination_lost'" />
+          <return value="'transfer_destination_lost'" />
+        </do_if>
+        <do_if value="@$Receipt.$role">
+          <do_if value="$Receipt.$seed? and $Target.people.{$Person}.exists and $Target.people.{$Person}.seed != $Receipt.$seed">
+            <set_value name="$Receipt.$state" exact="'unknown'" />
+            <set_value name="$Receipt.$reason" exact="'transfer_employee_identity_changed'" />
+            <return value="'unknown'" />
+          </do_if>
+          <do_if value="$Target.people.{$Person}.exists and $Target.people.{$Person}.role == $Receipt.$role and not $Target.people.{$Person}.isintransit and not @$Target.people.{$Person}.podarrivaltime and not $Target.people.{$Person}.istransferscheduled and (not $Source.exists or not $Source.people.{$Person}.exists)">
+            <set_value name="Transfer.$Receipt.$state" exact="'observed'" />
+            <set_value name="Transfer.$Receipt.$observed" exact="player.age" />
+            <set_value name="Transfer.$Receipt.$reason" exact="'native_crew_arrival_observed'" />
+            <return value="'observed'" />
+          </do_if>
+          <run_actions ref="RecordCrewPodArrival"><param name="Receipt" value="$Receipt" /></run_actions>
+          <run_actions ref="ResumeMissingCrewTransport" result="$TransportRecovery" />
+          <do_if value="$TransportRecovery == 'player_helm' or $TransportRecovery == 'manual_or_priority_order' or $TransportRecovery == 'order_queue_inspection_incomplete'">
+            <set_value name="$Receipt.$reason" exact="$TransportRecovery" />
+            <do_if value="player.age gt $Receipt.$issued + 10min"><set_value name="$Receipt.$state" exact="'unknown'" /></do_if>
+            <return value="$Receipt.$state" />
+          </do_if>
+          <run_actions ref="ResumeExistingCrewActor" result="$ActorRecovery" />
+          <do_if value="$ActorRecovery == 'player_helm' or $ActorRecovery == 'manual_or_priority_order' or $ActorRecovery == 'order_queue_inspection_incomplete'">
+            <set_value name="$Receipt.$reason" exact="$ActorRecovery" />
+            <do_if value="player.age gt $Receipt.$issued + 10min"><set_value name="$Receipt.$state" exact="'unknown'" /></do_if>
+            <return value="$Receipt.$state" />
+          </do_if>
+          <do_if value="player.age gt $Receipt.$issued + 10min">
+            <set_value name="Transfer.$Receipt.$state" exact="'unknown'" />
+            <set_value name="Transfer.$Receipt.$reason" exact="if @Transfer.$Receipt.$transportattempted and player.age lt Transfer.$Receipt.$transportattempted + 10min then 'native_transport_resumed_arrival_unconfirmed' else 'native_crew_arrival_not_observed'" />
+          </do_if>
+          <return value="Transfer.$Receipt.$state" />
+        </do_if>
+        <set_value name="$Employee" exact="@$Target.assignedcontrolentity.{$Receipt.$post}" />
+        <do_if value="$Receipt.$seed? and $Employee.exists and $Employee.npctemplate == $Person and $Employee.seed != $Receipt.$seed">
+          <set_value name="$Receipt.$state" exact="'unknown'" />
+          <set_value name="$Receipt.$reason" exact="'transfer_employee_identity_changed'" />
+          <return value="'unknown'" />
+        </do_if>
+        <do_if value="$Employee.exists and $Employee.isplayerowned and $Employee.npctemplate == $Person and $Employee.controlpost == $Receipt.$post and (not @$Employee.roleobject or $Employee.roleobject == $Target) and $Employee.container == $Target and (not $Target.isclass.station or $Employee.station == $Target) and not $Employee.isintransit and not @$Employee.podarrivaltime and not $Employee.istransferscheduled">
+          <do_if value="$Source != $Target and $Source.exists and $Source.people.{$Person}.exists">
+            <set_value name="$Receipt.$state" exact="'unknown'" />
+            <set_value name="$Receipt.$reason" exact="'source_membership_not_reconciled'" />
+            <return value="'source_membership_not_reconciled'" />
+          </do_if>
+          <set_value name="Transfer.$Receipt.$state" exact="'observed'" />
+          <set_value name="Transfer.$Receipt.$employee" exact="$Employee" />
+          <set_value name="Transfer.$Receipt.$observed" exact="player.age" />
+          <set_value name="Transfer.$Receipt.$reason" exact="'native_post_arrival_observed'" />
+          <do_if value="$Receipt.$post == controlpost.aipilot and $Receipt.$goal.exists">
+            <set_value name="$Receipt.$goal.$RefreshAfter" exact="0s" />
+            <do_if value="not Service.$NewCaptainQueue?"><set_value name="Service.$NewCaptainQueue" exact="[]" /></do_if>
+            <do_if value="not Service.$NewCaptainUntil?"><set_value name="Service.$NewCaptainUntil" exact="table[]" /></do_if>
+            <do_if value="not @Service.$NewCaptainQueue.indexof.{$Target} and @Service.$NewCaptainQueue.count lt 32">
+              <append_to_list name="Service.$NewCaptainQueue" exact="$Target" />
+            </do_if>
+            <set_value name="Service.$NewCaptainUntil.{$Target}" exact="player.age + 10min" />
+            <do_if value="$Source.exists and $Source.isclass.ship and $Source.isplayerowned">
+              <set_value name="$Receipt.$goal.$PriorityCrewSource" exact="$Source" />
+              <set_value name="$Receipt.$goal.$SourceIndex" exact="0" />
+            </do_if>
+          </do_if>
+          <return value="'observed'" />
+        </do_if>
+        <do_if value="player.age gt $Receipt.$issued + 10min">
+          <set_value name="Transfer.$Receipt.$state" exact="'unknown'" />
+          <set_value name="Transfer.$Receipt.$reason" exact="'native_arrival_not_observed'" />
+        </do_if>
+        <return value="Transfer.$Receipt.$state" />
+      </actions>
+    </library>
+    <library name="ReadTransferGovernor" purpose="run_actions" namespace="this">
+      <params><param name="Receipt" /></params>
+      <actions>
+        <set_value name="$Current" exact="@md.TM_Empire_Runtime.Registry.$ManagerCue" />
+        <set_value name="$Original" exact="@$Receipt.$manager" />
+        <do_if value="not $Current.exists or not $Original"><return value="null" /></do_if>
+        <!-- A paused/restarted instance may reconcile only an appointment with
+             the same exact actor, station and module. No new assignment. -->
+        <do_if value="$Current == $Original"><return value="$Current" /></do_if>
+        <do_if value="$Receipt.$governor?">
+          <do_if value="$Receipt.$governor == $Current.$Governor and @$Receipt.$governorstation == $Current.$GovernorStation and @$Receipt.$governormodule == $Current.$GovernorModule"><return value="$Current" /></do_if>
+          <return value="null" />
+        </do_if>
+        <do_if value="@$Original.$Governor == $Current.$Governor and @$Original.$GovernorStation == $Current.$GovernorStation and @$Original.$GovernorModule == $Current.$GovernorModule">
+          <return value="$Current" />
+        </do_if>
+        <return value="null" />
+      </actions>
+    </library>
+    <library name="ResumeMissingCrewTransport" purpose="run_actions" namespace="this">
+      <actions>
+        <set_value name="$Receipt" exact="@Transfer.$Receipt" />
+        <do_if value="not $Receipt or @$Receipt.$engine == 'native_bulk' or @$Receipt.$transportattempted or player.age lt $Receipt.$issued + 10min or ($Receipt.$state != 'sent' and $Receipt.$state != 'unknown') or not @$Receipt.$role">
+          <return value="'transport_recovery_not_required'" />
+        </do_if>
+        <set_value name="$Source" exact="$Receipt.$source" />
+        <set_value name="$Target" exact="$Receipt.$target" />
+        <set_value name="$Person" exact="$Receipt.$person" />
+        <do_if value="not $Source.exists or not $Target.exists or not $Source.isplayerowned or not $Target.isplayerowned or not $Source.isoperational or not $Target.isoperational or $Source == player.controlled or $Target == player.controlled or not $Target.isclass.ship or ($Receipt.$role != entityrole.service and $Receipt.$role != entityrole.marine)">
+          <return value="'transport_assets_unavailable'" />
+        </do_if>
+        <!-- The assignment itself is already observed. Only resume a missing
+             native transport for its exact person; never assign again. -->
+        <do_if value="not $Target.people.{$Person}.exists or $Source.people.{$Person}.exists or $Target.people.{$Person}.role != $Receipt.$role or not $Target.people.{$Person}.isintransit or $Target.people.{$Person}.istransferscheduled or $Target.people.{$Person}.isbusy or $Target.people.{$Person}.ismissionactor or @$Target.people.{$Person}.podarrivaltime or @$Target.roleentity.{$Person}.exists or not $Target.commoncontext.{$Source}.isclass.space">
+          <return value="'native_transport_exists_or_assignment_unconfirmed'" />
+        </do_if>
+        <run_actions ref="ReadTransferGovernor" result="$Manager"><param name="Receipt" value="$Receipt" /></run_actions>
+        <do_if value="not $Manager.exists">
+          <return value="'transport_manager_changed'" />
+        </do_if>
+        <run_actions ref="md.TM_Empire_Runtime.CanActForGovernor" result="$Reason">
+          <param name="Actor" value="$Manager.$Governor" /><param name="Station" value="$Manager.$GovernorStation" /><param name="Module" value="$Manager.$GovernorModule" /><param name="ManagerCue" value="$Manager" />
+        </run_actions>
+        <do_if value="$Reason != 'available'"><return value="$Reason" /></do_if>
+        <do_for_each name="$RecoveryAsset" in="[$Source, $Target]">
+          <run_actions ref="CheckPersonnelShipControl" result="$ControlReason"><param name="Target" value="$RecoveryAsset" /></run_actions>
+          <do_if value="$ControlReason != 'available'">
+            <set_value name="$Receipt.$reason" exact="$ControlReason" /><return value="$ControlReason" />
+          </do_if>
+        </do_for_each>
+        <set_value name="Transfer.$Receipt.$assignmentobserved" exact="player.age" />
+        <set_value name="Transfer.$Receipt.$transportattempted" exact="player.age" />
+        <!-- Stock non-instanced crew branch in Conversations.NPCAssigned:
+             restore normal template traits and let its pod helper finish. -->
+        <set_npc_template_traits object="$Target" template="$Person" busy="false" hidden="false" temporary="false" />
+        <signal_cue_instantly cue="md.Conversations.LaunchCrewTransferPod" param="[[$Target, $Person], $Source, $Target]" />
+        <signal_cue_instantly cue="CaptureCrewPod" param="$Receipt" />
+        <set_value name="Transfer.$Receipt.$reason" exact="'native_transport_resumed_arrival_unconfirmed'" />
+        <return value="'native_transport_resumed_arrival_unconfirmed'" />
+      </actions>
+    </library>
+    <cue name="CaptureCrewPod" instantiate="true" namespace="this">
+      <conditions><event_cue_signalled /></conditions>
+      <actions>
+        <set_value name="$Receipt" exact="event.param" />
+        <set_value name="$Remaining" exact="30" />
+      </actions>
+      <cues>
+        <cue name="CaptureCrewPodDelay">
+          <delay exact="1s" />
+          <actions>
+            <run_actions ref="RecordCrewPodArrival"><param name="Receipt" value="$Receipt" /></run_actions>
+            <set_value name="$Remaining" operation="subtract" exact="1" />
+            <!-- The stock actor state machine can start the short pod timer
+                 several seconds after assignment. Observe it without dispatch. -->
+            <do_if value="$Remaining gt 0 and $Receipt == @Transfer.$Receipt and not @$Receipt.$observedpodarrival and ($Receipt.$state == 'sent' or $Receipt.$state == 'unknown')">
+              <reset_cue cue="this" />
+            </do_if>
+          </actions>
+        </cue>
+      </cues>
+    </cue>
+    <library name="RecordCrewPodArrival" purpose="run_actions" namespace="this">
+      <params><param name="Receipt" /></params>
+      <actions>
+        <do_if value="not $Receipt or $Receipt != @Transfer.$Receipt or not @$Receipt.$role or ($Receipt.$state != 'sent' and $Receipt.$state != 'unknown')"><return /></do_if>
+        <set_value name="$Target" exact="$Receipt.$target" />
+        <set_value name="$Person" exact="$Receipt.$person" />
+        <do_if value="$Receipt.$seed? and $Target.exists and $Target.isplayerowned and $Target.people.{$Person}.exists and $Target.people.{$Person}.seed == $Receipt.$seed and $Target.people.{$Person}.role == $Receipt.$role and @$Target.people.{$Person}.podarrivaltime gt player.age">
+          <set_value name="$Receipt.$observedpodarrival" exact="$Target.people.{$Person}.podarrivaltime" />
+        </do_if>
+      </actions>
+    </library>
+    <library name="ResumeExistingCrewActor" purpose="run_actions" namespace="this">
+      <actions>
+        <set_value name="$Receipt" exact="@Transfer.$Receipt" />
+        <!-- Physical recovery requires an actually observed native pod deadline.
+             A dispatch marker or an absent timer alone never proves arrival. -->
+        <do_if value="not $Receipt or @$Receipt.$engine == 'native_bulk' or not @$Receipt.$observedpodarrival or @$Receipt.$actorresumeattempted or player.age lt $Receipt.$observedpodarrival + 1min or not @$Receipt.$role or ($Receipt.$state != 'sent' and $Receipt.$state != 'unknown')"><return value="'native_arrival_not_proven'" /></do_if>
+        <set_value name="$Target" exact="$Receipt.$target" />
+        <set_value name="$Source" exact="$Receipt.$source" />
+        <set_value name="$Person" exact="$Receipt.$person" />
+        <do_if value="not $Source.exists or not $Target.exists or not $Source.isplayerowned or not $Target.isplayerowned or not $Source.isoperational or not $Target.isoperational or $Source == player.controlled or $Target == player.controlled or not $Target.isclass.ship or not @$Target.controlroom.exists or ($Receipt.$role != entityrole.service and $Receipt.$role != entityrole.marine)"><return value="'crew_actor_assets_unavailable'" /></do_if>
+        <do_if value="not $Target.people.{$Person}.exists or $Source.people.{$Person}.exists or $Target.people.{$Person}.role != $Receipt.$role or not $Target.people.{$Person}.isintransit or $Target.people.{$Person}.istransferscheduled or $Target.people.{$Person}.isbusy or $Target.people.{$Person}.ismissionactor or @$Target.people.{$Person}.podarrivaltime or @$Target.roleentity.{$Person}.exists"><return value="'crew_actor_recovery_not_required'" /></do_if>
+        <run_actions ref="ReadTransferGovernor" result="$Manager"><param name="Receipt" value="$Receipt" /></run_actions>
+        <do_if value="not $Manager.exists"><return value="'crew_actor_manager_changed'" /></do_if>
+        <run_actions ref="md.TM_Empire_Runtime.CanActForGovernor" result="$Reason">
+          <param name="Actor" value="$Manager.$Governor" /><param name="Station" value="$Manager.$GovernorStation" /><param name="Module" value="$Manager.$GovernorModule" /><param name="ManagerCue" value="$Manager" />
+        </run_actions>
+        <do_if value="$Reason != 'available'"><return value="$Reason" /></do_if>
+        <!-- NPC_Instantiation supplies an actual role slot. Creating only in a
+             room can immediately enter native despawn when no role slot exists. -->
+        <find_npc_slot name="$ArrivalSlot" object="$Target" role="$Receipt.$role" />
+        <do_if value="not $ArrivalSlot">
+          <set_value name="$Receipt.$actorresumeresult" exact="'native_crew_role_slot_unavailable'" />
+          <return value="'native_crew_role_slot_unavailable'" />
+        </do_if>
+        <do_for_each name="$RecoveryAsset" in="[$Source, $Target]">
+          <run_actions ref="CheckPersonnelShipControl" result="$ControlReason"><param name="Target" value="$RecoveryAsset" /></run_actions>
+          <do_if value="$ControlReason != 'available'">
+            <set_value name="$Receipt.$reason" exact="$ControlReason" /><return value="$ControlReason" />
+          </do_if>
+        </do_for_each>
+        <set_value name="$Receipt.$actorresumeattempted" exact="player.age" />
+        <set_value name="$Receipt.$actorresumeslot" exact="$ArrivalSlot" />
+        <set_value name="$Receipt.$actorresumeseed" exact="$Target.people.{$Person}.seed" />
+        <!-- Reify this existing employee using the stock NPC_Instantiation contract.
+             event_npc_created starts the original NPC_State_Machines. No new
+             template, assignment, transport or manual intransit change. -->
+        <create_npc_from_template name="$Actor" object="$Target" template="$Person" owner="faction.player" slot="$ArrivalSlot" required="true" />
+        <set_value name="$Receipt.$resumedactor" exact="$Actor" />
+        <!-- InstantiateNPCs associates the newly instanced actor with the
+             existing role object before its state machine runs. Creation alone
+             does not establish the target's roleentity entry. -->
+        <do_if value="$Actor.exists and $Actor.isplayerowned and $Actor.seed == $Receipt.$actorresumeseed and $Target.people.{$Person}.exists and $Target.people.{$Person}.role == $Receipt.$role">
+          <set_entity_role_object entity="$Actor" object="$Target" />
+        </do_if>
+        <set_value name="$Receipt.$actorresumeresult" exact="if $Actor.exists and $Actor.npctemplate == $Person and $Actor.seed == $Receipt.$actorresumeseed and $Actor.roleobject == $Target and $Actor.role == $Receipt.$role then 'native_existing_employee_instanced' else 'native_existing_employee_instance_unconfirmed'" />
+        <return value="$Receipt.$actorresumeresult" />
+      </actions>
+    </library>
+    <cue name="CrewApprovalLoaded" instantiate="true" namespace="this">
+      <conditions><event_game_loaded /></conditions>
+      <actions>
+        <set_value name="$Receipt" exact="@Transfer.$Receipt" />
+        <set_value name="$Request" exact="@player.entity.$tm_empire_crew_exchange_request" />
+        <do_if value="$Receipt and @$Receipt.$engine == 'native_bulk' and ($Receipt.$state == 'sent' or $Receipt.$state == 'unknown') and $Request and @$Request.$key == $Receipt.$key and ($Request.$state == 'check_requested' or $Request.$state == 'approved')">
+          <!-- Saved approval is not permission to replay a native effect.
+               ObserveTransfer preserves the persisted sent/unknown marker. -->
+          <set_value name="$Request.$state" exact="'revoked'" />
+          <set_value name="$Request.$reason" exact="'crew_load_reapproval_required'" />
+          <run_actions ref="ObserveTransfer" />
+        </do_if>
+      </actions>
+    </cue>
+    <cue name="TransferWatch" namespace="this" checkinterval="5s">
+      <conditions>
+        <check_value value="@Transfer.$Receipt.$state == 'sent' or @Transfer.$Receipt.$state == 'unknown'" />
+      </conditions>
+      <delay exact="5s" />
+      <actions>
+        <run_actions ref="ObserveTransfer" />
+        <reset_cue cue="this" />
+      </actions>
+    </cue>
+    <cue name="TrainingWatch" namespace="this" checkinterval="15s">
+      <conditions>
+        <check_value value="@Training.$Receipt.$state == 'sent' or @Training.$Receipt.$state == 'unknown'" />
+      </conditions>
+      <delay exact="15s" />
+      <actions>
+        <run_actions ref="ObserveSeminar" />
+        <reset_cue cue="this" />
+      </actions>
+    </cue>
+  </cues>
+</mdscript>
+
+

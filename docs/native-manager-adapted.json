@@ -1,0 +1,776 @@
+{
+  "catalogue": {
+    "factions": "[faction.alliance, faction.antigone, faction.argon, faction.boron, faction.buccaneers, faction.court, faction.freesplit, faction.hatikvah, faction.holyorder, faction.loanshark, faction.ministry, faction.paranid, faction.pioneers, faction.player, faction.scaleplate, faction.scavenger, faction.split, faction.teladi, faction.terran, faction.trinity, faction.yaki]",
+    "inputs": [
+      {
+        "path": "examples\\x4_unpacked\\_ego_dlc_boron\\libraries\\modules.xml",
+        "sha256": "4f77207a57d93a0ece19ce98e13a569194dcd4966a3b63387a3b0ea43efdb6a5"
+      },
+      {
+        "path": "examples\\x4_unpacked\\_ego_dlc_boron\\libraries\\stations.xml",
+        "sha256": "49963ae505ea8623c5c9c0c40b7fcff1a778982a5f64b6d4da469a5a176a9051"
+      },
+      {
+        "path": "examples\\x4_unpacked\\_ego_dlc_pirate\\libraries\\modules.xml",
+        "sha256": "a0e588ff2b568b4ea17e82002f7c6fb3b006d9b0756d44bb927534895a2b84e6"
+      },
+      {
+        "path": "examples\\x4_unpacked\\_ego_dlc_pirate\\libraries\\stations.xml",
+        "sha256": "f07db51ae2dd203ccd1e01893d6d3180c913236c755c6b65e352c25bdd94a9bb"
+      },
+      {
+        "path": "examples\\x4_unpacked\\_ego_dlc_split\\libraries\\modules.xml",
+        "sha256": "3f1ff6c197180e91b9b89601055373e2ae81cb4568a36f33cef7a462b22c1ede"
+      },
+      {
+        "path": "examples\\x4_unpacked\\_ego_dlc_split\\libraries\\stations.xml",
+        "sha256": "4abf2c68f48bff5d977ef4b6806b3f53bc70ed88f0bc8593044d48d20a9c7fc4"
+      },
+      {
+        "path": "examples\\x4_unpacked\\_ego_dlc_terran\\libraries\\modules.xml",
+        "sha256": "f1966bd8c384d81f625eab88a880dcc33c02cdcdf0dfcbc8b1aabe897c3b201a"
+      },
+      {
+        "path": "examples\\x4_unpacked\\_ego_dlc_terran\\libraries\\stations.xml",
+        "sha256": "d52acae411fd15fee0b3c757e0c8fb4f3cbd55b4c635ee74d4cbf48fd701c189"
+      },
+      {
+        "path": "examples\\x4_unpacked\\_ego_dlc_timelines\\libraries\\stations.xml",
+        "sha256": "2683263a93ff15b6b0cb1ce454bc208e8e0ea442ab40bf97281ce0477d026a92"
+      },
+      {
+        "path": "examples\\x4_unpacked\\libraries\\modules.xml",
+        "sha256": "39a48ddaef55dd61d4516c881638f8e982573b9ad8de4c134d199353b6c62e13"
+      },
+      {
+        "path": "examples\\x4_unpacked\\libraries\\stations.xml",
+        "sha256": "5e1c649fc6e9a767b75a07c57d2e66fce9a95f4e643726425456f15113f85d0f"
+      }
+    ],
+    "qualification": "source_categories_only_blueprints_still_required"
+  },
+  "qualification": "partial_adaptation_not_runtime",
+  "installed": false,
+  "aiscripts": [
+    {
+      "source": "examples/x4_unpacked/aiscripts/order.deploy.staticdefensestrategy.xml",
+      "source_sha256": "3219ff49ab3d6499f26bb01b77c2516567d4edec4586f0551df80d412488c82a",
+      "path": "native/adapted/aiscripts/tm.order.deploy.staticdefensestrategy.xml",
+      "sha256": "bc5f0a727724a2a1cd95fa06702e348db325472dd4849228f36236b4f68e5f2f",
+      "qualification": "private_protocol_only_not_runtime",
+      "installed": false
+    },
+    {
+      "source": "examples/x4_unpacked/aiscripts/order.deployobjectatposition.xml",
+      "source_sha256": "bbd4097dc7d05f5e2c5568316a1465d9a312262816a7ec853daf9d5f750bc149",
+      "path": "native/adapted/aiscripts/tm.order.deployobjectatposition.xml",
+      "sha256": "4a2dac879a0ffef553803fbf7b97aaedcbaa9d2d30051d8faba120af0548897b",
+      "qualification": "native_inventory_deployment_unqualified",
+      "installed": false
+    },
+    {
+      "source": "examples/x4_unpacked/aiscripts/order.assign.commander.xml",
+      "source_sha256": "c0ee1168dd8326e5414fc0db1666b08778f1bde8b3b40dc80bdee3536f1911d0",
+      "path": "native/adapted/aiscripts/tm.order.assign.commander.xml",
+      "sha256": "4b5888793b3a07c21ecc3c707ed3efbd19142e6025c9b3c51f0219809c948436",
+      "qualification": "guarded_station_reassignment_unqualified",
+      "installed": false
+    }
+  ],
+  "source_sha256": "5490356eff7f010e9f5a0478a419077e6c8898b0e5d0bf19dd7e7b80fa2d754b",
+  "target_sha256": "282b4466a6d977c4df3dfd26cdcd2404593cd7d4945a578ffcbf2f634f619706",
+  "native_manager_version": 18,
+  "private_manager_version": 1,
+  "removed_npc_cues": [
+    "CreateNewFactionRepresentative",
+    "FactionDeactivated",
+    "FactionRepresentativeKilled_Check",
+    "Fleet_Evolution_Checker",
+    "Ship_Construction_Manager"
+  ],
+  "forbidden_effects": [
+    "create_representative_actor",
+    "remove_representative",
+    "set_faction_headquarters",
+    "set_faction_mood"
+  ],
+  "economy_selection": {
+    "source_sha256": "1781fd2b421441a162a4f69cf696bdeb3ff83d3cad05a9561ef6cc65ff77c4c1",
+    "target_sha256": "f38a6ce2b2733efef07675a501118e0af96ec1800ce6cc95c5b3f91227a39eae",
+    "qualification": "owned_candidate_selection_only",
+    "remaining": [
+      "guard gameplay qualification and managed-order provenance",
+      "claim reconciliation and execution read-back",
+      "Request_Freighter purchase adapter"
+    ]
+  },
+  "remaining": [
+    "registry lifecycle guards",
+    "economy/build/purchase/military/personnel effect adapters"
+  ],
+  "closure": [
+    {
+      "path": "native/adapted/md/tm_factiongoal_hold_space.xml",
+      "sha256": "66e815327647695cb8f464c74071f5ec45dd36220e39f1b46dcd4e4360efe11e",
+      "qualification": "boundary_adaptation_pending",
+      "boundaries": [],
+      "external_calls": []
+    },
+    {
+      "path": "native/adapted/md/tm_factiongoal_invade_space.xml",
+      "sha256": "504ca485b20a7753d3604a3e07e244186b94f7f837542380435209cd6c8e4998",
+      "qualification": "boundary_adaptation_pending",
+      "boundaries": [],
+      "external_calls": []
+    },
+    {
+      "path": "native/adapted/md/tm_factiongoal_patrolcoordinationservice.xml",
+      "sha256": "2a69adc93d2cb613bb0ba51ed9d65440a0a7e772a3682d3f5d8de4a622e08bb1",
+      "qualification": "boundary_adaptation_pending",
+      "boundaries": [
+        {
+          "category": "assignment",
+          "cue": "Start/Send_Patrol",
+          "tag": "create_order",
+          "attributes": {
+            "id": "'ProtectPosition'",
+            "name": "$PCS_Patrol",
+            "object": "this.$Ship",
+            "immediate": "true"
+          }
+        },
+        {
+          "category": "assignment",
+          "cue": "Start/Send_Patrol",
+          "tag": "create_order",
+          "attributes": {
+            "id": "'ProtectStation'",
+            "name": "$PCS_Patrol",
+            "object": "this.$Ship",
+            "immediate": "true"
+          }
+        },
+        {
+          "category": "assignment",
+          "cue": "Start/Send_Patrol",
+          "tag": "create_order",
+          "attributes": {
+            "id": "'ProtectShip'",
+            "name": "$PCS_Patrol",
+            "object": "this.$Ship",
+            "immediate": "true"
+          }
+        },
+        {
+          "category": "assignment",
+          "cue": "Start/Act",
+          "tag": "create_order",
+          "attributes": {
+            "id": "'Attack'",
+            "name": "$PCS_SecondaryAttack",
+            "object": "$PCS_Ships.{$Counter_Ships}"
+          }
+        },
+        {
+          "category": "assignment",
+          "cue": "Start/Act",
+          "tag": "create_order",
+          "attributes": {
+            "id": "'Attack'",
+            "name": "$PCS_Attack",
+            "object": "$PCS_Ships.{$Counter_Ships}",
+            "immediate": "true"
+          }
+        },
+        {
+          "category": "assignment",
+          "cue": "Start/Act",
+          "tag": "create_order",
+          "attributes": {
+            "id": "'Attack'",
+            "name": "$PCS_SecondaryAttack",
+            "object": "$PCS_Ships.{$Counter_Ships}"
+          }
+        }
+      ],
+      "external_calls": []
+    },
+    {
+      "path": "native/adapted/md/tm_factiongoal_plunder.xml",
+      "sha256": "611dea9c08530af8c5ba7703c20d1cb3f3e52d8caf12c2b19901ca517b991c57",
+      "qualification": "boundary_adaptation_pending",
+      "boundaries": [
+        {
+          "category": "assignment",
+          "cue": "Start/HireContractor",
+          "tag": "create_order",
+          "attributes": {
+            "name": "$Order_Contractor",
+            "id": "'Plunder'",
+            "object": "$Contractor"
+          }
+        }
+      ],
+      "external_calls": []
+    },
+    {
+      "path": "native/adapted/md/tm_factionlogic.xml",
+      "sha256": "282b4466a6d977c4df3dfd26cdcd2404593cd7d4945a578ffcbf2f634f619706",
+      "qualification": "partial",
+      "boundaries": [
+        {
+          "category": "assignment",
+          "cue": "Manager/MaintainSatelliteNetwork/MaintainSatelliteNetwork_PeriodicCheck",
+          "tag": "create_order",
+          "attributes": {
+            "name": "this.$Order",
+            "object": "this.$Ship",
+            "id": "'TM_DeployObjectAtPosition'"
+          }
+        }
+      ],
+      "external_calls": [
+        {
+          "cue": "Manager/MaintainSatelliteNetwork/MaintainSatelliteNetwork_PeriodicCheck",
+          "tag": "run_actions",
+          "reference": "md.LIB_Generic.FindSectorEntryPoints",
+          "attributes": {
+            "ref": "md.LIB_Generic.FindSectorEntryPoints",
+            "result": "this.$EntryPoints"
+          }
+        },
+        {
+          "cue": "Get_Faction_Situation_By_Sector",
+          "tag": "run_actions",
+          "reference": "md.X4Ep1_War_Subscriptions.Get_Active_War_Subscriptions",
+          "attributes": {
+            "ref": "md.X4Ep1_War_Subscriptions.Get_Active_War_Subscriptions",
+            "result": "$ActiveAlliedSubscriptions"
+          }
+        },
+        {
+          "cue": "Get_Faction_Situation_By_Sector",
+          "tag": "run_actions",
+          "reference": "md.X4Ep1_War_Subscriptions.Get_Active_War_Subscriptions",
+          "attributes": {
+            "ref": "md.X4Ep1_War_Subscriptions.Get_Active_War_Subscriptions",
+            "result": "$ActiveEnemySubscriptions"
+          }
+        }
+      ]
+    },
+    {
+      "path": "native/adapted/md/tm_factionlogic_economy.xml",
+      "sha256": "f38a6ce2b2733efef07675a501118e0af96ec1800ce6cc95c5b3f91227a39eae",
+      "qualification": "partial",
+      "boundaries": [
+        {
+          "category": "assignment",
+          "cue": "Econ_Manager/Request_Commandeerable_Freighter/TM_Commandeer_SearchComplete",
+          "tag": "create_order",
+          "attributes": {
+            "id": "'AssignCommander'",
+            "object": "$Ship",
+            "name": "$TM_Order_1"
+          }
+        },
+        {
+          "category": "assignment",
+          "cue": "Econ_Manager/Request_Commandeerable_Freighter/TM_Commandeer_SearchComplete",
+          "tag": "create_order",
+          "attributes": {
+            "id": "'MiningRoutine'",
+            "object": "$Ship",
+            "name": "$TM_Order_2"
+          }
+        },
+        {
+          "category": "assignment",
+          "cue": "Econ_Manager/Request_Commandeerable_Freighter/TM_Commandeer_SearchComplete",
+          "tag": "create_order",
+          "attributes": {
+            "id": "'TradeRoutine'",
+            "object": "$Ship",
+            "name": "$TM_Order_3"
+          }
+        },
+        {
+          "category": "assignment",
+          "cue": "Econ_Manager/Request_Commandeerable_Freighter/TM_Commandeer_SearchComplete",
+          "tag": "create_order",
+          "attributes": {
+            "id": "'AssignCommander'",
+            "object": "$Ship",
+            "name": "$TM_Order_4"
+          }
+        },
+        {
+          "category": "assignment",
+          "cue": "Econ_Manager/Request_Freighter/PurchasedFreighterObserved",
+          "tag": "create_order",
+          "attributes": {
+            "id": "'MiningRoutine'",
+            "object": "$Ship",
+            "immediate": "true",
+            "name": "$TM_PurchaseHandle_1"
+          }
+        },
+        {
+          "category": "assignment",
+          "cue": "Econ_Manager/Request_Freighter/PurchasedFreighterObserved",
+          "tag": "create_order",
+          "attributes": {
+            "id": "'SalvageRoutine'",
+            "object": "$Ship",
+            "immediate": "true",
+            "name": "$TM_PurchaseHandle_2"
+          }
+        },
+        {
+          "category": "assignment",
+          "cue": "Econ_Manager/Request_Freighter/PurchasedFreighterObserved",
+          "tag": "create_order",
+          "attributes": {
+            "id": "'TradeRoutine'",
+            "object": "$Ship",
+            "immediate": "true",
+            "name": "$TM_PurchaseHandle_3"
+          }
+        },
+        {
+          "category": "assignment",
+          "cue": "Econ_Manager/Request_Freighter/PurchasedFreighterObserved",
+          "tag": "create_order",
+          "attributes": {
+            "id": "'AssignCommander'",
+            "object": "$Ship",
+            "immediate": "true",
+            "name": "$TM_PurchaseHandle_4"
+          }
+        },
+        {
+          "category": "acquisition",
+          "cue": "Econ_Manager/Request_Factory",
+          "tag": "create_factory",
+          "attributes": {
+            "name": "$Station",
+            "modules": "$Modules",
+            "resultbasesequence": "$BaseSequence",
+            "sector": "$RequestSector",
+            "race": "$Faction.primaryrace",
+            "owner": "$Faction",
+            "originalproduct": "$Ware"
+          }
+        },
+        {
+          "category": "acquisition",
+          "cue": "Econ_Manager/Request_Factory",
+          "tag": "create_factory",
+          "attributes": {
+            "name": "$Station",
+            "modules": "$Modules",
+            "resultbasesequence": "$BaseSequence",
+            "zone": "$Zone",
+            "race": "$Faction.primaryrace",
+            "owner": "$Faction",
+            "originalproduct": "$Ware"
+          }
+        }
+      ],
+      "external_calls": [
+        {
+          "cue": "Econ_Manager/EvaluateShortages",
+          "tag": "run_actions",
+          "reference": "md.Upkeep.Needs_Subordinate_Mining_Ship_Lib",
+          "attributes": {
+            "ref": "md.Upkeep.Needs_Subordinate_Mining_Ship_Lib",
+            "result": "$TM_ProvisionTypes"
+          }
+        },
+        {
+          "cue": "GlobalStorageData/GenerateShortageData/ProcessStations",
+          "tag": "run_actions",
+          "reference": "md.Upkeep.Needs_Subordinate_Mining_Ship_Lib",
+          "attributes": {
+            "ref": "md.Upkeep.Needs_Subordinate_Mining_Ship_Lib",
+            "result": "$TM_MissingMiningTypes"
+          }
+        }
+      ]
+    },
+    {
+      "path": "native/adapted/md/tm_factionlogic_staticdefense.xml",
+      "sha256": "c242a64a8123937ad09b054ae000582e5d2624cdef78cf2d1398cfd0b07fc114",
+      "qualification": "boundary_adaptation_pending",
+      "boundaries": [
+        {
+          "category": "assignment",
+          "cue": "StaticDefenseManager/Ship_StrategyRequested",
+          "tag": "create_order",
+          "attributes": {
+            "object": "$Ship",
+            "id": "'RecycleDefault'",
+            "default": "true",
+            "name": "$TM_GuardedOrder_1"
+          }
+        },
+        {
+          "category": "assignment",
+          "cue": "StaticDefenseManager/PurchasedEngineerObserved",
+          "tag": "create_order",
+          "attributes": {
+            "name": "$TM_EngineerOrder",
+            "object": "$TM_Engineer",
+            "id": "'TM_DeployStaticDefenseStrategy'",
+            "immediate": "true"
+          }
+        }
+      ],
+      "external_calls": [
+        {
+          "cue": "GetStrategy",
+          "tag": "include_actions",
+          "reference": "md.LIB_Generic.StationSafety_Constants",
+          "attributes": {
+            "ref": "md.LIB_Generic.StationSafety_Constants"
+          }
+        },
+        {
+          "cue": "GetStrategy",
+          "tag": "run_actions",
+          "reference": "md.LIB_Generic.GetSectorSafety",
+          "attributes": {
+            "ref": "md.LIB_Generic.GetSectorSafety",
+            "result": "$Safety"
+          }
+        },
+        {
+          "cue": "FindUnobstructedPositionBetween",
+          "tag": "run_actions",
+          "reference": "md.LIB_Generic.GetPositionBetweenObjects",
+          "attributes": {
+            "ref": "md.LIB_Generic.GetPositionBetweenObjects",
+            "result": "$PositionData"
+          }
+        },
+        {
+          "cue": "FindUnobstructedPositionBetween",
+          "tag": "run_actions",
+          "reference": "md.LIB_Generic.Position_GetIsInTheWay",
+          "attributes": {
+            "ref": "md.LIB_Generic.Position_GetIsInTheWay",
+            "result": "$IsInTheWay"
+          }
+        },
+        {
+          "cue": "GetPositionsField",
+          "tag": "run_actions",
+          "reference": "md.LIB_Generic.Shape_GetPositions",
+          "attributes": {
+            "ref": "md.LIB_Generic.Shape_GetPositions",
+            "result": "$Positions"
+          }
+        },
+        {
+          "cue": "GetPositionsField",
+          "tag": "run_actions",
+          "reference": "md.LIB_Generic.Shape_GetPositions",
+          "attributes": {
+            "ref": "md.LIB_Generic.Shape_GetPositions",
+            "result": "$Positions"
+          }
+        },
+        {
+          "cue": "GetPositionsField",
+          "tag": "run_actions",
+          "reference": "md.LIB_Generic.Shape_GetPositions",
+          "attributes": {
+            "ref": "md.LIB_Generic.Shape_GetPositions",
+            "result": "$Positions"
+          }
+        }
+      ]
+    },
+    {
+      "path": "native/adapted/md/tm_factionlogic_stations.xml",
+      "sha256": "79215bbbb8c18a0363a2113a775d1f6be13d520b8edd084f3b3b31839ab3337a",
+      "qualification": "boundary_adaptation_pending",
+      "boundaries": [],
+      "external_calls": [
+        {
+          "cue": "Manage_Stations/Process/Find_Location_And_Build_Station",
+          "tag": "run_actions",
+          "reference": "md.LIB_Generic.GetGravidarObscuringSectorPosition",
+          "attributes": {
+            "ref": "md.LIB_Generic.GetGravidarObscuringSectorPosition",
+            "result": "$Position"
+          }
+        }
+      ]
+    },
+    {
+      "path": "native/adapted/md/tm_factionsubgoal_buildstation.xml",
+      "sha256": "797279d4df2883ef45d483ebf13ca888802c179ea4bdef75739b15b1a692c0c4",
+      "qualification": "boundary_adaptation_pending",
+      "boundaries": [],
+      "external_calls": [
+        {
+          "cue": "Start/Station_Management/Station_UnderConstruction",
+          "tag": "signal_cue_instantly",
+          "reference": "md.GenericMissions.GenericNewsLogbookEntry",
+          "attributes": {
+            "cue": "md.GenericMissions.GenericNewsLogbookEntry",
+            "param": "['', this.$NotificationHeadline, $reason]"
+          }
+        },
+        {
+          "cue": "Start/Station_Management/Station_Destroyed",
+          "tag": "signal_cue_instantly",
+          "reference": "md.GenericMissions.GenericNewsLogbookEntry",
+          "attributes": {
+            "cue": "md.GenericMissions.GenericNewsLogbookEntry",
+            "param": "['', this.$NotificationHeadline, $reason]"
+          }
+        },
+        {
+          "cue": "Start/Station_Management/Station_Completed",
+          "tag": "signal_cue_instantly",
+          "reference": "md.GenericMissions.GenericNewsLogbookEntry",
+          "attributes": {
+            "cue": "md.GenericMissions.GenericNewsLogbookEntry",
+            "param": "['', this.$NotificationHeadline, $reason]"
+          }
+        }
+      ]
+    },
+    {
+      "path": "native/adapted/md/tm_factionsubgoal_defendarea.xml",
+      "sha256": "47bb6e3eaff65a8fdb7b54c003f893e9dff6089bc845d70f849e6d537bef8c82",
+      "qualification": "boundary_adaptation_pending",
+      "boundaries": [
+        {
+          "category": "assignment",
+          "cue": "Start/Ship_Order_Lib",
+          "tag": "create_order",
+          "attributes": {
+            "name": "this.$PerformingOrder",
+            "id": "'ProtectPosition'",
+            "object": "this.$OrderShip",
+            "default": "true"
+          }
+        },
+        {
+          "category": "assignment",
+          "cue": "Start/Ship_Order_Lib",
+          "tag": "create_order",
+          "attributes": {
+            "name": "this.$PerformingOrder",
+            "id": "'Attack'",
+            "object": "this.$OrderShip",
+            "immediate": "true"
+          }
+        },
+        {
+          "category": "assignment",
+          "cue": "Start/Ship_Order_Lib",
+          "tag": "create_order",
+          "attributes": {
+            "name": "this.$PreparingOrder",
+            "id": "'ProtectPosition'",
+            "object": "this.$OrderShip",
+            "default": "true"
+          }
+        }
+      ],
+      "external_calls": [
+        {
+          "cue": "Start/Set_Ship_Order/ArrivedAtTargetArea",
+          "tag": "signal_cue_instantly",
+          "reference": "md.GenericMissions.GenericNewsLogbookEntry",
+          "attributes": {
+            "cue": "md.GenericMissions.GenericNewsLogbookEntry",
+            "param": "['', this.$NotificationHeadline, $reason]"
+          }
+        }
+      ]
+    },
+    {
+      "path": "native/adapted/md/tm_factionsubgoal_recon.xml",
+      "sha256": "bbe10f3f2ed4b5266dde88979d71447c16843fa594cfb355d5fd0561e4f2224c",
+      "qualification": "boundary_adaptation_pending",
+      "boundaries": [
+        {
+          "category": "assignment",
+          "cue": "Start/Set_Ship_Order/SetShipOrderInit",
+          "tag": "create_order",
+          "attributes": {
+            "id": "'Recon'",
+            "object": "parent.$OrderShip",
+            "name": "parent.$reconorder"
+          }
+        }
+      ],
+      "external_calls": [
+        {
+          "cue": "Start/Set_Ship_Order/ReconStarted",
+          "tag": "signal_cue_instantly",
+          "reference": "md.GenericMissions.GenericNewsLogbookEntry",
+          "attributes": {
+            "cue": "md.GenericMissions.GenericNewsLogbookEntry",
+            "param": "['', this.$NotificationHeadline, $reason]"
+          }
+        }
+      ]
+    },
+    {
+      "path": "native/adapted/md/tm_finalisestations.xml",
+      "sha256": "25238058db886ec593a7c7387e68ae30babf3a1154821b32687e1bb86177e892",
+      "qualification": "boundary_adaptation_pending",
+      "boundaries": [
+        {
+          "category": "station_construction",
+          "cue": "NewStation_GenerateFactory",
+          "tag": "create_construction_sequence",
+          "attributes": {
+            "station": "$Station",
+            "macros": "$NewPlannedModules",
+            "connectors": "$Conn_PlannedConnectors",
+            "base": "$BaseSequence"
+          }
+        },
+        {
+          "category": "station_construction",
+          "cue": "NewStation_GenerateFactory",
+          "tag": "create_construction_sequence",
+          "attributes": {
+            "station": "$Station",
+            "macros": "$NewPlannedModules",
+            "base": "$BaseSequence"
+          }
+        },
+        {
+          "category": "station_construction",
+          "cue": "NewStation_GenerateFactory/NewStation_ConstructionSequenceAborted",
+          "tag": "create_construction_sequence",
+          "attributes": {
+            "station": "$Station",
+            "macros": "$NewPlannedModules",
+            "connectors": "$Conn_PlannedConnectors",
+            "base": "$BaseSequence"
+          }
+        },
+        {
+          "category": "station_construction",
+          "cue": "NewStation_GenerateFactory/NewStation_ConstructionSequenceAborted",
+          "tag": "create_construction_sequence",
+          "attributes": {
+            "station": "$Station",
+            "macros": "$NewPlannedModules",
+            "base": "$BaseSequence"
+          }
+        }
+      ],
+      "external_calls": []
+    },
+    {
+      "path": "native/adapted/md/tm_job_helper.xml",
+      "sha256": "aa057e07df8b54904bfbac91652b0af1b334cd2afaccb514cc0b134016ed0b66",
+      "qualification": "boundary_adaptation_pending",
+      "boundaries": [
+        {
+          "category": "acquisition",
+          "cue": "Manager/Process_Ships",
+          "tag": "add_build_to_construct_ship",
+          "attributes": {
+            "result": "$Build",
+            "object": "$Shipyard",
+            "buildobject": "$ShipToBuild",
+            "faction": "$Faction",
+            "price": "if $Shipyard.isplayerowned then $ShipCostTable.{$Shipyard} else 0Cr"
+          }
+        }
+      ],
+      "external_calls": []
+    }
+  ],
+  "owned_ship_guards": {
+    "tm_factiongoal_hold_space.xml": {
+      "candidate_filters": 0,
+      "effect_guards": 2,
+      "manager_contexts": 1,
+      "visible_searches": 9
+    },
+    "tm_factiongoal_invade_space.xml": {
+      "candidate_filters": 0,
+      "effect_guards": 2,
+      "manager_contexts": 1,
+      "visible_searches": 5
+    },
+    "tm_factiongoal_patrolcoordinationservice.xml": {
+      "candidate_filters": 5,
+      "effect_guards": 10,
+      "manager_contexts": 1,
+      "visible_searches": 8
+    },
+    "tm_factiongoal_plunder.xml": {
+      "candidate_filters": 0,
+      "effect_guards": 4,
+      "manager_contexts": 1,
+      "visible_searches": 2
+    },
+    "tm_factionlogic.xml": {
+      "candidate_filters": 1,
+      "effect_guards": 1,
+      "manager_contexts": 1,
+      "visible_searches": 10
+    },
+    "tm_factionlogic_economy.xml": {
+      "candidate_filters": 0,
+      "effect_guards": 11,
+      "manager_contexts": 1,
+      "visible_searches": 14
+    },
+    "tm_factionlogic_staticdefense.xml": {
+      "candidate_filters": 0,
+      "effect_guards": 2,
+      "manager_contexts": 1,
+      "visible_searches": 1
+    },
+    "tm_factionlogic_stations.xml": {
+      "candidate_filters": 0,
+      "effect_guards": 0,
+      "manager_contexts": 1,
+      "visible_searches": 2
+    },
+    "tm_factionsubgoal_buildstation.xml": {
+      "candidate_filters": 0,
+      "effect_guards": 0,
+      "manager_contexts": 1,
+      "visible_searches": 0
+    },
+    "tm_factionsubgoal_defendarea.xml": {
+      "candidate_filters": 1,
+      "effect_guards": 7,
+      "manager_contexts": 1,
+      "visible_searches": 2
+    },
+    "tm_factionsubgoal_recon.xml": {
+      "candidate_filters": 2,
+      "effect_guards": 6,
+      "manager_contexts": 1,
+      "visible_searches": 2
+    },
+    "tm_finalisestations.xml": {
+      "candidate_filters": 0,
+      "effect_guards": 0,
+      "manager_contexts": 0,
+      "visible_searches": 0
+    },
+    "tm_job_helper.xml": {
+      "candidate_filters": 0,
+      "effect_guards": 0,
+      "manager_contexts": 1,
+      "visible_searches": 1
+    }
+  }
+}

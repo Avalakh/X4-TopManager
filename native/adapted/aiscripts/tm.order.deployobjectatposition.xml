@@ -1,0 +1,508 @@
+<?xml version='1.0' encoding='utf-8'?>
+<aiscript xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" name="tm.order.deployobjectatposition" xsi:noNamespaceSchemaLocation="aiscripts.xsd" version="5">
+  <order id="TM_DeployObjectAtPosition" name="{1041, 471}" description="{1041, 472}" category="internal">
+    <params>
+      <param name="destination" type="position" text="{1041, 10085}" comment="Position in a Sector.">
+        <input_param name="class" value="class.sector" />
+      </param>
+      <param name="objectstodeploy" default="[]" type="list" text="{1041, 10080}" comment="Objects to deploy. list of macros to deploy. format: [macro, macro, etc]. currently supports mines, satellites, navigation beacons, resource probes, and laser towers.">
+        <input_param name="type" value="'macro'" />
+        <input_param name="playerreadonly" value="true" />
+      </param>
+      <param name="amountstodeploy" default="[]" type="list" text="{1041, 10004}" comment="Amounts to deploy. optional. list of amounts to deploy. format: [amount, amount, etc]. if present, number of elements has to coincide with number of elements of $objectstodeploy. indices correspond between the two lists. if not defined, amounts are assumed to be 1 for each entry in $objectstodeploy.">
+        <input_param name="type" value="'number'" />
+        <input_param name="playerreadonly" value="true" />
+      </param>
+      <param name="debugchance" type="bool" default="0" advanced="true" text="{1041, 10086}" comment="Print debug output">
+        <input_param name="truevalue" value="100" />
+      </param>
+    </params>
+    <requires>
+      <match shiptype="shiptype.lasertower" negate="true" />
+      <match class="class.spacesuit" negate="true" />
+    </requires>
+    <location object="$destination.{1}" position="$destination.{2}" radius="@$objectstodeploy.{1}.maxradarrange" condition="@$objectstodeploy.{1}.isclass.satellite and $destination.{1} and $destination.{2} and this.ship.ammostorage.deployable.count" />
+    <location object="$destination.{1}" position="$destination.{2}" condition="not @$objectstodeploy.{1}.isclass.satellite and $destination.{1} and $destination.{2} and this.ship.ammostorage.deployable.count" />
+  </order>
+  <interrupts>
+    <handler ref="SectorChangeHandler" />
+    <handler ref="TargetInvalidHandler" />
+    <handler ref="AttackHandler" />
+    <handler ref="MissileLockHandler" />
+    <handler ref="ScannedHandler" />
+    <handler ref="InspectedHandler" />
+    <handler ref="FoundAbandonedHandler" />
+    <handler ref="FoundLockboxHandler" />
+    <handler ref="ResupplyHandler" />
+    <handler ref="TideHandler" />
+    <handler comment="Stop copied child scripts after governor unbind">
+      <conditions>
+        <event_object_signalled object="this.assignedcontrolled" param="'TM_Empire_StopOwnedOrder'" />
+        <check_value value="event.param2 == @global.$TM_EmpireComponentRecords.$claim.{this.assignedcontrolled}.$manager" />
+      </conditions>
+      <actions>
+        <abort_called_scripts resume="finish" />
+      </actions>
+    </handler>
+    <handler comment="Release the private order when the player takes the helm">
+      <conditions>
+        <event_player_started_control />
+        <check_value value="event.param == this.assignedcontrolled" />
+      </conditions>
+      <actions>
+        <abort_called_scripts resume="finish" />
+      </actions>
+    </handler>
+    <handler comment="Release private deployment after ownership changes">
+      <conditions>
+        <check_any>
+          <event_object_changed_owner object="this.assignedcontrolled" />
+          <event_object_changed_true_owner object="this.assignedcontrolled" />
+        </check_any>
+      </conditions>
+      <actions>
+        <abort_called_scripts resume="finish" />
+      </actions>
+    </handler>
+  </interrupts>
+  <init>
+    <do_if value="not $destination">
+      <debug_text text="'No input destination.'" filter="error" />
+      <return />
+    </do_if>
+    <do_elseif value="not $destination.{1}">
+      <debug_text text="'No input destination space.'" filter="error" />
+      <return />
+    </do_elseif>
+    <do_elseif value="not $destination.{2}">
+      <debug_text text="'No input destination position.'" filter="error" />
+      <return />
+    </do_elseif>
+    <do_elseif value="not $destination.{1}.isclass.sector">
+      <do_if value="$destination.{1}.isclass.highway">
+        <debug_text text="'Input destination is in a highway.'" filter="error" />
+        <return />
+      </do_if>
+      <debug_text text="'Input position is relative to %1. Should be relative to a sector. Trying anyway.'.[$destination.{1}.class]" filter="error" />
+    </do_elseif>
+    <set_value name="$targetsector" exact="$destination.{1}" />
+    <set_value name="$pos" exact="$destination.{2}" />
+    <set_value name="$numtodeploy_total" exact="0" />
+    <set_value name="$numdeployed" exact="0" />
+    <set_value name="$minetypeamounts" exact="table[]" />
+    <set_value name="$navbeacontypeamounts" exact="table[]" />
+    <set_value name="$resourceprobetypeamounts" exact="table[]" />
+    <set_value name="$satellitetypeamounts" exact="table[]" />
+    <set_value name="$lasertowertypeamounts" exact="table[]" />
+    <do_all exact="$objectstodeploy.count" counter="$i" reverse="true">
+      <do_if value="typeof $objectstodeploy.{$i} == datatype.macro">
+        <do_if value="($objectstodeploy.{$i}.class != class.mine) and ($objectstodeploy.{$i}.class != class.navbeacon) and ($objectstodeploy.{$i}.class != class.resourceprobe) and ($objectstodeploy.{$i}.class != class.satellite) and ($objectstodeploy.{$i}.deployablecategory != deployablecategory.lasertower)">
+          <debug_text text="'object designated for deployment is of unsupported class: %s, supported are satellite, mine, navbeacon, resourceprobe, and lasertower.'.[$objectstodeploy.{$i}.class]" />
+          <remove_value name="$objectstodeploy.{$i}" />
+        </do_if>
+        <do_else>
+          <set_value name="$amount" exact="1" />
+          <do_if value="@$amountstodeploy.{$i} ge 0">
+            <set_value name="$amount" exact="$amountstodeploy.{$i}" />
+          </do_if>
+          <set_value name="$numtodeploy_total" exact="$numtodeploy_total + $amount" />
+          <debug_text text="'adding 1 %s'.[$objectstodeploy.{$i}]" chance="$debugchance" />
+          <do_if value="$objectstodeploy.{$i}.isclass.mine">
+            <set_value name="$minetypeamounts.{$objectstodeploy.{$i}}" exact="@$minetypeamounts.{$objectstodeploy.{$i}} + $amount" />
+          </do_if>
+          <do_elseif value="$objectstodeploy.{$i}.isclass.navbeacon">
+            <set_value name="$navbeacontypeamounts.{$objectstodeploy.{$i}}" exact="@$navbeacontypeamounts.{$objectstodeploy.{$i}} + $amount" />
+          </do_elseif>
+          <do_elseif value="$objectstodeploy.{$i}.isclass.resourceprobe">
+            <set_value name="$resourceprobetypeamounts.{$objectstodeploy.{$i}}" exact="@$resourceprobetypeamounts.{$objectstodeploy.{$i}} + $amount" />
+          </do_elseif>
+          <do_elseif value="$objectstodeploy.{$i}.isclass.satellite">
+            <set_value name="$satellitetypeamounts.{$objectstodeploy.{$i}}" exact="@$satellitetypeamounts.{$objectstodeploy.{$i}} + $amount" />
+          </do_elseif>
+          <do_elseif value="$objectstodeploy.{$i}.islasertower">
+            <set_value name="$lasertowertypeamounts.{$objectstodeploy.{$i}}" exact="@$lasertowertypeamounts.{$objectstodeploy.{$i}} + $amount" />
+          </do_elseif>
+          <remove_value name="$amount" />
+        </do_else>
+      </do_if>
+      <do_else>
+        <debug_text text="'objectstodeploy %s is not a macro. skipping.'.[$i]" filter="error" />
+        <remove_value name="$objectstodeploy.{$i}" />
+      </do_else>
+    </do_all>
+    <do_if value="not $objectstodeploy.count">
+      <debug_text text="'No objects designated for deployment. exiting script.'" filter="error" />
+      <return />
+    </do_if>
+    <do_all exact="$minetypeamounts.keys.count" counter="$i" reverse="true">
+      <do_if value="($minetypeamounts.{$minetypeamounts.keys.{$i}} gt 1) and not $minetypeamounts.keys.{$i}.isfriendfoe">
+        <debug_text text="'Ship was ordered to deploy %s non-frined/foe mines. Capping to 1.'.[$minetypeamounts.{$minetypeamounts.keys.{$i}}, $minetypeamounts.keys.{$i}]" filter="error" />
+        <set_value name="$numtodeploy_total" exact="[$numtodeploy_total - $minetypeamounts.{$minetypeamounts.keys.{$i}} + 1, 0].max" />
+        <set_value name="$minetypeamounts.{$minetypeamounts.keys.{$i}}" exact="1" />
+      </do_if>
+      <do_if value="this.assignedcontrolled.ammostorage.{$minetypeamounts.keys.{$i}}.count lt $minetypeamounts.{$minetypeamounts.keys.{$i}}">
+        <do_if value="this.assignedcontrolled.ammostorage.{$minetypeamounts.keys.{$i}}.count lt 1">
+          <debug_text text="'Ship was ordered to deploy %s mines of macro %s but has none. Removing entry.'.[$minetypeamounts.{$minetypeamounts.keys.{$i}}, $minetypeamounts.keys.{$i}]" filter="error" />
+          <set_value name="$numtodeploy_total" exact="[$numtodeploy_total - $minetypeamounts.{$minetypeamounts.keys.{$i}}, 0].max" />
+          <remove_value name="$minetypeamounts.{$minetypeamounts.keys.{$i}}" />
+        </do_if>
+        <do_else>
+          <debug_text text="'Ship was ordered to deploy %s mines of macro %s but only has %s. Capping to stored number.'.[$minetypeamounts.{$minetypeamounts.keys.{$i}}, $minetypeamounts.keys.{$i}, this.assignedcontrolled.ammostorage.{$minetypeamounts.keys.{$i}}.count]" filter="error" />
+          <set_value name="$numtodeploy_total" exact="[$numtodeploy_total - $minetypeamounts.{$minetypeamounts.keys.{$i}} + this.assignedcontrolled.ammostorage.{$minetypeamounts.keys.{$i}}.count, 0].max" />
+          <set_value name="$minetypeamounts.{$minetypeamounts.keys.{$i}}" exact="this.assignedcontrolled.ammostorage.{$minetypeamounts.keys.{$i}}.count" />
+        </do_else>
+      </do_if>
+    </do_all>
+    <do_all exact="$navbeacontypeamounts.keys.count" counter="$i" reverse="true">
+      <do_if value="this.assignedcontrolled.ammostorage.{$navbeacontypeamounts.keys.{$i}}.count lt $navbeacontypeamounts.{$navbeacontypeamounts.keys.{$i}}">
+        <do_if value="this.assignedcontrolled.ammostorage.{$navbeacontypeamounts.keys.{$i}}.count lt 1">
+          <debug_text text="'Ship was ordered to deploy %s nav beacons of macro %s but has none. Removing entry.'.[$navbeacontypeamounts.{$navbeacontypeamounts.keys.{$i}}, $navbeacontypeamounts.keys.{$i}]" filter="error" />
+          <set_value name="$numtodeploy_total" exact="[$numtodeploy_total - $navbeacontypeamounts.{$navbeacontypeamounts.keys.{$i}}, 0].max" />
+          <remove_value name="$navbeacontypeamounts.{$navbeacontypeamounts.keys.{$i}}" />
+        </do_if>
+        <do_else>
+          <debug_text text="'Ship was ordered to deploy %s nav beacons of macro %s but only has %s. Capping to stored number.'.[$navbeacontypeamounts.{$navbeacontypeamounts.keys.{$i}}, $navbeacontypeamounts.keys.{$i}, this.assignedcontrolled.ammostorage.{$navbeacontypeamounts.keys.{$i}}.count]" filter="error" />
+          <set_value name="$numtodeploy_total" exact="[$numtodeploy_total - $navbeacontypeamounts.{$navbeacontypeamounts.keys.{$i}} + this.assignedcontrolled.ammostorage.{$navbeacontypeamounts.keys.{$i}}.count, 0].max" />
+          <set_value name="$navbeacontypeamounts.{$navbeacontypeamounts.keys.{$i}}" exact="this.assignedcontrolled.ammostorage.{$navbeacontypeamounts.keys.{$i}}.count" />
+        </do_else>
+      </do_if>
+    </do_all>
+    <do_all exact="$resourceprobetypeamounts.keys.count" counter="$i" reverse="true">
+      <do_if value="this.assignedcontrolled.ammostorage.{$resourceprobetypeamounts.keys.{$i}}.count lt $resourceprobetypeamounts.{$resourceprobetypeamounts.keys.{$i}}">
+        <do_if value="this.assignedcontrolled.ammostorage.{$resourceprobetypeamounts.keys.{$i}}.count lt 1">
+          <debug_text text="'Ship was ordered to deploy %s resource probes of macro %s but has none. Removing entry.'.[$resourceprobetypeamounts.{$resourceprobetypeamounts.keys.{$i}}, $resourceprobetypeamounts.keys.{$i}]" filter="error" />
+          <set_value name="$numtodeploy_total" exact="[$numtodeploy_total - $resourceprobetypeamounts.{$resourceprobetypeamounts.keys.{$i}}, 0].max" />
+          <remove_value name="$resourceprobetypeamounts.{$resourceprobetypeamounts.keys.{$i}}" />
+        </do_if>
+        <do_else>
+          <debug_text text="'Ship was ordered to deploy %s resource probes of macro %s but only has %s. Capping to stored number.'.[$resourceprobetypeamounts.{$resourceprobetypeamounts.keys.{$i}}, $resourceprobetypeamounts.keys.{$i}, this.assignedcontrolled.ammostorage.{$resourceprobetypeamounts.keys.{$i}}.count]" filter="error" />
+          <set_value name="$numtodeploy_total" exact="[$numtodeploy_total - $resourceprobetypeamounts.{$resourceprobetypeamounts.keys.{$i}} + this.assignedcontrolled.ammostorage.{$resourceprobetypeamounts.keys.{$i}}.count, 0].max" />
+          <set_value name="$resourceprobetypeamounts.{$resourceprobetypeamounts.keys.{$i}}" exact="this.assignedcontrolled.ammostorage.{$resourceprobetypeamounts.keys.{$i}}.count" />
+        </do_else>
+      </do_if>
+    </do_all>
+    <do_all exact="$satellitetypeamounts.keys.count" counter="$i" reverse="true">
+      <do_if value="this.assignedcontrolled.ammostorage.{$satellitetypeamounts.keys.{$i}}.count lt $satellitetypeamounts.{$satellitetypeamounts.keys.{$i}}">
+        <do_if value="this.assignedcontrolled.ammostorage.{$satellitetypeamounts.keys.{$i}}.count lt 1">
+          <debug_text text="'Ship was ordered to deploy %s satellites of macro %s but has none. Removing entry.'.[$satellitetypeamounts.{$satellitetypeamounts.keys.{$i}}, $satellitetypeamounts.keys.{$i}]" filter="error" />
+          <set_value name="$numtodeploy_total" exact="[$numtodeploy_total - $satellitetypeamounts.{$satellitetypeamounts.keys.{$i}}, 0].max" />
+          <remove_value name="$satellitetypeamounts.{$satellitetypeamounts.keys.{$i}}" />
+        </do_if>
+        <do_else>
+          <debug_text text="'Ship was ordered to deploy %s satellites of macro %s but only has %s. Capping to stored number.'.[$satellitetypeamounts.{$satellitetypeamounts.keys.{$i}}, $satellitetypeamounts.keys.{$i}, this.assignedcontrolled.ammostorage.{$satellitetypeamounts.keys.{$i}}.count]" filter="error" />
+          <set_value name="$numtodeploy_total" exact="[$numtodeploy_total - $satellitetypeamounts.{$satellitetypeamounts.keys.{$i}} + this.assignedcontrolled.ammostorage.{$satellitetypeamounts.keys.{$i}}.count, 0].max" />
+          <set_value name="$satellitetypeamounts.{$satellitetypeamounts.keys.{$i}}" exact="this.assignedcontrolled.ammostorage.{$satellitetypeamounts.keys.{$i}}.count" />
+        </do_else>
+      </do_if>
+    </do_all>
+    <do_all exact="$lasertowertypeamounts.keys.count" counter="$i" reverse="true">
+      <do_if value="this.assignedcontrolled.ammostorage.{$lasertowertypeamounts.keys.{$i}}.count lt $lasertowertypeamounts.{$lasertowertypeamounts.keys.{$i}}">
+        <do_if value="this.assignedcontrolled.ammostorage.{$lasertowertypeamounts.keys.{$i}}.count lt 1">
+          <debug_text text="'Ship was ordered to deploy %s laser towers of macro %s but has none. Removing entry.'.[$lasertowertypeamounts.{$lasertowertypeamounts.keys.{$i}}, $lasertowertypeamounts.keys.{$i}]" filter="error" />
+          <set_value name="$numtodeploy_total" exact="[$numtodeploy_total - $lasertowertypeamounts.{$lasertowertypeamounts.keys.{$i}}, 0].max" />
+          <remove_value name="$lasertowertypeamounts.{$lasertowertypeamounts.keys.{$i}}" />
+        </do_if>
+        <do_else>
+          <debug_text text="'Ship was ordered to deploy %s laser towers of macro %s but only has %s. Capping to stored number.'.[$lasertowertypeamounts.{$lasertowertypeamounts.keys.{$i}}, $lasertowertypeamounts.keys.{$i}, this.assignedcontrolled.ammostorage.{$lasertowertypeamounts.keys.{$i}}.count]" filter="error" />
+          <set_value name="$numtodeploy_total" exact="[$numtodeploy_total - $lasertowertypeamounts.{$lasertowertypeamounts.keys.{$i}} + this.assignedcontrolled.ammostorage.{$lasertowertypeamounts.keys.{$i}}.count, 0].max" />
+          <set_value name="$lasertowertypeamounts.{$lasertowertypeamounts.keys.{$i}}" exact="this.assignedcontrolled.ammostorage.{$lasertowertypeamounts.keys.{$i}}.count" />
+        </do_else>
+      </do_if>
+    </do_all>
+    <set_value name="$radius" exact="this.assignedcontrolled.size" />
+    <do_if value="$numtodeploy_total">
+      <set_value name="$radius" exact="[(((3 * (this.assignedcontrolled.size^3) * $numtodeploy_total) / (4 * pi)m) ^ (1/3.0))m, this.assignedcontrolled.size].max" />
+      <debug_text text="'radius: %sm, size: %sm, numtodeploy: %s'.[$radius, this.assignedcontrolled.size, $numtodeploy_total]" chance="$debugchance" />
+    </do_if>
+  </init>
+  <patch sinceversion="3">
+    <set_value name="$numtodeploy_total" exact="0" />
+    <set_value name="$numdeployed" exact="0" />
+    <set_value name="$_typeamounttables" exact="[$minetypeamounts, $navbeacontypeamounts, $resourceprobetypeamounts, $satellitetypeamounts, $lasertowertypeamounts]" />
+    <do_for_each name="$_table" in="$_typeamounttables">
+      <do_for_each name="$_macro" valuename="$_num" in="$_table">
+        <set_value name="$numtodeploy_total" exact="$numtodeploy_total + $_num" />
+        <debug_text text="'PATCH: registering %s %s'.[$_num, $_macro]" filter="savegame" />
+      </do_for_each>
+    </do_for_each>
+    <remove_value name="$_typeamounttables" />
+  </patch>
+  <patch sinceversion="5">
+    <set_value name="$thisorder" exact="this.assignedcontrolled.order" />
+  </patch>
+  <attention min="unknown">
+    <actions>
+      <set_value name="$thisorder" exact="this.assignedcontrolled.order" />
+      <do_if value="not $minetypeamounts.keys.count and not $navbeacontypeamounts.keys.count and not $resourceprobetypeamounts.keys.count and not $satellitetypeamounts.keys.count and not $lasertowertypeamounts.keys.count">
+        <do_if value="this.assignedcontrolled.isplayerowned and this.shouldwarnplayer and notification.npc_order_not_complete.active">
+          <do_if value="not (this.assignedcontrolled.isplayerowned and this.assignedcontrolled != player.controlled and @global.$TM_EmpireComponentRecords.$claim.{this.assignedcontrolled}.$manager.exists and @global.$TM_EmpireComponentRecords.$claim.{this.assignedcontrolled}.$goal.exists and @global.$TM_EmpireAIState.$state == 'active' and @global.$TM_EmpireComponentRecords.$claim.{this.assignedcontrolled}.$manager == @global.$TM_EmpireAIState.$manager and @global.$TM_EmpireComponentRecords.$claim.{this.assignedcontrolled}.$state != 'unknown' and not @global.$TM_EmpireComponentRecords.$claim.{this.assignedcontrolled}.$stoprequested)">
+            <resume label="finish" />
+          </do_if>
+          <run_script name="'player.interaction'">
+            <param name="Line" value="10303" comment="Last order could not be completed." />
+            <param name="MaxQueueDelay" value="10s" />
+            <param name="caption" value="{1016,6}.[this.assignedcontrolled.knownname, this.assignedcontrolled.idcode]" />
+            <param name="interactive" value="false" />
+            <param name="debugchance" value="$debugchance" />
+          </run_script>
+        </do_if>
+        <debug_text text="'No satellites, mines, nav beacons, resource probes, or laser towers designated or available for deployment.'" filter="error" />
+        <resume label="finish" />
+      </do_if>
+      <label name="start" />
+      <do_if value="@$reservedspace.$zone">
+        <cancel_space_reservation component="this.assignedcontrolled" index="$reservedspace.$index" zone="$reservedspace.$zone" />
+      </do_if>
+      <do_else>
+        <set_value name="$reservedspace" exact="table[ $duration = param.spacereservation.maxduration, $radius = this.assignedcontrolled.safesize ]" />
+      </do_else>
+      <do_if value="$numdeployed">
+        <do_if value="($numdeployed / ([$numtodeploy_total, 1].max)f) lt 0.1">
+          <get_safe_pos result="$sectorsafepos" sector="$targetsector" value="$pos" radius="$reservedspace.$radius" min="this.assignedcontrolled.size" max="$radius" profile="decreasing" />
+        </do_if>
+        <do_else>
+          <get_safe_pos result="$sectorsafepos" sector="$targetsector" value="$pos" radius="$reservedspace.$radius" min="$radius / 2m" max="$radius" profile="increasing" />
+        </do_else>
+        <debug_text text="'next position %sm away from center.'.[$pos.distanceto.{$sectorsafepos}]" chance="$debugchance" />
+      </do_if>
+      <do_else>
+        <get_safe_pos result="$sectorsafepos" sector="$targetsector" value="$pos" radius="$reservedspace.$radius" ignored="this.assignedcontrolled" />
+      </do_else>
+      <debug_text text="'%s %s moving to %s relative to %s %s %s.'.[this.assignedcontrolled.knownname, this.assignedcontrolled, $sectorsafepos, $targetsector.class, $targetsector.knownname, $targetsector]" chance="$debugchance" />
+      <do_if value="not $numdeployed or (this.sector != $targetsector)">
+        <set_command command="command.movetozone" param="$targetsector" />
+        <do_if value="not (this.assignedcontrolled.isplayerowned and this.assignedcontrolled != player.controlled and @global.$TM_EmpireComponentRecords.$claim.{this.assignedcontrolled}.$manager.exists and @global.$TM_EmpireComponentRecords.$claim.{this.assignedcontrolled}.$goal.exists and @global.$TM_EmpireAIState.$state == 'active' and @global.$TM_EmpireComponentRecords.$claim.{this.assignedcontrolled}.$manager == @global.$TM_EmpireAIState.$manager and @global.$TM_EmpireComponentRecords.$claim.{this.assignedcontrolled}.$state != 'unknown' and not @global.$TM_EmpireComponentRecords.$claim.{this.assignedcontrolled}.$stoprequested)">
+          <resume label="finish" />
+        </do_if>
+        <run_script name="'move.generic'" result="$movesuccess">
+          <param name="destination" value="$targetsector" />
+          <param name="position" value="$sectorsafepos" />
+          <param name="debugchance" value="$debugchance" />
+        </run_script>
+        <do_if value="not $movesuccess">
+          <do_if value="$thisorder.isrunning">
+            <set_order_failed order="$thisorder" text="{1045, 101}" comment="Unable to reach destination." />
+          </do_if>
+          <debug_text text="'Unable to reach destination. Aborting.'" chance="$debugchance" />
+          <resume label="finish" />
+        </do_if>
+      </do_if>
+      <do_else>
+        <reserve_space space="$targetsector" component="this.assignedcontrolled" duration="$reservedspace.$duration" index="$reservedspace.$index" safezone="$reservedspace.$zone" radius="$reservedspace.$radius">
+          <position value="$sectorsafepos" />
+          <orientation orientation="look_away" refobject="this.assignedcontrolled" />
+        </reserve_space>
+        <debug_text text="'reserved'" chance="@global.$spacereservationspam * 100" />
+        <move_to endzone="$endzone" destination="$targetsector" object="this.assignedcontrolled" forcesteering="true" sinceversion="3">
+          <position value="$sectorsafepos" />
+        </move_to>
+        <set_to_default_flight_control_model object="this.assignedcontrolled" />
+        <do_if value="not $endzone">
+          <wait min="2s" max="3s" sinceversion="3" />
+          <debug_text text="'movement to next position failed. getting new position.'" chance="$debugchance" />
+          <resume label="start" />
+        </do_if>
+        <remove_value name="$endzone" />
+      </do_else>
+      <do_if value="not $numdeployed and (this.assignedcontrolled.distanceto.[$targetsector, $sectorsafepos] gt (1km + this.assignedcontrolled.size / 2))">
+        <wait min="2s" max="5s" />
+        <debug_text text="'more than 1km away from position (%sm). looping back to move again.'.[this.assignedcontrolled.distanceto.[$targetsector, $pos]]" chance="$debugchance" />
+        <resume label="start" />
+      </do_if>
+      <label name="deploy" />
+      <set_avoid_collisions object="this.assignedcontrolled" bigobjects="true" smallobjects="true" />
+      <stop_moving object="this.assignedcontrolled" />
+      <debug_text text="'deploying.'" chance="$debugchance" />
+      <do_if value="this.assignedcontrolled.speed">
+        <wait exact="1s" sinceversion="2" />
+      </do_if>
+      <do_if value="false">
+        <do_all exact="$minetypeamounts.keys.count" counter="$i" chance="0">
+          <do_all exact="$minetypeamounts.{$minetypeamounts.keys.{$i}}">
+            <wait exact="1ms" sinceversion="1" />
+            <break />
+          </do_all>
+          <break />
+        </do_all>
+        <do_all exact="$navbeacontypeamounts.keys.count" counter="$i" chance="0">
+          <do_all exact="$navbeacontypeamounts.{$navbeacontypeamounts.keys.{$i}}">
+            <wait exact="1ms" sinceversion="1" />
+            <break />
+          </do_all>
+        </do_all>
+        <do_all exact="$resourceprobetypeamounts.keys.count" counter="$i" chance="0">
+          <do_all exact="$resourceprobetypeamounts.{$resourceprobetypeamounts.keys.{$i}}">
+            <wait exact="1ms" sinceversion="1" />
+            <break />
+          </do_all>
+          <break />
+        </do_all>
+        <do_all exact="$satellitetypeamounts.keys.count" counter="$i" chance="0">
+          <do_all exact="$satellitetypeamounts.{$satellitetypeamounts.keys.{$i}}">
+            <wait exact="1ms" sinceversion="1" />
+            <break />
+          </do_all>
+          <break />
+        </do_all>
+        <do_all exact="$lasertowertypeamounts.keys.count" counter="$i" chance="0">
+          <do_all exact="$lasertowertypeamounts.{$lasertowertypeamounts.keys.{$i}}">
+            <wait exact="1ms" sinceversion="1" />
+            <break />
+          </do_all>
+          <break />
+        </do_all>
+      </do_if>
+      <do_if value="not this.assignedcontrolled.zone.isclass.highway">
+        <do_if value="$numdeployed lt $numtodeploy_total">
+          <do_if value="$satellitetypeamounts.keys.count">
+            <do_for_each name="$macro" valuename="$num" in="$satellitetypeamounts">
+              <do_if value="$num">
+                <do_if value="this.assignedcontrolled.ammostorage.{$macro}.count">
+                  <set_value name="$satellitetypeamounts.{$macro}" exact="$satellitetypeamounts.{$macro} - 1" />
+                  <set_value name="$numdeployed" exact="$numdeployed + 1" />
+                  <do_if value="not (this.assignedcontrolled.isplayerowned and this.assignedcontrolled != player.controlled and @global.$TM_EmpireComponentRecords.$claim.{this.assignedcontrolled}.$manager.exists and @global.$TM_EmpireComponentRecords.$claim.{this.assignedcontrolled}.$goal.exists and @global.$TM_EmpireAIState.$state == 'active' and @global.$TM_EmpireComponentRecords.$claim.{this.assignedcontrolled}.$manager == @global.$TM_EmpireAIState.$manager and @global.$TM_EmpireComponentRecords.$claim.{this.assignedcontrolled}.$state != 'unknown' and not @global.$TM_EmpireComponentRecords.$claim.{this.assignedcontrolled}.$stoprequested)">
+                    <resume label="finish" />
+                  </do_if>
+                  <set_value name="global.$TM_EmpireComponentRecords.$satellite_receipt.{this.assignedcontrolled}" exact="table[$state='deployment_sent', $manager=global.$TM_EmpireComponentRecords.$claim.{this.assignedcontrolled}.$manager, $goal=global.$TM_EmpireComponentRecords.$claim.{this.assignedcontrolled}.$goal, $order=$thisorder, $macro=$macro, $before=this.assignedcontrolled.ammostorage.{$macro}.count, $issued=player.age]" />
+                  <launch_satellite object="this.assignedcontrolled" macro="$macro" name="$TM_DeployedSatellite" />
+                  <do_if value="$TM_DeployedSatellite.exists and $TM_DeployedSatellite.isplayerowned and $TM_DeployedSatellite.macro == $macro and this.assignedcontrolled.ammostorage.{$macro}.count == global.$TM_EmpireComponentRecords.$satellite_receipt.{this.assignedcontrolled}.$before - 1">
+                    <set_value name="global.$TM_EmpireComponentRecords.$satellite_receipt.{this.assignedcontrolled}.$state" exact="'observed'" />
+                    <set_value name="global.$TM_EmpireComponentRecords.$satellite_receipt.{this.assignedcontrolled}.$satellite" exact="$TM_DeployedSatellite" />
+                  </do_if>
+                </do_if>
+                <do_else>
+                  <set_value name="$numtodeploy_total" exact="[$numtodeploy_total - $num, 0].max" />
+                  <set_value name="$satellitetypeamounts.{$macro}" exact="0" />
+                </do_else>
+                <set_value name="$amountstodeploy.{$objectstodeploy.indexof.{$macro}}" exact="$satellitetypeamounts.{$macro}" />
+                <do_if value="$numdeployed lt $numtodeploy_total">
+                  <wait exact="7s" sinceversion="4" />
+                </do_if>
+                <break />
+              </do_if>
+            </do_for_each>
+          </do_if>
+          <do_elseif value="$resourceprobetypeamounts.keys.count">
+            <do_for_each name="$macro" valuename="$num" in="$resourceprobetypeamounts">
+              <do_if value="$num">
+                <do_if value="this.assignedcontrolled.ammostorage.{$macro}.count">
+                  <set_value name="$resourceprobetypeamounts.{$macro}" exact="$resourceprobetypeamounts.{$macro} - 1" />
+                  <set_value name="$numdeployed" exact="$numdeployed + 1" />
+                  <do_if value="not (this.assignedcontrolled.isplayerowned and this.assignedcontrolled != player.controlled and @global.$TM_EmpireComponentRecords.$claim.{this.assignedcontrolled}.$manager.exists and @global.$TM_EmpireComponentRecords.$claim.{this.assignedcontrolled}.$goal.exists and @global.$TM_EmpireAIState.$state == 'active' and @global.$TM_EmpireComponentRecords.$claim.{this.assignedcontrolled}.$manager == @global.$TM_EmpireAIState.$manager and @global.$TM_EmpireComponentRecords.$claim.{this.assignedcontrolled}.$state != 'unknown' and not @global.$TM_EmpireComponentRecords.$claim.{this.assignedcontrolled}.$stoprequested)">
+                    <resume label="finish" />
+                  </do_if>
+                  <launch_resourceprobe object="this.assignedcontrolled" macro="$macro" />
+                </do_if>
+                <do_else>
+                  <set_value name="$numtodeploy_total" exact="[$numtodeploy_total - $num, 0].max" />
+                  <set_value name="$resourceprobetypeamounts.{$macro}" exact="0" />
+                </do_else>
+                <set_value name="$amountstodeploy.{$objectstodeploy.indexof.{$macro}}" exact="$resourceprobetypeamounts.{$macro}" />
+                <do_if value="$numdeployed lt $numtodeploy_total">
+                  <wait exact="7s" sinceversion="4" />
+                </do_if>
+                <break />
+              </do_if>
+            </do_for_each>
+          </do_elseif>
+          <do_elseif value="$navbeacontypeamounts.keys.count">
+            <do_for_each name="$macro" valuename="$num" in="$navbeacontypeamounts">
+              <do_if value="$num">
+                <do_if value="this.assignedcontrolled.ammostorage.{$macro}.count">
+                  <set_value name="$navbeacontypeamounts.{$macro}" exact="$navbeacontypeamounts.{$macro} - 1" />
+                  <set_value name="$numdeployed" exact="$numdeployed + 1" />
+                  <do_if value="not (this.assignedcontrolled.isplayerowned and this.assignedcontrolled != player.controlled and @global.$TM_EmpireComponentRecords.$claim.{this.assignedcontrolled}.$manager.exists and @global.$TM_EmpireComponentRecords.$claim.{this.assignedcontrolled}.$goal.exists and @global.$TM_EmpireAIState.$state == 'active' and @global.$TM_EmpireComponentRecords.$claim.{this.assignedcontrolled}.$manager == @global.$TM_EmpireAIState.$manager and @global.$TM_EmpireComponentRecords.$claim.{this.assignedcontrolled}.$state != 'unknown' and not @global.$TM_EmpireComponentRecords.$claim.{this.assignedcontrolled}.$stoprequested)">
+                    <resume label="finish" />
+                  </do_if>
+                  <launch_navbeacon object="this.assignedcontrolled" macro="$macro" />
+                </do_if>
+                <do_else>
+                  <set_value name="$numtodeploy_total" exact="[$numtodeploy_total - $num, 0].max" />
+                  <set_value name="$navbeacontypeamounts.{$macro}" exact="0" />
+                </do_else>
+                <set_value name="$amountstodeploy.{$objectstodeploy.indexof.{$macro}}" exact="$navbeacontypeamounts.{$macro}" />
+                <do_if value="$numdeployed lt $numtodeploy_total">
+                  <wait exact="7s" sinceversion="4" />
+                </do_if>
+                <break />
+              </do_if>
+            </do_for_each>
+          </do_elseif>
+          <do_elseif value="$lasertowertypeamounts.keys.count">
+            <do_for_each name="$macro" valuename="$num" in="$lasertowertypeamounts">
+              <do_if value="$num">
+                <do_if value="this.assignedcontrolled.ammostorage.{$macro}.count">
+                  <set_value name="$lasertowertypeamounts.{$macro}" exact="$lasertowertypeamounts.{$macro} - 1" />
+                  <set_value name="$numdeployed" exact="$numdeployed + 1" />
+                  <do_if value="not (this.assignedcontrolled.isplayerowned and this.assignedcontrolled != player.controlled and @global.$TM_EmpireComponentRecords.$claim.{this.assignedcontrolled}.$manager.exists and @global.$TM_EmpireComponentRecords.$claim.{this.assignedcontrolled}.$goal.exists and @global.$TM_EmpireAIState.$state == 'active' and @global.$TM_EmpireComponentRecords.$claim.{this.assignedcontrolled}.$manager == @global.$TM_EmpireAIState.$manager and @global.$TM_EmpireComponentRecords.$claim.{this.assignedcontrolled}.$state != 'unknown' and not @global.$TM_EmpireComponentRecords.$claim.{this.assignedcontrolled}.$stoprequested)">
+                    <resume label="finish" />
+                  </do_if>
+                  <launch_lasertower name="$lasertower" object="this.assignedcontrolled" macro="$macro" />
+                  <create_order object="$lasertower" id="'Lasertower'" default="true" />
+                  <remove_value name="$lasertower" />
+                </do_if>
+                <do_else>
+                  <set_value name="$numtodeploy_total" exact="[$numtodeploy_total - $num, 0].max" />
+                  <set_value name="$lasertowertypeamounts.{$macro}" exact="0" />
+                </do_else>
+                <set_value name="$amountstodeploy.{$objectstodeploy.indexof.{$macro}}" exact="$lasertowertypeamounts.{$macro}" />
+                <do_if value="$numdeployed lt $numtodeploy_total">
+                  <wait exact="7s" sinceversion="4" />
+                </do_if>
+                <break />
+              </do_if>
+            </do_for_each>
+          </do_elseif>
+          <do_elseif value="$minetypeamounts.keys.count">
+            <do_for_each name="$macro" valuename="$num" in="$minetypeamounts">
+              <do_if value="$num">
+                <do_if value="this.assignedcontrolled.ammostorage.{$macro}.count">
+                  <set_value name="$minetypeamounts.{$macro}" exact="$minetypeamounts.{$macro} - 1" />
+                  <set_value name="$numdeployed" exact="$numdeployed + 1" />
+                  <do_if value="not (this.assignedcontrolled.isplayerowned and this.assignedcontrolled != player.controlled and @global.$TM_EmpireComponentRecords.$claim.{this.assignedcontrolled}.$manager.exists and @global.$TM_EmpireComponentRecords.$claim.{this.assignedcontrolled}.$goal.exists and @global.$TM_EmpireAIState.$state == 'active' and @global.$TM_EmpireComponentRecords.$claim.{this.assignedcontrolled}.$manager == @global.$TM_EmpireAIState.$manager and @global.$TM_EmpireComponentRecords.$claim.{this.assignedcontrolled}.$state != 'unknown' and not @global.$TM_EmpireComponentRecords.$claim.{this.assignedcontrolled}.$stoprequested)">
+                    <resume label="finish" />
+                  </do_if>
+                  <launch_mine object="this.assignedcontrolled" macro="$macro" />
+                </do_if>
+                <do_else>
+                  <set_value name="$numtodeploy_total" exact="[$numtodeploy_total - $num, 0].max" />
+                  <set_value name="$minetypeamounts.{$macro}" exact="0" />
+                </do_else>
+                <set_value name="$amountstodeploy.{$objectstodeploy.indexof.{$macro}}" exact="$minetypeamounts.{$macro}" />
+                <do_if value="$numdeployed lt $numtodeploy_total">
+                  <wait exact="7s" sinceversion="4" />
+                </do_if>
+                <break />
+              </do_if>
+            </do_for_each>
+          </do_elseif>
+          <do_if value="$numdeployed lt $numtodeploy_total">
+            <debug_text text="'%s still to deploy. getting next position.'.[$numtodeploy_total - $numdeployed]" chance="$debugchance" />
+            <resume label="start" />
+          </do_if>
+        </do_if>
+      </do_if>
+      <do_else>
+        <debug_text text="'%s %s %s attempted to launch deployables while in a highway. not deploying deployables. destination 1: %s %s %s, destination 2: %s'.[this.assignedcontrolled.idcode, this.assignedcontrolled.knownname, this.assignedcontrolled, @$destination.{1}.class, @$destination.{1}.knownname, @$destination.{1}, @$destination.{2}]" filter="error" />
+      </do_else>
+      <label name="finish" />
+      <do_if value="@$reservedspace.$zone">
+        <cancel_space_reservation component="this.assignedcontrolled" zone="$reservedspace.$zone" index="$reservedspace.$index" />
+      </do_if>
+      <reset_avoid_collisions object="this.assignedcontrolled" />
+    </actions>
+  </attention>
+  <on_abort>
+    <do_if value="this.assignedcontrolled.isoperational">
+      <do_if value="$thisorder.exists and $thisorder.$amountstodeploy?">
+        <edit_order_param order="$thisorder" param="'amountstodeploy'" value="$amountstodeploy" />
+      </do_if>
+      <do_if value="@$reservedspace.$zone">
+        <cancel_space_reservation component="this.assignedcontrolled" zone="$reservedspace.$zone" index="$reservedspace.$index" />
+      </do_if>
+      <reset_avoid_collisions object="this.assignedcontrolled" />
+      <stop_moving object="this.assignedcontrolled" />
+      <stop_boost object="this.assignedcontrolled" />
+    </do_if>
+  </on_abort>
+</aiscript>

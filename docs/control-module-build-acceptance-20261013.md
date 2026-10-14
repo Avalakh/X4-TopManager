@@ -1,0 +1,15 @@
+# Обычное строительство управляющего модуля — 3.4
+
+Подтверждена новая стройка, а не наличие старого демонстрационного модуля. Первичные данные: control-construction-short-20261013.json, control-construction-prepared-20261013.json, control-completion-checkpoint027-20261013.json, save026-control-checkpoint-20261013.json и save027-control-checkpoint-20261013.json в .cache/tmp/station-boundary-20261011.
+
+Verified save005 перед пробой содержит один готовый Control entry3. Штатный Econ_Manager/native generate construction sequence создаёт expansion construction1_393644.616, четыре entries. Без чертежа RequestPlanValidation остаётся waiting_blueprints/required_blueprints_missing; build/funding/builder не появляются, независимые покупки продолжаются. Это живой отрицательный сценарий предпосылки.
+
+construction_blueprint_prepare диагностически предоставляет чертёж, не покупает его и не списывает деньги. Проверка обычного лицензированного приобретения чертежа остаётся в прежних принятых свидетельствах. Та же Request становится blueprints_observed→consumed, native add_build_to_expand_station создаёт build0xa9e2 для HQ XZS-342. Настоящий processor показывает новый component0x1aa05c/macro tm_empire_control_arg_macro. Native потребности материалов подготовлены construction_resources; это реальные ресурсы тестового мира, не свидетельство платной закупки. Никакие elapsed/deployed/finished не выставлялись.
+
+Штатный управляющий сам нанял NPC builder0x48c99: builder_hire1_393927.881, fee/paid50000Cr. domain_builder_position лишь ускорил подготовку перелёта через native building position/repath того же уже оплаченного корабля. Actual deployment observed393942.883; процесс0→271.644→378.602/540s. Короткий SETA завершён factor1/ended без сохранения временного предмета.
+
+После независимого аудита read394566.646: exact expansion key/build observed/native_expansion_modules_observed at394513.765; processor buildnull/building0. Native SaveGame027 принят в свободный слот. Stable/gzipCRC PASS, SHA fdd80f8ee67f068db6a87a1ca1bd23fe5f04c5ba5383b579c96fe4bdb5c83e96. В027 оба Control готовые, новый entry4/0x83a0 и новый component0x1aa05c не имеют stateconstruction; в026 тот же новый компонент был stateconstruction. Исходный005 и предыдущие025/026 не перезаписаны.
+
+Приёмка3.4 также опирается на уже проверенные обычные native creation/plot/funding/blueprint/builder границы новой factory: construction-financial-readback-20261012.md, construction-revoked-funding-20261012.md, ship-purchase/financial guards и runtime handoff/save-load. Source closure исключает create_god_station и NPC бесплатное завершение; новый модуль выполнен обычной native строительной очередью. Это закрывает доступный строительный путь и отсутствие предпосылки, без выдачи диагностической подготовки за платную логистику. Сквозной6.1 и финальный6.4/6.6 остаются открытыми.
+
+Ошибочное диагностическое чтение pseudo constructionplanentrydata в первой версии entry rows не использовано как свидетельство. Прямая связь нового macro доказана processor и CRC-проверенными сохранениями. Исправление самого чтения входит только в diagnostic i.

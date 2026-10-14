@@ -1,0 +1,1755 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mdscript xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" name="TM_Empire_FactionLogic" xsi:noNamespaceSchemaLocation="md.xsd">
+  <cues>
+    <cue name="FactionSignalled" instantiate="true">
+      <conditions>
+        <event_cue_signalled />
+      </conditions>
+    </cue>
+    <library name="Manager" namespace="this" version="1">
+      <params>
+        <param name="Faction" comment="The faction to be managed" />
+        <param name="ConsumedFactions" default="[]" comment="Inactive factions considered to be a part of $Faction. Used to take their old goals or economic actions into account with the new faction." />
+        <param name="BaseAggressionLevel" default="moodlevel.normal" comment="Base level the faction will normalize at" />
+        <param name="BaseAvariceLevel" default="moodlevel.normal" comment="Base level the faction will normalize at" />
+        <param name="BaseLawfulness" default="0.5" />
+        <param name="Volatility" default="0.5" comment="The strength of mood shifts" />
+        <param name="HasMissions" default="false" comment="Faction spawns missions" />
+        <param name="EconManagerActive" default="true" comment="Start the economy manager analysis as active" />
+        <param name="ExpeditionEnemies" default="[]" comment="List of factions to launch long distance expedition 'invasions' against" />
+        <param name="SatelliteNetworkGoal" default="20" />
+        <param name="LasertowerNetworkGoal" default="0" />
+        <param name="LasertowerGateChance" default="0" />
+        <param name="MinefieldGoalPerSector" default="0" comment="Note that this requires minelayer-jobs to be defined" />
+        <param name="PreferredHQSpaceMacro" default="null" comment="When specifying a PreferredHQ, either specify both PreferredHQSpaceMacro and PreferredHQTypes, or neither" />
+        <param name="PreferredHQTypes" default="[]" comment="List of types by priority. Can be a station macro or strings 'shipbuilding', 'equipmentdock', 'tradestation', 'defencestation', 'piratebase' or 'any'" />
+        <param name="ExcludedSectorMacros" default="[]" comment="List of sector macros for this faction to attempt to ignore. Not an enforced rule for all game systems and the list may be edited through the game." />
+        <param name="EconomicallyExcludedSectorMacros" default="[]" comment="List of sector macros for this faction to ignore economically." />
+        <param name="PeriodicCallback" default="null" comment="callback cue" />
+        <param name="FleetEvolutionConditionLibrary" default="null" />
+        <param name="DebugChance" default="0" />
+        <param name="DebugChance2" default="0" />
+        <param name="Governor" />
+        <param name="GovernorStation" />
+        <param name="GovernorModule" />
+      </params>
+      <actions>
+        <set_value name="$TM_ManagerCue" exact="namespace" />
+        <do_if value="not md.$TM_EmpireFactionData?">
+          <set_value name="md.$TM_EmpireFactionData" exact="table[]" />
+        </do_if>
+        <do_if value="not md.$TM_EmpireFactionData.{$Faction}?">
+          <set_value name="md.$TM_EmpireFactionData.{$Faction}" exact="table[]" />
+        </do_if>
+        <set_value name="$Goals" exact="[]" />
+        <set_value name="$Crises" exact="[]" />
+        <set_value name="$Intel" exact="[]" />
+        <set_value name="$DistressCalls" exact="[]" />
+        <set_value name="$MilitaryStrengthList" exact="[]" />
+        <create_group groupname="$Shipyards" />
+        <create_group groupname="$FactionSatellites" />
+        <find_object name="$TM_ExistingSatellites" space="player.galaxy" owner="faction.player" multiple="true" known="true" class="class.satellite" />
+        <do_for_each name="$TM_Satellite" in="$TM_ExistingSatellites">
+          <do_if value="$TM_Satellite.exists and $TM_Satellite.isplayerowned and $TM_Satellite.isoperational">
+            <add_to_group groupname="$FactionSatellites" object="$TM_Satellite" />
+          </do_if>
+        </do_for_each>
+        <create_list name="$FactionMinefields" />
+        <create_list name="$FactionLasertowers" />
+        <create_group groupname="$PlayerLasertowers" comment="lasertowers from player-missions" />
+        <create_group groupname="$ClaimedSectors" />
+        <set_value name="$ExcludedSectors" exact="[]" />
+        <do_if value="$ExcludedSectorMacros.count">
+          <find_sector name="$ExcludedSectors" macro="$ExcludedSectorMacros" multiple="true" />
+        </do_if>
+        <set_value name="$EconomicallyExcludedSectors" exact="[]" />
+        <do_if value="$EconomicallyExcludedSectorMacros.count">
+          <find_sector name="$EconomicallyExcludedSectors" macro="$EconomicallyExcludedSectorMacros" multiple="true" />
+        </do_if>
+        <set_value name="$NextJobRedeployTime" exact="player.age + 1h" />
+        <create_group groupname="$PrefabExpandCandidates" comment="Prefab stations which are potentially suitable for expansion. Can be added from Factionlogic_Economy if the station has no major issues." />
+        <set_value name="$NextPrefabExpansionTime" min="player.age + 6h" max="player.age + 7h" />
+        <do_if value="not global.$TM_EmpireFactionManagers?">
+          <set_value name="global.$TM_EmpireFactionManagers" exact="table[]" />
+        </do_if>
+        <set_value name="global.$TM_EmpireFactionManagers.{$Faction}" exact="namespace" />
+        <debug_text text="$Faction + ' trying to register with the Patrol Coordination Service.'" chance="$DebugChance" />
+        <signal_cue_instantly cue="md.TM_Empire_FactionGoal_PatrolCoordinationService.Register_Factions" param="namespace" comment="'namespace' is the manager-cue" />
+        <signal_cue_instantly cue="md.TM_Empire_FactionGoal_Plunder.Register_Factions" param="namespace" />
+        <set_value name="md.TM_Empire_Runtime.Registry.$ManagerCue" exact="namespace" />
+        <run_actions ref="md.TM_Empire_Runtime.PublishAIState" />
+        <set_value name="md.TM_Empire_Runtime.Registry.$State" exact="'active'" />
+        <run_actions ref="md.TM_Empire_Runtime.PublishAIState" />
+        <remove_value name="md.TM_Empire_Runtime.Registry.$StopReason" />
+      </actions>
+      <cues>
+        <cue name="PATCH_ReregisterForPatrolCoordination" onfail="cancel">
+          <conditions>
+            <check_value value="@$DoPatchPatrolCoordination" />
+          </conditions>
+          <delay exact="1s" />
+          <actions>
+            <signal_cue_instantly cue="md.TM_Empire_FactionGoal_PatrolCoordinationService.Register_Factions" param="namespace" comment="'namespace' is the manager-cue" />
+            <remove_value name="$DoPatchPatrolCoordination" />
+          </actions>
+        </cue>
+        <cue name="Trigger_Report" instantiate="true" comment="Cue added here for convenience. Signal for faction report.">
+          <conditions>
+            <event_cue_signalled />
+          </conditions>
+          <actions>
+            <signal_cue_instantly cue="md.TM_Empire_FactionLogic.FactionSignalled" param="[$Faction, 'Generate Report']" />
+          </actions>
+        </cue>
+        <cue name="Econ_Manager" ref="md.TM_Empire_FactionLogic_Economy.Econ_Manager">
+          <param name="FactionManagerCue" value="Manager" />
+          <param name="Faction" value="$Faction" />
+          <param name="ConsumedFactions" value="$ConsumedFactions" />
+          <param name="DebugChance" value="$DebugChance" />
+        </cue>
+        <!-- Low-priority work for genuinely free player ships. Native goals keep
+             first choice; this cue never takes an unknown or player order. -->
+        <cue name="TM_IdleWorkGoal" namespace="this">
+          <actions><set_value name="parent.$tm_idle_goal" exact="namespace" /></actions>
+          <cues>
+            <cue name="TM_IdleWorkTick" checkinterval="20s">
+              <conditions><check_value value="parent.parent.exists" /></conditions>
+              <delay exact="20s" />
+              <actions>
+                <do_if value="md.TM_Empire_Runtime.Registry.$State == 'active' and md.TM_Empire_Runtime.Registry.$ManagerCue == parent.parent and parent.parent.$Faction == faction.player">
+                  <do_if value="not parent.$TM_IdleCandidates? or not @parent.$TM_IdleCursor or parent.$TM_IdleCursor gt parent.$TM_IdleCandidates.count">
+                    <find_ship_by_true_owner name="$TM_IdleCandidates" faction="faction.player" space="player.galaxy" unit="false" multiple="true" known="true" />
+                    <set_value name="parent.$TM_IdleCandidates" exact="$TM_IdleCandidates" />
+                    <set_value name="parent.$TM_IdleCursor" exact="1" />
+                  </do_if>
+                  <set_value name="$TM_IdleCandidates" exact="parent.$TM_IdleCandidates" />
+                  <set_value name="$TM_IdleSent" exact="0" />
+                  <do_all exact="[$TM_IdleCandidates.count, 24].min" counter="$TM_IdleIndex">
+                    <do_if value="parent.$TM_IdleCursor gt $TM_IdleCandidates.count"><break /></do_if>
+                    <set_value name="$TM_IdleShip" exact="$TM_IdleCandidates.{parent.$TM_IdleCursor}" />
+                    <set_value name="$TM_IdleOrder" exact="null" />
+                    <set_value name="parent.$TM_IdleCursor" operation="add" exact="1" />
+                    <do_if value="not $TM_IdleShip.exists or not $TM_IdleShip.isclass.ship or not $TM_IdleShip.isplayerowned"><continue /></do_if>
+                    <set_value name="$TM_IdleClaim" exact="@global.$TM_EmpireComponentRecords.$claim.{$TM_IdleShip}" />
+                    <do_if value="$TM_IdleClaim">
+                      <do_if value="@$TM_IdleClaim.$idlework and @$TM_IdleClaim.$goal == parent and @$TM_IdleClaim.$manager == parent.parent">
+                        <do_if value="player.age ge $TM_IdleClaim.$idlework_until or not $TM_IdleClaim.$idlework_sector.exists or ($TM_IdleShip.sector.exists and (($TM_IdleShip.sector != $TM_IdleClaim.$idlework_sector and $TM_IdleShip.sector != $TM_IdleClaim.$idlework_origin and $TM_IdleShip.sector.gatedistance.{$TM_IdleClaim.$idlework_sector} gt 0 and $TM_IdleShip.sector.gatedistance.{$TM_IdleClaim.$idlework_origin} gt 0) or not $TM_IdleShip.sector.isknown or $TM_IdleShip.sector.iscontested or $TM_IdleShip.sector.owner.hasrelation.enemy.{faction.player}))">
+                          <run_actions ref="md.TM_Empire_Runtime.StopAndReleaseOwnedShip" result="$TM_IdleStopReason">
+                            <param name="Ship" value="$TM_IdleShip" /><param name="ManagerCue" value="parent.parent" /><param name="GoalCue" value="parent" />
+                          </run_actions>
+                        </do_if>
+                        <do_elseif value="not $TM_IdleClaim.$orders.count or not $TM_IdleClaim.$orders.{1}.exists">
+                          <run_actions ref="md.TM_Empire_Runtime.ReleaseOwnedClaim" result="$TM_IdleReleaseReason">
+                            <param name="Ship" value="$TM_IdleShip" /><param name="GoalCue" value="parent" />
+                          </run_actions>
+                        </do_elseif>
+                      </do_if>
+                      <continue />
+                    </do_if>
+                    <do_if value="@global.$TM_EmpireComponentRecords.$idle_work_reason.{$TM_IdleShip}.$manager == parent.parent and @global.$TM_EmpireComponentRecords.$idle_work_reason.{$TM_IdleShip}.$retry gt player.age"><continue /></do_if>
+                    <run_actions ref="md.TM_Empire_Runtime.CanUseOwnedShip" result="$TM_IdleReason">
+                      <param name="Ship" value="$TM_IdleShip" /><param name="ManagerCue" value="parent.parent" /><param name="GoalCue" value="parent" />
+                    </run_actions>
+                    <do_if value="$TM_IdleReason != 'available'">
+                      <do_if value="$TM_IdleReason == 'ship_pilot_arrival_required'">
+                        <set_value name="$TM_IdleReason" exact="'Ожидается капитан для запасной задачи'" />
+                      </do_if>
+                      <do_elseif value="$TM_IdleReason == 'paid_ship_reserved_for_purchase'"><set_value name="$TM_IdleReason" exact="'Корабль зарезервирован оплаченной покупкой'" /></do_elseif>
+                      <do_elseif value="$TM_IdleReason == 'existing_orders' or $TM_IdleReason == 'existing_behavior' or $TM_IdleReason == 'manual_or_priority_order'"><set_value name="$TM_IdleReason" exact="'Сохранено существующее или приоритетное назначение корабля'" /></do_elseif>
+                      <do_elseif value="$TM_IdleReason == 'assigned_asset'"><set_value name="$TM_IdleReason" exact="'Корабль подчинён другому объекту'" /></do_elseif>
+                      <do_else><set_value name="$TM_IdleReason" exact="'Проверка запасного задания: ' + $TM_IdleReason" /></do_else>
+                      <set_value name="global.$TM_EmpireComponentRecords.$idle_work_reason.{$TM_IdleShip}" exact="table[$manager=parent.parent, $reason=$TM_IdleReason, $observed=player.age, $retry=player.age + 3min]" />
+                      <continue />
+                    </do_if>
+                    <set_value name="$TM_IdleSector" exact="@$TM_IdleShip.sector" />
+                    <set_value name="$TM_IdleTask" exact="null" />
+                    <set_value name="$TM_IdleWare" exact="null" />
+                    <do_if value="not $TM_IdleSector.exists or not $TM_IdleSector.isknown or $TM_IdleSector.iscontested or $TM_IdleSector.owner.hasrelation.enemy.{faction.player} or $TM_IdleShip.hullpercentage lt 80 or $TM_IdleShip.lastattacktime ge player.age - 10min">
+                      <set_value name="$TM_IdleReason" exact="'Нет подтверждённого безопасного сектора или корабль повреждён'" />
+                    </do_if>
+                    <do_elseif value="$TM_IdleShip.cargo.{ware.ore}.max gt 0">
+                      <find_object_component name="$TM_IdleMiningLaser" weaponmode="weaponmode.mining" checkoperational="true" object="$TM_IdleShip" />
+                      <do_if value="$TM_IdleMiningLaser.exists">
+                        <do_if value="$TM_IdleSector.resources.{ware.ore}.exists"><set_value name="$TM_IdleWare" exact="ware.ore" /></do_if>
+                        <do_elseif value="$TM_IdleSector.resources.{ware.silicon}.exists and $TM_IdleShip.cargo.{ware.silicon}.max gt 0"><set_value name="$TM_IdleWare" exact="ware.silicon" /></do_elseif>
+                        <do_elseif value="$TM_IdleSector.resources.{ware.ice}.exists and $TM_IdleShip.cargo.{ware.ice}.max gt 0"><set_value name="$TM_IdleWare" exact="ware.ice" /></do_elseif>
+                        <do_elseif value="$TM_IdleSector.resources.{ware.nividium}.exists and $TM_IdleShip.cargo.{ware.nividium}.max gt 0"><set_value name="$TM_IdleWare" exact="ware.nividium" /></do_elseif>
+                        <do_if value="$TM_IdleWare"><set_value name="$TM_IdleTask" exact="'mining'" /></do_if>
+                        <do_else><set_value name="$TM_IdleReason" exact="'Нет доступного местного минерала в безопасном секторе'" /></do_else>
+                      </do_if>
+                      <do_else><set_value name="$TM_IdleReason" exact="'Добытчику требуется рабочее добывающее оборудование'" /></do_else>
+                    </do_elseif>
+                    <do_elseif value="$TM_IdleShip.cargo.{ware.hydrogen}.max gt 0">
+                      <do_if value="$TM_IdleSector.resources.{ware.hydrogen}.exists"><set_value name="$TM_IdleWare" exact="ware.hydrogen" /></do_if>
+                      <do_elseif value="$TM_IdleSector.resources.{ware.helium}.exists and $TM_IdleShip.cargo.{ware.helium}.max gt 0"><set_value name="$TM_IdleWare" exact="ware.helium" /></do_elseif>
+                      <do_elseif value="$TM_IdleSector.resources.{ware.methane}.exists and $TM_IdleShip.cargo.{ware.methane}.max gt 0"><set_value name="$TM_IdleWare" exact="ware.methane" /></do_elseif>
+                      <do_if value="$TM_IdleWare"><set_value name="$TM_IdleTask" exact="'mining'" /></do_if>
+                      <do_else><set_value name="$TM_IdleReason" exact="'Нет доступного местного газа в безопасном секторе'" /></do_else>
+                    </do_elseif>
+                    <do_elseif value="$TM_IdleShip.primarypurpose == purpose.fight and $TM_IdleShip.isclass.ship_s">
+                      <set_value name="$TM_IdleTarget" exact="null" />
+                      <find_zone name="$TM_IdleZones" normalzone="true" space="$TM_IdleSector" multiple="true" />
+                      <do_for_each name="$TM_IdleZone" in="$TM_IdleZones">
+                        <do_if value="$TM_IdleZone.isknown"><set_value name="$TM_IdleTarget" exact="$TM_IdleZone" /><break /></do_if>
+                      </do_for_each>
+                      <do_if value="$TM_IdleTarget.exists and $TM_IdleTarget.isknown"><set_value name="$TM_IdleTask" exact="'recon'" /></do_if>
+                      <do_else><set_value name="$TM_IdleReason" exact="'Нет известной безопасной зоны разведки'" /></do_else>
+                    </do_elseif>
+                    <do_elseif value="$TM_IdleShip.cargo.{ware.energycells}.max gt 0"><set_value name="$TM_IdleTask" exact="'trade'" /><set_value name="$TM_IdleWare" exact="ware.energycells" /></do_elseif>
+                    <do_else><set_value name="$TM_IdleReason" exact="'Для этого типа корабля пока нет безопасной запасной задачи'" /></do_else>
+                    <do_if value="not $TM_IdleTask and ($TM_IdleReason == 'Нет доступного местного минерала в безопасном секторе' or $TM_IdleReason == 'Нет доступного местного газа в безопасном секторе')">
+                      <find_sector_in_range name="$TM_IdleNearbySectors" object="$TM_IdleSector" mindistance="0" maxdistance="2" known="true" multiple="true" />
+                      <do_for_each name="$TM_IdleNearbySector" in="$TM_IdleNearbySectors">
+                        <do_if value="$TM_IdleNearbySector == $TM_IdleSector or $TM_IdleSector.gatedistance.{$TM_IdleNearbySector} gt 1 or not $TM_IdleNearbySector.isknown or $TM_IdleNearbySector.iscontested or $TM_IdleNearbySector.owner.hasrelation.enemy.{faction.player}"><continue /></do_if>
+                        <do_if value="$TM_IdleReason == 'Нет доступного местного минерала в безопасном секторе'">
+                          <do_if value="$TM_IdleNearbySector.resources.{ware.ore}.exists and $TM_IdleShip.cargo.{ware.ore}.max gt 0"><set_value name="$TM_IdleWare" exact="ware.ore" /></do_if>
+                          <do_elseif value="$TM_IdleNearbySector.resources.{ware.silicon}.exists and $TM_IdleShip.cargo.{ware.silicon}.max gt 0"><set_value name="$TM_IdleWare" exact="ware.silicon" /></do_elseif>
+                          <do_elseif value="$TM_IdleNearbySector.resources.{ware.ice}.exists and $TM_IdleShip.cargo.{ware.ice}.max gt 0"><set_value name="$TM_IdleWare" exact="ware.ice" /></do_elseif>
+                          <do_elseif value="$TM_IdleNearbySector.resources.{ware.nividium}.exists and $TM_IdleShip.cargo.{ware.nividium}.max gt 0"><set_value name="$TM_IdleWare" exact="ware.nividium" /></do_elseif>
+                        </do_if>
+                        <do_else>
+                          <do_if value="$TM_IdleNearbySector.resources.{ware.hydrogen}.exists and $TM_IdleShip.cargo.{ware.hydrogen}.max gt 0"><set_value name="$TM_IdleWare" exact="ware.hydrogen" /></do_if>
+                          <do_elseif value="$TM_IdleNearbySector.resources.{ware.helium}.exists and $TM_IdleShip.cargo.{ware.helium}.max gt 0"><set_value name="$TM_IdleWare" exact="ware.helium" /></do_elseif>
+                          <do_elseif value="$TM_IdleNearbySector.resources.{ware.methane}.exists and $TM_IdleShip.cargo.{ware.methane}.max gt 0"><set_value name="$TM_IdleWare" exact="ware.methane" /></do_elseif>
+                        </do_else>
+                        <do_if value="$TM_IdleWare"><set_value name="$TM_IdleSector" exact="$TM_IdleNearbySector" /><set_value name="$TM_IdleTask" exact="'mining'" /><break /></do_if>
+                      </do_for_each>
+                      <do_if value="not $TM_IdleTask"><set_value name="$TM_IdleReason" exact="'Нет безопасного месторождения в пределах одного перехода'" /></do_if>
+                    </do_if>
+                    <do_if value="$TM_IdleTask">
+                      <run_actions ref="md.TM_Empire_Runtime.ClaimOwnedShip" result="$TM_IdleReason">
+                        <param name="Ship" value="$TM_IdleShip" /><param name="ManagerCue" value="parent.parent" /><param name="GoalCue" value="parent" />
+                      </run_actions>
+                      <do_if value="$TM_IdleReason == 'available'">
+                        <set_value name="global.$TM_EmpireComponentRecords.$claim.{$TM_IdleShip}.$idlework" exact="$TM_IdleTask" />
+                        <set_value name="global.$TM_EmpireComponentRecords.$claim.{$TM_IdleShip}.$idlework_origin" exact="$TM_IdleShip.sector" />
+                        <set_value name="global.$TM_EmpireComponentRecords.$claim.{$TM_IdleShip}.$idlework_sector" exact="$TM_IdleSector" />
+                        <set_value name="global.$TM_EmpireComponentRecords.$claim.{$TM_IdleShip}.$idlework_until" exact="player.age + 45min" />
+                        <set_value name="global.$TM_EmpireComponentRecords.$claim.{$TM_IdleShip}.$issuing" exact="true" />
+                        <do_if value="$TM_IdleTask == 'mining'">
+                          <create_order id="'MiningRoutine'" object="$TM_IdleShip" name="$TM_IdleOrder"><param name="warebasket" value="[$TM_IdleWare]" /><param name="range" value="$TM_IdleSector" /><param name="minbuy" value="0" /><param name="maxbuy" value="0" /><param name="minsell" value="0" /><param name="maxsell" value="0" /><param name="endtime" value="player.age + 45min" /></create_order>
+                        </do_if>
+                        <do_elseif value="$TM_IdleTask == 'trade'">
+                          <create_order id="'TradeRoutine'" object="$TM_IdleShip" name="$TM_IdleOrder"><param name="warebasket" value="[$TM_IdleWare]" /><param name="range" value="$TM_IdleSector" /><param name="maxbuy" value="0" /><param name="endtime" value="player.age + 45min" /></create_order>
+                        </do_elseif>
+                        <do_else><create_order id="'Recon'" object="$TM_IdleShip" name="$TM_IdleOrder"><param name="targetspace" value="$TM_IdleTarget" /><param name="timeout" value="15min" /><param name="deploysatellites" value="false" /></create_order></do_else>
+                        <run_actions ref="md.TM_Empire_Runtime.RecordOwnedOrder" result="$TM_IdleReceipt">
+                          <param name="Ship" value="$TM_IdleShip" /><param name="GoalCue" value="parent" /><param name="Order" value="$TM_IdleOrder" />
+                        </run_actions>
+                        <set_value name="$TM_IdleReason" exact="if $TM_IdleReceipt == 'sent' then 'Штатная запасная задача: ' + $TM_IdleTask else $TM_IdleReceipt" />
+                      </do_if>
+                    </do_if>
+                    <set_value name="global.$TM_EmpireComponentRecords.$idle_work_reason.{$TM_IdleShip}" exact="table[$manager=parent.parent, $reason=$TM_IdleReason, $observed=player.age, $retry=player.age + 3min]" />
+                    <do_if value="$TM_IdleOrder.exists">
+                      <set_value name="$TM_IdleSent" operation="add" exact="1" />
+                      <do_if value="$TM_IdleSent ge 4"><break /></do_if>
+                    </do_if>
+                  </do_all>
+                </do_if>
+                <reset_cue cue="this" />
+              </actions>
+            </cue>
+          </cues>
+        </cue>
+        <cue name="Maintain_Stations" ref="md.TM_Empire_FactionLogic_Stations.Manage_Stations">
+          <param name="FactionManagerCue" value="Manager" />
+          <param name="Faction" value="$Faction" />
+          <param name="DebugChance" value="0" />
+        </cue>
+        <cue name="StaticDefenseManager" ref="md.TM_Empire_FactionLogic_StaticDefense.StaticDefenseManager">
+          <param name="FactionManagerCue" value="Manager" />
+          <param name="Faction" value="$Faction" />
+          <param name="DebugChance" value="0" />
+        </cue>
+        <cue name="Cleanup_Faction_Headquarters">
+          <conditions>
+            <event_cue_signalled />
+          </conditions>
+          <actions>
+            <set_value name="$HQ" exact="null" />
+            <remove_value name="md.$TM_EmpireFactionData.{$Faction}.$Headquarters" />
+            <reset_cue cue="Cleanup_Faction_Headquarters" />
+          </actions>
+        </cue>
+        <cue name="Find_Faction_Headquarters">
+          <actions>
+            <set_value name="$HQNecessary" exact="false" />
+            <set_value name="$HQ" exact="$GovernorStation" />
+            <set_value name="md.$TM_EmpireFactionData.{$Faction}.$Headquarters" exact="$HQ" />
+          </actions>
+        </cue>
+        <cue name="PeriodicCallback_Check" checkinterval="5min" instantiate="true">
+          <actions>
+            <do_if value="@$PeriodicCallback">
+              <set_value name="$Table" exact="table[$caller = this, $hqnecessary = $HQNecessary, $hq = $HQ, $PreferredHQSpaceMacro = $PreferredHQSpaceMacro, $preferredhqtypes = $PreferredHQTypes]" />
+              <signal_cue_instantly cue="$PeriodicCallback" param="$Table" />
+            </do_if>
+          </actions>
+        </cue>
+        <cue name="RelocateHQ">
+          <conditions>
+            <event_cue_signalled />
+          </conditions>
+          <actions>
+            <debug_text text="'Relocating HQ (preferredhqspace=%s preferedhqtypes=%s)'.[$PreferredHQSpaceMacro, $PreferredHQTypes]" chance="0" />
+            <signal_cue cue="Cleanup_Faction_Headquarters" />
+            <reset_cue cue="Find_Faction_Headquarters" />
+          </actions>
+        </cue>
+        <cue name="Manager_Delay" version="2">
+          <delay min="0s" max="15s" />
+          <cues>
+            <cue name="EvaluateGoals_Wait">
+              <conditions>
+                <event_cue_completed cue="Manager_Delay" />
+              </conditions>
+              <cues>
+                <cue name="EvaluateGoals" checkinterval="28s" instantiate="true">
+                  <delay min="0s" max="4s" />
+                  <actions>
+                    <include_actions ref="UpdateData" />
+                    <set_value name="$PriorityGoals" exact="[]" />
+                    <set_value name="$EvaluatedGoals" exact="[]" />
+                    <do_all exact="global.$TM_EmpireFactionGoals.count" counter="$i">
+                      <do_if value="global.$TM_EmpireFactionGoals.{$i}.$EvaluationCue">
+                        <include_actions ref="global.$TM_EmpireFactionGoals.{$i}.$EvaluationCue" />
+                      </do_if>
+                    </do_all>
+                    <do_all exact="$PriorityGoals.count" counter="$i">
+                      <debug_text text="player.age + ': %1 is attempting to run priority goal %2 with params: %3'.[$Faction, $PriorityGoals.{$i}.$TriggerCue.$Name, $PriorityGoals.{$i}]" chance="$DebugChance" />
+                      <signal_cue_instantly cue="$PriorityGoals.{$i}.$TriggerCue" param="$PriorityGoals.{$i}" />
+                    </do_all>
+                    <do_if value="$EvaluatedGoals.count">
+                      <set_value name="$TotalWeight" exact="0.0" />
+                      <do_all exact="$EvaluatedGoals.count" counter="$i">
+                        <set_value name="$TotalWeight" exact="$EvaluatedGoals.{$i}.$Weight" operation="add" />
+                      </do_all>
+                      <set_value name="$TargetWeight" min="0.0" max="$TotalWeight" />
+                      <set_value name="$CurrentWeight" exact="0.0" />
+                      <do_all exact="$EvaluatedGoals.count" counter="$i">
+                        <set_value name="$CurrentGoal" exact="$EvaluatedGoals.{$i}" />
+                        <set_value name="$CurrentWeight" exact="$CurrentGoal.$Weight" operation="add" />
+                        <do_if value="$TargetWeight le $CurrentWeight or $i == $EvaluatedGoals.count">
+                          <debug_text text="player.age + ': %1 is attempting to run goal %2 with weight %3 and params: %4'.[$Faction, $CurrentGoal.$TriggerCue.$Name, $CurrentGoal.$Weight, $CurrentGoal]" chance="$DebugChance" />
+                          <signal_cue_instantly cue="$CurrentGoal.$TriggerCue" param="$CurrentGoal" />
+                          <break />
+                        </do_if>
+                      </do_all>
+                    </do_if>
+                  </actions>
+                </cue>
+              </cues>
+            </cue>
+            <cue name="CheckEquipmentDocks_Wait">
+              <conditions>
+                <event_cue_completed cue="Manager_Delay" />
+              </conditions>
+              <cues>
+                <cue name="CheckEquipmentDocks" checkinterval="15min" instantiate="true">
+                  <delay min="0s" max="5s" />
+                  <actions>
+                    <find_station name="$EquipmentDocks" canequipships="true" canbuildships="false" canbuildfor="$Faction" hascontrolentity="controlpost.shiptrader" space="player.galaxy" multiple="true" known="true">
+                      <match_relation_to faction="$Faction" relation="enemy" comparison="not" />
+                    </find_station>
+                    <do_if value="$EquipmentDocks.count == 0">
+                      <do_if value="not global.$TM_Empire_FactionsWithoutAlliedEQDocks?">
+                        <set_value name="global.$TM_Empire_FactionsWithoutAlliedEQDocks" exact="table[]" />
+                      </do_if>
+                      <set_value name="global.$TM_Empire_FactionsWithoutAlliedEQDocks.{$Faction}" exact="true" />
+                    </do_if>
+                    <do_elseif value="global.$TM_Empire_FactionsWithoutAlliedEQDocks?">
+                      <remove_value name="global.$TM_Empire_FactionsWithoutAlliedEQDocks.{$Faction}" />
+                    </do_elseif>
+                  </actions>
+                </cue>
+              </cues>
+            </cue>
+            <cue name="ExpandPrefabs" checkinterval="1min" instantiate="true">
+              <conditions>
+                <check_value value="player.age ge $NextPrefabExpansionTime" />
+              </conditions>
+              <actions>
+                <shuffle_group group="$PrefabExpandCandidates" />
+                <set_value name="this.$SelectedPrefab" exact="null" />
+                <do_for_each name="$Prefab" in="$PrefabExpandCandidates">
+                  <do_if value="$Prefab.hasstagedconstruction and $Prefab.buildingprocessor and not $Prefab.buildingprocessor.isbuilding and $Prefab.hasfutureconstructionstage and $Prefab.lastattacktime lt player.age - 30min">
+                    <set_value name="this.$HasContestingEnemy" exact="false" />
+                    <do_for_each name="$ContestingFaction" in="$Prefab.sector.contestingfactions">
+                      <do_if value="$Faction.hasrelation.enemy.{$ContestingFaction}">
+                        <set_value name="this.$HasContestingEnemy" exact="true" />
+                        <break />
+                      </do_if>
+                    </do_for_each>
+                    <do_if value="not this.$HasContestingEnemy">
+                      <set_value name="this.$SelectedPrefab" exact="$Prefab" />
+                      <break />
+                    </do_if>
+                  </do_if>
+                </do_for_each>
+                <do_if value="@$tm_empire_prefab_expansion">
+                  <set_value name="this.$SelectedPrefab" exact="$tm_empire_prefab_expansion.$station" />
+                </do_if>
+                <do_if value="this.$SelectedPrefab">
+                  <set_value name="this.$ConstructionPlan" exact="this.$SelectedPrefab.plannedconstruction.sequence" />
+                  <debug_text text="'Faction ' + $Faction + ' is expanding prefab ' + this.$SelectedPrefab.debugname + ' in ' + this.$SelectedPrefab.sector.knownname + ' to stage ' + (this.$ConstructionPlan.stage.current + 1)" chance="$DebugChance" />
+                  <run_actions ref="md.TM_Empire_Construction.StepPrefabExpansion" result="this.$PrefabResult">
+                    <param name="ManagerCue" value="namespace" />
+                    <param name="GoalCue" value="namespace" />
+                    <param name="Station" value="this.$SelectedPrefab" />
+                    <param name="Sequence" value="this.$ConstructionPlan.finalsequence" />
+                    <param name="Stage" value="this.$ConstructionPlan.stage.current + 1" />
+                    <param name="Budget" value="player.money" />
+                  </run_actions>
+                  <set_value name="$TM_PrefabReason" exact="this.$PrefabResult.$state + ': ' + @this.$PrefabResult.$reason" />
+                  <do_if value="this.$PrefabResult.$state == 'queued'">
+                    <set_value name="$NextPrefabExpansionTime" min="player.age + 6h" max="player.age + 7h" />
+                  </do_if>
+                  <do_else>
+                    <set_value name="$NextPrefabExpansionTime" exact="player.age + 1min" />
+                  </do_else>
+                </do_if>
+                <do_else>
+                  <debug_text text="'Faction ' + $Faction + ' will not expand a prefab this iteration. There were ' + $PrefabExpandCandidates.count + ' candidates.'" chance="$PrefabExpandCandidates.count * $DebugChance" />
+                  <set_value name="$NextPrefabExpansionTime" min="player.age + 2h" max="player.age + 3h" />
+                </do_else>
+              </actions>
+            </cue>
+            <cue name="SectorLost" instantiate="true">
+              <conditions>
+                <event_object_changed_owner group="$ClaimedSectors" previous="$Faction" />
+              </conditions>
+              <actions>
+                <set_value name="this.$Sector" exact="event.object" />
+                <debug_text text="'Faction ' + $Faction + ' has lost ownership of sector ' + this.$Sector + ' ' + this.$Sector.knownname" chance="$DebugChance" />
+                <include_actions ref="SectorNoLongerBorder" />
+              </actions>
+            </cue>
+            <cue name="SectorContested" instantiate="true">
+              <conditions>
+                <event_object_changed_contested_state group="$ClaimedSectors" contested="true" />
+              </conditions>
+              <actions>
+                <set_value name="this.$Sector" exact="event.object" />
+                <debug_text text="'Faction ' + $Faction + ' is having its ownership of sector ' + this.$Sector + ' ' + this.$Sector.knownname + ' contested'" chance="$DebugChance" />
+                <include_actions ref="SectorNoLongerBorder" comment="Contested sectors are not considered 'border'" />
+              </actions>
+            </cue>
+            <library name="SectorNoLongerBorder">
+              <actions>
+                <debug_text text="this.$Sector + ' ' + this.$Sector.knownname + ' is no longer considered border for ' + $Faction" chance="if $DebugChance == 100 and this.$Sector.haslocationtag.border then 100 else 0" />
+                <remove_space_location_tag space="this.$Sector" tag="tag.border" />
+              </actions>
+            </library>
+            <library name="UpdateData">
+              <actions>
+                <set_value name="$Clusters" exact="[]" />
+                <set_value name="$Zones" exact="[]" />
+                <find_sector name="$Sectors" owner="$Faction" multiple="true" />
+                <add_to_group groupname="$ClaimedSectors" list="$Sectors" replace="true" />
+                <find_sector groupname="$ClaimedSectors" contestedby="$Faction" />
+                <do_for_each name="$Loop_Sector" in="$Sectors">
+                  <do_if value="not $Clusters.indexof.{$Loop_Sector.cluster}">
+                    <append_to_list name="$Clusters" exact="$Loop_Sector.cluster" />
+                  </do_if>
+                </do_for_each>
+                <find_zone name="$Zones" space="$Sectors" normalzone="true" multiple="true" />
+                <set_value name="$AdjacentSectors" exact="[]" />
+                <set_value name="this.$ExcludedSectors" exact="$Sectors.clone" />
+                <do_if value="$ExcludedSectors.count">
+                  <append_list_elements name="this.$ExcludedSectors" other="$ExcludedSectors" />
+                </do_if>
+                <do_for_each name="$OwnSector" in="$Sectors">
+                  <find_gate name="$JumpGates" space="$OwnSector" active="true" multiple="true" />
+                  <find_highway_entry_gate name="$JumpGates" space="$OwnSector" superhighwaygate="true" append="true" multiple="true" />
+                  <set_value name="this.$BorderingEnemy" exact="false" />
+                  <do_for_each name="$JumpGate" in="$JumpGates">
+                    <debug_text text="'gate ' + $OwnSector.knownname + ' dest ' + $JumpGate.destination.sector + ' ' + $JumpGate.destination.sector.knownname" chance="$DebugChance" />
+                    <set_value name="this.$GateDestination" exact="@$JumpGate.destination.sector" />
+                    <do_if value="this.$GateDestination and this.$ExcludedSectors.indexof.{this.$GateDestination} == 0">
+                      <debug_text text="$Faction + ' is checking ' + this.$GateDestination.knownname + ' ' + this.$GateDestination + ' from ' + $OwnSector.knownname" chance="$DebugChance" />
+                      <do_if value="$AdjacentSectors.indexof.{this.$GateDestination} == 0 and this.$GateDestination.owner != $Faction">
+                        <append_to_list name="$AdjacentSectors" exact="this.$GateDestination" />
+                      </do_if>
+                      <do_if value="not this.$BorderingEnemy">
+                        <do_if value="this.$GateDestination.iscontested">
+                          <do_for_each name="$ContestingFaction" in="this.$GateDestination.contestingfactions">
+                            <do_if value="$Faction.hasrelation.enemy.{$ContestingFaction}">
+                              <set_value name="this.$BorderingEnemy" exact="true" />
+                              <break />
+                            </do_if>
+                          </do_for_each>
+                        </do_if>
+                        <do_elseif value="$Faction.hasrelation.enemy.{this.$GateDestination.owner}">
+                          <set_value name="this.$BorderingEnemy" exact="true" />
+                        </do_elseif>
+                      </do_if>
+                    </do_if>
+                  </do_for_each>
+                  <do_if value="this.$BorderingEnemy">
+                    <do_if value="not $OwnSector.haslocationtag.border">
+                      <debug_text text="'Faction ' + $Faction + ' will flag sector ' + $OwnSector + ' ' + $OwnSector.knownname + ' as a border sector'" chance="$DebugChance" />
+                      <add_space_location_tag space="$OwnSector" tag="tag.border" />
+                    </do_if>
+                  </do_if>
+                  <do_else>
+                    <set_value name="this.$Sector" exact="$OwnSector" />
+                    <include_actions ref="SectorNoLongerBorder" />
+                  </do_else>
+                </do_for_each>
+                <debug_text text="$Faction.knownname + ' updating space data - Claimed Sectors: ' + $ClaimedSectors.count + ' - Adjacent Sectors: ' + $AdjacentSectors.count" chance="$DebugChance2" />
+                <do_if value="player.age ge $NextJobRedeployTime">
+                  <signal_cue cue="RedeployJobShips" check="false" />
+                </do_if>
+              </actions>
+            </library>
+            <library name="Purge_Outdated_Data" purpose="include_actions">
+              <actions>
+                <do_all exact="$Crises.count" counter="$crisis_i" reverse="true">
+                  <do_if value="not $Crises.{$crisis_i}.exists">
+                    <remove_value name="$Crises.{$crisis_i}" />
+                  </do_if>
+                </do_all>
+              </actions>
+            </library>
+            <cue name="Manager_Signalled" instantiate="true">
+              <conditions>
+                <check_any>
+                  <event_cue_signalled cue="md.TM_Empire_FactionLogic.FactionSignalled" />
+                  <event_object_signalled object="player.galaxy" param2="$Faction" />
+                </check_any>
+                <check_value value="@event.param.{1} == $Faction" />
+              </conditions>
+              <actions>
+                <set_value name="this.$Params" exact="event.param" />
+                <do_if value="this.$Params.{2} == 'recon update'">
+                  <debug_text text="'%1 receiving reconnaissance update regarding the %2 in %3 %4.'.[this.$Params.{1}, this.$Params.{3}, this.$Params.{4}.class, this.$Params.{4}.knownname]" chance="$DebugChance" />
+                </do_if>
+                <do_elseif value="this.$Params.{2} == 'add_shipyard'">
+                  <add_to_group groupname="$Shipyards" object="this.$Params.{3}" />
+                </do_elseif>
+                <do_elseif value="this.$Params.{2} == 'add_satellite'">
+                  <add_to_group groupname="$FactionSatellites" object="this.$Params.{3}" />
+                </do_elseif>
+                <do_elseif value="this.$Params.{2} == 'add_lasertower'">
+                  <add_to_group groupname="$PlayerLasertowers" object="this.$Params.{3}" />
+                </do_elseif>
+                <do_elseif value="this.$Params.{2} == 'get_economic_actions'">
+                  <do_for_each name="$ActionsKey" valuename="$ActionsList" in="Econ_Manager.$ActionReports">
+                    <do_if value="this.$Params.{3}.{$ActionsKey}?">
+                      <append_list_elements name="this.$Params.{3}.{$ActionsKey}" other="$ActionsList" />
+                    </do_if>
+                    <do_else>
+                      <set_value name="this.$Params.{3}.{$ActionsKey}" exact="$ActionsList" />
+                    </do_else>
+                  </do_for_each>
+                </do_elseif>
+                <do_elseif value="this.$Params.{2} == 'add_excluded_sector'">
+                  <do_if value="typeof this.$Params.{3} == datatype.macro">
+                    <do_if value="$ExcludedSectorMacros.indexof.{this.$Params.{3}} == 0 and this.$Params.{3}.isclass.sector">
+                      <append_to_list name="$ExcludedSectorMacros" exact="this.$Params.{3}" />
+                      <find_sector name="$ExcludedSectors" macro="$ExcludedSectorMacros" multiple="true" />
+                    </do_if>
+                  </do_if>
+                  <do_elseif value="this.$Params.{3}.isclass.sector and $ExcludedSectors.indexof.{this.$Params.{3}} == 0">
+                    <append_to_list name="$ExcludedSectors" exact="this.$Params.{3}" />
+                    <append_to_list name="$ExcludedSectorMacros" exact="this.$Params.{3}.macro" />
+                  </do_elseif>
+                </do_elseif>
+                <do_elseif value="this.$Params.{2} == 'remove_excluded_sector'">
+                  <do_if value="typeof this.$Params.{3} == datatype.macro">
+                    <do_if value="$ExcludedSectorMacros.indexof.{this.$Params.{3}}">
+                      <remove_from_list name="$ExcludedSectorMacros" exact="this.$Params.{3}" />
+                      <do_if value="$ExcludedSectorMacros.count">
+                        <find_sector name="$ExcludedSectors" macro="$ExcludedSectorMacros" multiple="true" />
+                      </do_if>
+                      <do_else>
+                        <clear_list list="$ExcludedSectorMacros" />
+                      </do_else>
+                    </do_if>
+                  </do_if>
+                  <do_elseif value="this.$Params.{3}.isclass.sector and $ExcludedSectors.indexof.{this.$Params.{3}}">
+                    <remove_from_list name="$ExcludedSectors" exact="this.$Params.{3}" />
+                    <remove_from_list name="$ExcludedSectorMacros" exact="this.$Params.{3}.macro" />
+                  </do_elseif>
+                </do_elseif>
+                <do_elseif value="this.$Params.{2} == 'add_excluded_station'">
+                  <do_if value="this.$Params.{3}.isrealclass.station">
+                    <add_to_group groupname="Maintain_Stations.$ExcludedStations" object="this.$Params.{3}" />
+                    <debug_text text="'Added excluded station: ' + this.$Params.{3} + ' ' + this.$Params.{3}.knownname" chance="100" />
+                  </do_if>
+                  <do_else>
+                    <debug_text text="'Incorrect parameter for add_excluded_station: ' + @this.$Params.{3} + ' ' + @this.$Params.{3}.knownname" />
+                  </do_else>
+                </do_elseif>
+                <do_elseif value="this.$Params.{2} == 'relocatehq'">
+                  <signal_cue cue="RelocateHQ" />
+                </do_elseif>
+                <do_elseif value="this.$Params.{2} == 'cleanuphq'">
+                  <debug_text text="'CleanupHQ for %s'.[$Faction]" chance="$DebugChance" />
+                  <signal_cue cue="Cleanup_Faction_Headquarters" />
+                </do_elseif>
+                <do_elseif value="this.$Params.{2} == 'add_crisis'">
+                  <do_if value="typeof this.$Params.{3} == datatype.cue">
+                    <append_to_list name="$Crises" exact="this.$Params.{3}" />
+                  </do_if>
+                  <include_actions ref="Purge_Outdated_Data" />
+                </do_elseif>
+                <do_elseif value="this.$Params.{2} == 'remove_crisis'">
+                  <do_if value="typeof this.$Params.{3} == datatype.cue">
+                    <remove_from_list name="$Crises" exact="this.$Params.{3}" />
+                  </do_if>
+                  <include_actions ref="Purge_Outdated_Data" />
+                </do_elseif>
+                <do_elseif value="event.param.{2} == 'set_economic_active' and not $EconManagerActive">
+                  <set_value name="$EconManagerActive" exact="true" />
+                  <find_station_by_true_owner name="this.$Stations" faction="$Faction" space="player.galaxy" multiple="true" checkoperational="false" known="true">
+                    <match state="componentstate.wreck" negate="true" />
+                  </find_station_by_true_owner>
+                  <do_for_each name="$StationToClear" in="this.$Stations">
+                    <clear_shortage_reports object="$StationToClear" />
+                    <set_value name="this.$Buildstorage" exact="$StationToClear.buildstorage" />
+                    <do_if value="this.$Buildstorage">
+                      <clear_shortage_reports object="this.$Buildstorage" />
+                    </do_if>
+                  </do_for_each>
+                  <debug_text text="'Setting economy manager processing of ' + $Faction + ' to active. Clearing past critical shortage logs of ' + this.$Stations + ' stations and their buildstorages'" chance="$DebugChance" />
+                </do_elseif>
+                <do_elseif value="event.param.{2} == 'set_economic_inactive' and $EconManagerActive">
+                  <set_value name="$EconManagerActive" exact="false" />
+                  <debug_text text="'Setting economy manager processing of ' + $Faction + ' to inactive.'" chance="$DebugChance" />
+                </do_elseif>
+              </actions>
+              <cues>
+                <cue name="Manager_Signalled_Delay">
+                  <delay exact="1ms" />
+                  <actions>
+                    <set_value name="$Params" exact="parent.$Params" />
+                    <do_all exact="$Goals.count" counter="$i">
+                      <signal_cue_instantly cue="$Goals.{$i}" param="['evaluate_event', $Params]" />
+                    </do_all>
+                    <set_value name="$EvaluatedGoals" exact="[]" />
+                    <do_all exact="global.$TM_EmpireFactionGoals.count" counter="$i">
+                      <do_if value="global.$TM_EmpireFactionGoals.{$i}.$EvaluateEventLib">
+                        <include_actions ref="global.$TM_EmpireFactionGoals.{$i}.$EvaluateEventLib" />
+                      </do_if>
+                    </do_all>
+                    <do_all exact="$EvaluatedGoals.count" counter="$i">
+                      <set_value name="$CurrentGoal" exact="$EvaluatedGoals.{$i}" />
+                      <do_if value="$CurrentGoal.{1}">
+                        <include_actions ref="$CurrentGoal.{2}" />
+                        <break />
+                      </do_if>
+                    </do_all>
+                  </actions>
+                </cue>
+              </cues>
+            </cue>
+            <cue name="RedeployJobShips" namespace="this">
+              <conditions>
+                <event_cue_signalled />
+              </conditions>
+              <actions>
+                <set_value name="$Manager" exact="parent.namespace" />
+                <set_value name="$Faction" exact="$Manager.$Faction" />
+                <set_value name="$DebugChance" exact="$Manager.$DebugChance" />
+                <set_value name="$RedeployedCount" exact="0" />
+                <set_value name="$MaxRedeployCount" exact="2" />
+                <set_value name="$ConsiderationCount" exact="0" />
+                <set_value name="$MaxConsiderations" exact="30" comment="Maximum number of ships to consider in this call." />
+                <set_value name="$ClaimedSectors" exact="$Manager.$ClaimedSectors.list" />
+                <shuffle_list list="$ClaimedSectors" />
+                <find_sector name="$AllSectors" multiple="true" />
+                <shuffle_list list="$AllSectors" />
+              </actions>
+              <cues>
+                <cue name="RedeployJobShips_CheckSector">
+                  <actions>
+                    <do_if value="$AllSectors.count == 0 or $RedeployedCount ge $MaxRedeployCount or $ConsiderationCount ge $MaxConsiderations">
+                      <set_value name="$Manager.$NextJobRedeployTime" min="player.age + 5min" max="player.age + 10min" />
+                      <reset_cue cue="parent" />
+                    </do_if>
+                    <do_else>
+                      <set_value name="$Sector" exact="$AllSectors.last" />
+                      <find_ship_by_true_owner name="$Ships" faction="$Faction" space="$Sector" multiple="true" known="true" primarypurpose="purpose.fight" />
+                      <shuffle_list list="$Ships" />
+                      <set_value name="$UnsuitableSectors" exact="table[]" comment="Table to store results of $ClaimedSector.isvalidjobspace or $ClaimedSector.freejobquota so we don't do it multiple times per ship" />
+                      <do_for_each name="$Ship" in="$Ships">
+                        <set_value name="$ConsiderationCount" operation="add" />
+                        <set_value name="$Redeploy" exact="false" />
+                        <clear_table table="$UnsuitableSectors" />
+                        <do_if value="$Faction != faction.player and not $Ship.iscommandeered">
+                          <set_value name="$CurrentJobSector" exact="$Ship.jobmainsector" />
+                          <do_if value="not $Ship.isvalidjobspace.{$CurrentJobSector}">
+                            <set_value name="$Redeploy" exact="true" />
+                            <debug_text text="'Job ship ' + $Ship + ' ' + $Ship.knownname + ' based in ' + $CurrentJobSector + ' ' + $CurrentJobSector.knownname + ' is no longer based in a valid job sector. Potential to be redeployed.'" chance="$DebugChance" />
+                          </do_if>
+                          <do_if value="not $Redeploy">
+                            <do_if value="not $CurrentJobSector.haslocationtag.border">
+                              <set_value name="$NoAttackTime" min="60min" max="90min" comment="Randomised time to reduce chances of large batches of ships deciding to redeploy at the same time." />
+                              <do_if value="($Ship.lastattacktime lt 0 and player.age gt $NoAttackTime) or (player.age - $Ship.lastattacktime gt $NoAttackTime)">
+                                <set_value name="$Redeploy" exact="true" />
+                                <debug_text text="'Job ship ' + $Ship + ' ' + $Ship.knownname + ' based in ' + $CurrentJobSector + ' ' + $CurrentJobSector.knownname + ' has not been attacked in a while. Potential to be redeployed.'" chance="$DebugChance" />
+                              </do_if>
+                            </do_if>
+                          </do_if>
+                          <do_if value="$Redeploy">
+                            <set_value name="$SelectedSector" exact="null" />
+                            <do_for_each name="$ClaimedSector" in="$ClaimedSectors">
+                              <do_if value="$ClaimedSector != $CurrentJobSector and $ClaimedSector.haslocationtag.border">
+                                <set_value name="$UnsuitableSectors.{$ClaimedSector}" exact="$ClaimedSector.issuitableforjob.{$Ship.job} and $ClaimedSector.freejobquota.{$Ship.job} gt 0" />
+                                <do_if value="$UnsuitableSectors.{$ClaimedSector}">
+                                  <set_value name="$SelectedSector" exact="$ClaimedSector" />
+                                </do_if>
+                                <break />
+                              </do_if>
+                            </do_for_each>
+                            <do_if value="not $SelectedSector">
+                              <do_for_each name="$ClaimedSector" in="$ClaimedSectors">
+                                <do_if value="$ClaimedSector != $CurrentJobSector and $ClaimedSector.iscontested">
+                                  <do_if value="not $UnsuitableSectors.{$ClaimedSector}?">
+                                    <set_value name="$UnsuitableSectors.{$ClaimedSector}" exact="$ClaimedSector.issuitableforjob.{$Ship.job} and $ClaimedSector.freejobquota.{$Ship.job} gt 0" />
+                                  </do_if>
+                                  <do_if value="$UnsuitableSectors.{$ClaimedSector}">
+                                    <set_value name="$SelectedSector" exact="$ClaimedSector" />
+                                  </do_if>
+                                  <break />
+                                </do_if>
+                              </do_for_each>
+                            </do_if>
+                            <do_if value="$SelectedSector">
+                              <debug_text text="'Job ship ' + $Ship + ' ' + $Ship.knownname + ' currently based in ' + $CurrentJobSector + ' ' + $CurrentJobSector.knownname + ' will be redeployed to ' + $SelectedSector + ' ' + $SelectedSector.knownname" chance="$DebugChance" />
+                              <set_job_ship_mainsector ship="$Ship" sector="$SelectedSector" />
+                              <shuffle_list list="$ClaimedSectors" />
+                              <set_value name="$RedeployedCount" operation="add" />
+                            </do_if>
+                          </do_if>
+                        </do_if>
+                        <do_if value="$RedeployedCount ge $MaxRedeployCount">
+                          <break />
+                        </do_if>
+                        <do_if value="$ConsiderationCount ge $MaxConsiderations">
+                          <break />
+                        </do_if>
+                      </do_for_each>
+                      <remove_value name="$AllSectors.last" />
+                    </do_else>
+                  </actions>
+                  <delay exact="1ms" />
+                  <actions>
+                    <reset_cue cue="RedeployJobShips_CheckSector" />
+                  </actions>
+                </cue>
+              </cues>
+            </cue>
+          </cues>
+        </cue>
+        <cue name="Generate_DeployablesReport" instantiate="true">
+          <conditions>
+            <event_cue_signalled />
+          </conditions>
+          <actions>
+            <do_if value="$SatelliteNetworkGoal">
+              <debug_text text="'Satellites: %s (goal=%s)'.[$FactionSatellites.count, $SatelliteNetworkGoal]" />
+            </do_if>
+            <do_if value="$LasertowerNetworkGoal">
+              <debug_text text="'LaserTowers: %s (goal=%s)'.[$FactionLasertowers.count, $LasertowerNetworkGoal]" />
+              <do_for_each name="$LasertowerField" in="$FactionLasertowers">
+                <debug_text text="' - %s'.[$LasertowerField.count]" />
+              </do_for_each>
+            </do_if>
+            <do_if value="$MinefieldGoalPerSector gt 0">
+              <debug_text text="'Minefields: %s (goal=%s)'.[$FactionMinefields.count, $MinefieldGoalPerSector]" />
+              <do_for_each name="$Minefield" in="$FactionMinefields">
+                <debug_text text="' - %s'.[$Minefield.count]" />
+              </do_for_each>
+            </do_if>
+          </actions>
+        </cue>
+        <cue name="Generate_Report" instantiate="true">
+          <conditions>
+            <event_cue_signalled cue="md.TM_Empire_FactionLogic.FactionSignalled" />
+            <check_value value="@event.param.{1} == $Faction and @event.param.{2} == 'Generate Report'" />
+          </conditions>
+          <actions>
+            <find_sector name="$SectorsOwned" space="player.galaxy" owner="$Faction" multiple="true" />
+            <debug_text text="'\n---------------------------------------------------------------------------------------------------\nGenerating Faction Logic report for ' + $Faction.knownname" context="false" />
+            <signal_cue_instantly cue="Generate_DeployablesReport" />
+            <debug_text text="'\n' + $Faction.knownname + ' owns ' + $SectorsOwned.count + ' sectors'" context="false" />
+            <do_all exact="$SectorsOwned.count" counter="$i">
+              <debug_text text="'Sector #'+$i+': ' + $SectorsOwned.{$i}.knownname" context="false" />
+            </do_all>
+            <debug_text text="'\n' + $Faction.knownname + ' has ' + $Goals.count + ' current goals'" context="false" />
+            <do_all exact="$Goals.count" counter="$i">
+              <debug_text text="'\nGoal ' + $i + '/' + $Goals.count" context="false" />
+              <signal_cue_instantly cue="$Goals.{$i}" param="['generate_report']" />
+            </do_all>
+          </actions>
+        </cue>
+        <cue name="MaintainSatelliteNetwork" onfail="cancel">
+          <conditions>
+            <check_value value="$SatelliteNetworkGoal" />
+          </conditions>
+          <actions>
+          </actions>
+          <cues>
+            <cue name="MaintainSatelliteNetwork_PeriodicCheck" checkinterval="1800s" instantiate="true">
+              <conditions>
+                <check_value value="$Faction.isactive" />
+              </conditions>
+              <delay min="0s" max="10s" />
+              <actions>
+                <set_value name="$TM_ManagerCue" exact="namespace" />
+                <do_if value="@$TM_SatellitePending">
+                  <set_value name="this.$Deployment" exact="@global.$TM_EmpireComponentRecords.$satellite_receipt.{$TM_SatellitePending.$ship}" />
+                  <do_if value="@this.$Deployment.$order == $TM_SatellitePending.$order and @this.$Deployment.$manager == namespace and @this.$Deployment.$state == 'observed' and @this.$Deployment.$satellite.exists and this.$Deployment.$satellite.isplayerowned">
+                    <add_to_group groupname="$FactionSatellites" object="this.$Deployment.$satellite" />
+                    <do_if value="not @global.$TM_EmpireComponentRecords.$claim.{$TM_SatellitePending.$ship}">
+                      <remove_value name="$TM_SatellitePending" />
+                      <set_value name="$TM_SatelliteReason" exact="'native_satellite_observed_claim_already_released'" />
+                    </do_if>
+                    <do_else>
+                      <run_actions ref="md.TM_Empire_Runtime.StopAndReleaseOwnedShip" result="$TM_SatelliteReason">
+                        <param name="Ship" value="$TM_SatellitePending.$ship" />
+                        <param name="ManagerCue" value="namespace" />
+                        <param name="GoalCue" value="namespace" />
+                      </run_actions>
+                      <do_if value="$TM_SatelliteReason == 'released'">
+                        <remove_value name="$TM_SatellitePending" />
+                      </do_if>
+                    </do_else>
+                  </do_if>
+                  <do_elseif value="not $TM_SatellitePending.$order.exists">
+                    <set_value name="$TM_SatellitePending.$state" exact="'unknown'" />
+                    <set_value name="$TM_SatelliteReason" exact="'native_satellite_delivery_unconfirmed'" />
+                  </do_elseif>
+                </do_if>
+                <do_elseif value="$FactionSatellites.count lt $SatelliteNetworkGoal and $ClaimedSectors.count">
+                  <set_value name="this.$Sector" exact="$ClaimedSectors.random" />
+                  <do_if value="this.$Sector.isknown">
+                    <set_value name="this.$Target" exact="null" />
+                    <do_any>
+                      <find_station_by_true_owner name="this.$Target" faction="faction.player" space="this.$Sector" known="true" />
+                      <do_all>
+                        <run_actions ref="md.LIB_Generic.FindSectorEntryPoints" result="this.$EntryPoints">
+                          <param name="Sector" value="this.$Sector" />
+                        </run_actions>
+                        <shuffle_list list="this.$EntryPoints" />
+                        <do_all exact="[this.$EntryPoints.count, 16].min" counter="this.$entry_i">
+                          <do_if value="this.$EntryPoints.{this.$entry_i}.exists and this.$EntryPoints.{this.$entry_i}.isknown and this.$EntryPoints.{this.$entry_i}.sector == this.$Sector">
+                            <set_value name="this.$Target" exact="this.$EntryPoints.{this.$entry_i}" />
+                            <break />
+                          </do_if>
+                        </do_all>
+                      </do_all>
+                    </do_any>
+                    <do_if value="this.$Target.exists">
+                      <create_position name="this.$Position" object="this.$Target" space="this.$Sector" max="15km" />
+                      <find_ship_by_true_owner name="this.$Candidates" faction="faction.player" space="player.galaxy" multiple="true" checkoperational="true" known="true" />
+                      <do_if value="not @$TM_SatelliteCandidateCursor or $TM_SatelliteCandidateCursor gt this.$Candidates.count">
+                        <set_value name="$TM_SatelliteCandidateCursor" exact="1" />
+                      </do_if>
+                      <do_all exact="[this.$Candidates.count, 32].min" counter="this.$i">
+                        <set_value name="this.$Ship" exact="this.$Candidates.{$TM_SatelliteCandidateCursor}" />
+                        <set_value name="$TM_SatelliteCandidateCursor" operation="add" />
+                        <do_if value="$TM_SatelliteCandidateCursor gt this.$Candidates.count">
+                          <set_value name="$TM_SatelliteCandidateCursor" exact="1" />
+                        </do_if>
+                        <set_value name="this.$Macro" exact="if this.$Ship.ammostorage.{macro.eq_arg_satellite_02_macro}.count then macro.eq_arg_satellite_02_macro else macro.eq_arg_satellite_01_macro" />
+                        <do_if value="this.$Ship.ammostorage.{this.$Macro}.count and not @$TM_SatellitePending">
+                          <run_actions ref="md.TM_Empire_Runtime.CanUseOwnedShip" result="$TM_ShipReason">
+                            <param name="Ship" value="this.$Ship" />
+                            <param name="GoalCue" value="namespace" />
+                            <param name="ManagerCue" value="@$TM_ManagerCue" />
+                          </run_actions>
+                          <do_if value="$TM_ShipReason == 'available'">
+                            <run_actions ref="md.TM_Empire_Runtime.ClaimOwnedShip" result="$TM_ShipReason">
+                              <param name="Ship" value="this.$Ship" />
+                              <param name="GoalCue" value="namespace" />
+                              <param name="ManagerCue" value="@$TM_ManagerCue" />
+                            </run_actions>
+                            <do_if value="$TM_ShipReason == 'available'">
+                              <set_value name="global.$TM_EmpireComponentRecords.$claim.{this.$Ship}.$issuing" exact="true" />
+                              <create_order name="this.$Order" object="this.$Ship" id="'TM_DeployObjectAtPosition'">
+                                <param name="destination" value="[this.$Sector, this.$Position]" />
+                                <param name="objectstodeploy" value="[this.$Macro]" />
+                                <param name="amountstodeploy" value="[1]" />
+                              </create_order>
+                              <run_actions ref="md.TM_Empire_Runtime.RecordOwnedOrder" result="$TM_OrderReceipt">
+                                <param name="Ship" value="this.$Ship" />
+                                <param name="GoalCue" value="namespace" />
+                                <param name="Order" value="this.$Order" />
+                              </run_actions>
+                            </do_if>
+                            <do_else>
+                              <set_value name="$TM_WaitReason" exact="$TM_ShipReason" />
+                              <set_value name="this.$Order" exact="null" />
+                            </do_else>
+                          </do_if>
+                          <do_else>
+                            <set_value name="$TM_WaitReason" exact="$TM_ShipReason" />
+                            <set_value name="this.$Order" exact="null" />
+                          </do_else>
+                          <do_if value="this.$Order.exists">
+                            <set_value name="$TM_SatellitePending" exact="table[$state='sent', $ship=this.$Ship, $order=this.$Order, $sector=this.$Sector, $macro=this.$Macro, $issued=player.age]" />
+                            <set_value name="$TM_SatelliteReason" exact="'native_inventory_deployment_sent'" />
+                            <break />
+                          </do_if>
+                        </do_if>
+                        <do_elseif value="not @$TM_SatelliteSupplyKey and this.$Ship.ammostorage.deployable.capacity gt this.$Ship.ammostorage.deployable.count">
+                          <run_actions ref="md.TM_Empire_Runtime.CanUseOwnedShip" result="this.$Available">
+                            <param name="Ship" value="this.$Ship" />
+                            <param name="ManagerCue" value="namespace" />
+                            <param name="GoalCue" value="namespace" />
+                          </run_actions>
+                          <do_if value="this.$Available == 'available'">
+                            <find_station name="this.$Supplier" space="player.galaxy" canequipclass="this.$Ship.class" canbuildfor="faction.player" hascontrolentity="controlpost.shiptrader" knownto="faction.player" known="true" />
+                            <do_if value="this.$Supplier.exists">
+                              <run_actions ref="md.TM_Empire_Supply.QuoteRestock" result="this.$SupplyKey">
+                                <param name="ManagerCue" value="namespace" />
+                                <param name="GoalCue" value="namespace" />
+                                <param name="Ship" value="this.$Ship" />
+                                <param name="Builder" value="this.$Supplier" />
+                                <param name="Macro" value="macro.eq_arg_satellite_01_macro" />
+                                <param name="Amount" value="1" />
+                                <param name="Budget" value="player.money" />
+                              </run_actions>
+                              <do_if value="@md.TM_Empire_Supply.Request.$Receipt.$key == this.$SupplyKey">
+                                <set_value name="$TM_SatelliteSupplyKey" exact="this.$SupplyKey" />
+                                <set_value name="$TM_SatelliteReason" exact="'satellite_supply_quote_requested'" />
+                                <break />
+                              </do_if>
+                            </do_if>
+                          </do_if>
+                        </do_elseif>
+                      </do_all>
+                      <do_if value="not @$TM_SatellitePending and not @$TM_SatelliteSupplyKey">
+                        <set_value name="$TM_SatelliteReason" exact="'owned_idle_ship_with_satellite_required'" />
+                      </do_if>
+                    </do_if>
+                  </do_if>
+                </do_elseif>
+              </actions>
+            </cue>
+            <cue name="TM_SatelliteSupplyProgress" checkinterval="15s" instantiate="true">
+              <conditions>
+                <check_value value="@$TM_SatelliteSupplyKey" />
+              </conditions>
+              <actions>
+                <do_if value="@$TM_SatelliteSupplyKey">
+                  <run_actions ref="md.TM_Empire_Supply.StepRestockDelivery" result="this.$Supply">
+                    <param name="Key" value="$TM_SatelliteSupplyKey" />
+                    <param name="ManagerCue" value="namespace" />
+                    <param name="GoalCue" value="namespace" />
+                  </run_actions>
+                  <set_value name="$TM_SatelliteReason" exact="'satellite_supply_' + this.$Supply.$state + ': ' + @this.$Supply.$reason" />
+                  <do_if value="this.$Supply.$state == 'consumed'">
+                    <remove_value name="$TM_SatelliteSupplyKey" />
+                  </do_if>
+                </do_if>
+              </actions>
+            </cue>
+          </cues>
+        </cue>
+        <cue name="MaintainLasertowerNetwork" onfail="cancel">
+          <conditions>
+            <check_value value="$LasertowerNetworkGoal" />
+          </conditions>
+          <cues>
+            <cue name="MaintainLasertowerNetwork_PeriodicCheck" checkinterval="1800s" instantiate="true">
+              <conditions>
+                <check_value value="$Faction.isactive" />
+              </conditions>
+              <delay min="10s" max="20s" />
+              <actions>
+                <do_all exact="$FactionLasertowers.count" counter="$i" reverse="true">
+                  <do_if value="$FactionLasertowers.{$i}.count == 0">
+                    <remove_value name="$FactionLasertowers.{$i}" />
+                  </do_if>
+                </do_all>
+                <run_actions ref="md.TM_Empire_FactionLogic_StaticDefense.RemoveInactiveLaserTowerNetworks">
+                  <param name="StaticDefenseManager" value="StaticDefenseManager" />
+                </run_actions>
+                <debug_text text="'Claimed sectors: ' + $ClaimedSectors.count + ' lasertowergroups: ' + $FactionLasertowers.count + ' goal: ' + $LasertowerNetworkGoal" chance="$DebugChance" />
+                <do_if value="$ClaimedSectors.count gt 2" comment="tiny factions don't have a lasertower-network (not unless they claim more sectors)">
+                  <set_value name="$ClaimedSectorsClone" exact="$ClaimedSectors.list" />
+                  <shuffle_list list="$ClaimedSectorsClone" />
+                  <set_value name="$MaxSpawnPerIteration" exact="0" />
+                  <set_value name="$StrategiesCountThisLoop" exact="0" />
+                  <do_while value="(($FactionLasertowers.count + @StaticDefenseManager.$Strategies_LaserTowers_Active.count + $StrategiesCountThisLoop) lt $LasertowerNetworkGoal) and ($MaxSpawnPerIteration lt 3) and $ClaimedSectorsClone.count">
+                    <set_value name="$MaxSpawnPerIteration" operation="add" />
+                    <set_value name="$Sector" exact="$ClaimedSectorsClone.last" />
+                    <remove_value name="$ClaimedSectorsClone.{$ClaimedSectorsClone.count}" />
+                    <do_if value="$Sector">
+                      <include_actions ref="md.TM_Empire_FactionLogic_StaticDefense.Constants" />
+                      <find_station_by_true_owner name="$SelectedTarget" space="$Sector" faction="$Faction" known="true">
+                        <match_any>
+                          <match canbuildships="true" />
+                          <match headquarters="true" />
+                          <match tradestation="true" />
+                          <match piratebase="true" />
+                          <match equipmentdock="true" />
+                          <match defencestation="true" />
+                        </match_any>
+                      </find_station_by_true_owner>
+                      <do_if value="$SelectedTarget">
+                        <debug_text text="'run_actions GetStrategy'" chance="StaticDefenseManager.$DebugChance" />
+                        <run_actions ref="md.TM_Empire_FactionLogic_StaticDefense.GetStrategy" result="$Strategy">
+                          <param name="StaticDefenseManager" value="StaticDefenseManager" />
+                          <param name="Sector" value="$Sector" />
+                          <param name="Faction" value="$Faction" />
+                          <param name="Station" value="$SelectedTarget" />
+                          <param name="DeployableType" value="$StaticDefense_DeployableType_LaserTowers" />
+                          <param name="MaxSpawnPerIteration" value="3" />
+                          <param name="DebugChance" value="StaticDefenseManager.$DebugChance" />
+                        </run_actions>
+                        <do_if value="@$Strategy">
+                          <set_value name="$StrategiesCountThisLoop" operation="add" />
+                          <do_if value="not $StaticDefense_IsJobShipChecked?">
+                            <set_value name="$StaticDefense_IsJobShipChecked" exact="true" />
+                            <do_if value="StaticDefenseManager.$CombatEngineersAndSaboteurs.count lt 5" comment="3 x staticdefenseengineer, 2 x staticdefensesaboteur">
+                              <run_actions ref="md.TM_Empire_FactionLogic_StaticDefense.CreateJobShips">
+                                <param name="StaticDefenseManager" value="StaticDefenseManager" />
+                                <param name="Faction" value="$Faction" />
+                                <param name="Sector" value="$Strategy.$Sector" />
+                              </run_actions>
+                            </do_if>
+                          </do_if>
+                          <debug_text text="'run_actions AddStrategy ' + $Strategy" chance="StaticDefenseManager.$DebugChance" />
+                          <run_actions ref="md.TM_Empire_FactionLogic_StaticDefense.AddStrategy">
+                            <param name="StaticDefenseManager" value="StaticDefenseManager" />
+                            <param name="Strategy" value="$Strategy" />
+                          </run_actions>
+                        </do_if>
+                      </do_if>
+                    </do_if>
+                  </do_while>
+                  <remove_value name="$StaticDefense_IsJobShipChecked" />
+                  <remove_value name="$ClaimedSectorsClone" />
+                </do_if>
+              </actions>
+            </cue>
+          </cues>
+        </cue>
+        <cue name="MaintainMinefields" onfail="cancel" version="3">
+          <conditions>
+            <check_value value="$MinefieldGoalPerSector gt 0" />
+          </conditions>
+          <cues>
+            <cue name="MaintainMinefields_PeriodicCheck" checkinterval="1800s" instantiate="true">
+              <conditions>
+                <check_value value="$Faction.isactive" />
+              </conditions>
+              <delay min="20s" max="30s" />
+              <actions>
+                <do_all exact="$FactionMinefields.count" counter="$i" reverse="true">
+                  <do_if value="$FactionMinefields.{$i}.count == 0">
+                    <remove_value name="$FactionMinefields.{$i}" />
+                  </do_if>
+                </do_all>
+                <get_factions_by_relation result="$Enemies" relation="enemy" faction="$Faction" />
+                <create_group groupname="$HomeSectors" comment="Sectors which are owned/contested by $Faction. // Pirates: With Station of the Faction in them" />
+                <create_group groupname="$HomeSectorsEndangered" comment="HomeSectors which have hostile Stations inside or are neighbouring hostile owned/contested Sectors" />
+                <create_group groupname="$NeighbouringSectors" comment="Sectors in Neighbouring Clusters to HomeSectors" />
+                <create_group groupname="$NeighbouringSectorsEndangered" comment="Neighbouring which have hostile Stations inside or are owned/contested by enemies" />
+                <create_group groupname="$EnemyStationSectors" comment="Sectors with Stations of Enemies inside" />
+                <do_if value="$Enemies.count">
+                  <find_sector name="$AllSectors" multiple="true" />
+                  <do_for_each name="$PotentialSector" in="$AllSectors">
+                    <do_for_each name="$EnemyFaction" in="$Enemies">
+                      <find_station_by_true_owner name="$EnemyStation" space="$PotentialSector" faction="$EnemyFaction" known="true" />
+                      <do_if value="$EnemyStation">
+                        <add_to_group groupname="$EnemyStationSectors" object="$PotentialSector" />
+                        <break />
+                      </do_if>
+                    </do_for_each>
+                  </do_for_each>
+                  <remove_value name="$AllSectors" />
+                  <remove_value name="$EnemyStation" />
+                </do_if>
+                <do_if value="$Faction.willclaimspace" comment="v2.5 Scaleplate and Ministry do not claim space">
+                  <add_to_group groupname="$HomeSectors" group="$ClaimedSectors" comment="$ClaimedSectors is periodically updated" />
+                </do_if>
+                <do_else>
+                  <find_station_by_true_owner name="this.$Stations" space="player.galaxy" multiple="true" faction="$Faction" known="true" />
+                  <do_all exact="this.$Stations.count" counter="$s">
+                    <add_to_group groupname="$HomeSectors" object="this.$Stations.{$s}.sector" />
+                  </do_all>
+                </do_else>
+                <set_value name="$MinefieldGoalTotal" exact="[[$MinefieldGoalPerSector * $HomeSectors.count, 3].max, 12].min" comment="Spawn" />
+                <do_if value="$HomeSectors.count gt 0" comment="">
+                  <do_all exact="$HomeSectors.count" counter="$h">
+                    <find_cluster_in_range name="$LocalClusters" object="$HomeSectors.{$h}" maxdistance="1" multiple="true" />
+                    <do_if value="$LocalClusters.count">
+                      <find_sector groupname="$NeighbouringSectors" space="$LocalClusters" owner="faction.xenon" negateownerfilter="true" multiple="true" />
+                    </do_if>
+                  </do_all>
+                  <do_all exact="$HomeSectors.count" counter="$i">
+                    <remove_from_group group="$NeighbouringSectors" object="$HomeSectors.{$i}" />
+                  </do_all>
+                  <do_if value="$NeighbouringSectors.count">
+                    <do_all exact="$NeighbouringSectors.count" counter="$i">
+                      <do_if value="$Enemies.count">
+                        <do_all exact="$Enemies.count" counter="$e">
+                          <do_if value="($NeighbouringSectors.{$i}.owner == $Enemies.{$e}) or $NeighbouringSectors.{$i}.iscontestedby.{$Enemies.{$e}}">
+                            <add_to_group groupname="$NeighbouringSectorsEndangered" object="$NeighbouringSectors.{$i}" />
+                          </do_if>
+                        </do_all>
+                      </do_if>
+                      <do_elseif value="$EnemyStationSectors.count">
+                        <do_all exact="$EnemyStationSectors.count" counter="$ess">
+                          <do_if value="$NeighbouringSectors.{$i} == $EnemyStationSectors.{$ess}">
+                            <add_to_group groupname="$NeighbouringSectorsEndangered" object="$NeighbouringSectors.{$i}" />
+                          </do_if>
+                        </do_all>
+                      </do_elseif>
+                    </do_all>
+                  </do_if>
+                  <do_if value="$Enemies.count">
+                    <do_if value="$HomeSectors.count gt 0" comment="">
+                      <do_all exact="$HomeSectors.count" counter="$h">
+                        <find_cluster_in_range name="$LocalClusters" object="$HomeSectors.{$h}" maxdistance="1" multiple="true" />
+                        <do_if value="$LocalClusters.count">
+                          <do_all exact="$LocalClusters.count" counter="$i">
+                            <find_sector name="$SectorsInCluster" space="$LocalClusters.{$i}" multiple="true" />
+                            <do_if value="$SectorsInCluster.count">
+                              <do_all exact="$SectorsInCluster.count" counter="$k">
+                                <set_value name="$NeighbouringSectorIsAHomeSector" exact="false" />
+                                <do_all exact="$HomeSectors.count" counter="$l" comment="Check if NeighbouringSector($k) is a HomeSector">
+                                  <do_if value="$HomeSectors.{$l} == $SectorsInCluster.{$k}">
+                                    <set_value name="$NeighbouringSectorIsAHomeSector" exact="true" />
+                                    <break />
+                                  </do_if>
+                                </do_all>
+                                <do_if value="false == $NeighbouringSectorIsAHomeSector" comment="One of my neighbours is not a HomeSector">
+                                  <do_all exact="$Enemies.count" counter="$e">
+                                    <do_if value="($SectorsInCluster.{$k}.owner == $Enemies.{$e}) or ($SectorsInCluster.{$k}.iscontestedby.{$Enemies.{$e}})">
+                                      <add_to_group groupname="$HomeSectorsEndangered" object="$HomeSectors.{$h}" />
+                                    </do_if>
+                                  </do_all>
+                                </do_if>
+                              </do_all>
+                            </do_if>
+                          </do_all>
+                        </do_if>
+                      </do_all>
+                    </do_if>
+                    <do_if value="$EnemyStationSectors.count">
+                      <do_all exact="$EnemyStationSectors.count" counter="$ess">
+                        <do_all exact="$HomeSectors.count" counter="$h">
+                          <do_if value="$EnemyStationSectors.{$ess} == $HomeSectors.{$h}">
+                            <add_to_group groupname="$HomeSectorsEndangered" object="$HomeSectors.{$h}" />
+                          </do_if>
+                        </do_all>
+                      </do_all>
+                    </do_if>
+                  </do_if>
+                  <debug_text text="'HomeSectors: ' + $HomeSectors.count + ' HomeSectorsEndangered: ' + $HomeSectorsEndangered.count + ' $NeighbouringSectors: ' + $NeighbouringSectors.count + ' $NeighbouringSectorsEndangered: ' + $NeighbouringSectorsEndangered.count + ' minefields: ' + $FactionMinefields.count + ' goal: ' + $MinefieldGoalTotal" chance="$DebugChance" />
+                  <do_if value="player.sector.exists">
+                    <remove_from_group group="$HomeSectors" object="player.sector" comment="Do not place mines in the current player sector" />
+                    <remove_from_group group="$NeighbouringSectors" object="player.sector" comment="Do not place mines in the current player sector" />
+                    <remove_from_group group="$HomeSectorsEndangered" object="player.sector" comment="Do not place mines in the current player sector" />
+                    <remove_from_group group="$NeighbouringSectorsEndangered" object="player.sector" comment="Do not place mines in the current player sector" />
+                  </do_if>
+                  <run_actions ref="md.TM_Empire_FactionLogic_StaticDefense.RemoveInactiveMinefields">
+                    <param name="StaticDefenseManager" value="StaticDefenseManager" />
+                  </run_actions>
+                  <set_value name="$MaxSpawnPerIteration" exact="0" />
+                  <set_value name="$StrategiesCountThisLoop" exact="0" />
+                  <do_while value="(($FactionMinefields.count + @StaticDefenseManager.$Strategies_Minefields_Active.count + $StrategiesCountThisLoop) lt ($MinefieldGoalTotal)) and ($MaxSpawnPerIteration lt 6)" comment="Max 6 new Minefields per Faction every 30 mins">
+                    <set_value name="$MaxSpawnPerIteration" operation="add" />
+                    <set_value name="$MineType" exact="-1" comment="0: RiggedAsteroids, 1: Indiscriminative Mines, 2: FF-Mines" />
+                    <do_if value="$Faction == faction.argon or $Faction == faction.antigone or $Faction == faction.ministry or $Faction == faction.paranid">
+                      <set_value name="$MineType" exact="2" comment="0: RiggedAsteroids, 1: Indiscriminative Mines, 2: FF-Mines" />
+                      <do_if value="$HomeSectorsEndangered.count" chance="66">
+                        <set_value name="$Sector" exact="$HomeSectorsEndangered.random" />
+                      </do_if>
+                      <do_elseif value="$NeighbouringSectorsEndangered.count" chance="80">
+                        <set_value name="$Sector" exact="$NeighbouringSectorsEndangered.random" />
+                      </do_elseif>
+                      <do_elseif value="$HomeSectors.count">
+                        <set_value name="$Sector" exact="$HomeSectors.random" />
+                      </do_elseif>
+                      <do_elseif value="$NeighbouringSectors.count">
+                        <set_value name="$Sector" exact="$NeighbouringSectors.random" />
+                      </do_elseif>
+                    </do_if>
+                    <do_elseif value="$Faction == faction.holyorder">
+                      <do_if value="$HomeSectorsEndangered.count" chance="50">
+                        <set_value name="$Sector" exact="$HomeSectorsEndangered.random" />
+                        <set_value name="$MineType" exact="2" comment="0: RiggedAsteroids, 1: Indiscriminative Mines, 2: FF-Mines" />
+                      </do_if>
+                      <do_elseif value="$NeighbouringSectorsEndangered.count" chance="66">
+                        <set_value name="$Sector" exact="$NeighbouringSectorsEndangered.random" />
+                        <set_value name="$MineType" exact="2" comment="0: RiggedAsteroids, 1: Indiscriminative Mines, 2: FF-Mines" />
+                      </do_elseif>
+                      <do_elseif value="$NeighbouringSectors.count">
+                        <set_value name="$Sector" exact="$NeighbouringSectors.random" />
+                        <do_if value="true" chance="66">
+                          <set_value name="$MineType" exact="1" comment="0: RiggedAsteroids, 1: Indiscriminative Mines, 2: FF-Mines" />
+                        </do_if>
+                        <do_else>
+                          <set_value name="$MineType" exact="1" comment="Native deployable mines replace mission-only rigged asteroids" />
+                        </do_else>
+                      </do_elseif>
+                      <do_elseif value="$HomeSectors.count">
+                        <set_value name="$Sector" exact="$HomeSectors.random" />
+                        <set_value name="$MineType" exact="2" comment="0: RiggedAsteroids, 1: Indiscriminative Mines, 2: FF-Mines" />
+                      </do_elseif>
+                    </do_elseif>
+                    <do_elseif value="$Faction == faction.xenon">
+                      <set_value name="$MineType" exact="2" comment="0: RiggedAsteroids, 1: Indiscriminative Mines, 2: FF-Mines" />
+                      <do_if value="$NeighbouringSectorsEndangered.count and $HomeSectorsEndangered.count">
+                        <set_value name="$Sector" exact="[$HomeSectorsEndangered.random, $NeighbouringSectorsEndangered.random].random" />
+                      </do_if>
+                      <do_elseif value="$NeighbouringSectorsEndangered.count">
+                        <set_value name="$Sector" exact="$NeighbouringSectorsEndangered.random" />
+                      </do_elseif>
+                      <do_elseif value="$HomeSectorsEndangered.count">
+                        <set_value name="$Sector" exact="$HomeSectorsEndangered.random" />
+                      </do_elseif>
+                      <do_elseif value="$NeighbouringSectors.count">
+                        <set_value name="$Sector" exact="$NeighbouringSectors.random" />
+                      </do_elseif>
+                      <do_elseif value="$HomeSectorsEndangered.count">
+                        <set_value name="$Sector" exact="$HomeSectorsEndangered.random" />
+                      </do_elseif>
+                    </do_elseif>
+                    <do_else>
+                      <do_if value="$NeighbouringSectorsEndangered.count">
+                        <set_value name="$Sector" exact="$NeighbouringSectorsEndangered.random" />
+                        <do_if value="true" chance="80">
+                          <set_value name="$MineType" exact="1" comment="0: RiggedAsteroids, 1: Indiscriminative Mines, 2: FF-Mines" />
+                        </do_if>
+                        <do_else>
+                          <set_value name="$MineType" exact="1" comment="Native deployable mines replace mission-only rigged asteroids" />
+                        </do_else>
+                      </do_if>
+                      <do_elseif value="$NeighbouringSectors.count">
+                        <set_value name="$Sector" exact="$NeighbouringSectors.random" />
+                        <do_if value="true" chance="80">
+                          <set_value name="$MineType" exact="1" comment="0: RiggedAsteroids, 1: Indiscriminative Mines, 2: FF-Mines" />
+                        </do_if>
+                        <do_else>
+                          <set_value name="$MineType" exact="1" comment="Native deployable mines replace mission-only rigged asteroids" />
+                        </do_else>
+                      </do_elseif>
+                    </do_else>
+                    <do_if value="$Sector? and $Sector">
+                      <find_zone name="$NearbyZone" normalzone="true" space="$Sector" multiple="false">
+                        <match_distance space="$Sector" value="$Sector.coreposition" max="[$Sector.coresize, 400km].min" />
+                      </find_zone>
+                      <do_if value="$NearbyZone and $NearbyZone.position.y lt 15km and $NearbyZone.position.y gt -15km" comment="exclude zones with about +-100km deviation from the plane">
+                        <set_value name="$SelectedTarget" exact="$NearbyZone" />
+                        <set_value name="$MinSpawn" exact="6" />
+                        <set_value name="$MaxSpawn" exact="12" />
+                        <set_value name="$ExplosiveOwner" exact="$Faction" />
+                        <set_value name="this.$spawn" exact="true" />
+                        <do_all exact="$FactionMinefields.count" counter="$i" reverse="true" comment="list of minefields, each entry containing a group of mines">
+                          <set_value name="this.$minefield" exact="$FactionMinefields.{$i}" />
+                          <do_if value="(this.$minefield.count gt 0) and (this.$minefield.{1}.distanceto.{$SelectedTarget} lt 20km)">
+                            <find_zone name="$NearbyZones" normalzone="true" space="$Sector" multiple="true">
+                              <match_distance space="$Sector" value="$Sector.coreposition" max="[$Sector.coresize, 400km].min" />
+                            </find_zone>
+                            <debug_text text="'Spawnlocation for minefield near to other minefield (sector=%s zone=%s #zones%s #factiontotalminefields=%s goal=%s) - skipping'.[$SelectedTarget.sector.knownname, $SelectedTarget.knownname, $NearbyZones.count, $FactionMinefields.count, $MinefieldGoalTotal]" chance="$DebugChance" />
+                            <set_value name="this.$spawn" exact="false" />
+                          </do_if>
+                        </do_all>
+                        <do_if value="this.$spawn">
+                          <include_actions ref="md.TM_Empire_FactionLogic_StaticDefense.Constants" />
+                          <set_value name="$DeployableType" exact="$StaticDefense_DeployableType_Mines" />
+                          <do_if value="$MineType == 1">
+                            <set_value name="$DeployableType" exact="$StaticDefense_DeployableType_Mines_Indiscriminate" />
+                          </do_if>
+                          <debug_text text="'run_actions GetStrategy'" chance="StaticDefenseManager.$DebugChance" />
+                          <run_actions ref="md.TM_Empire_FactionLogic_StaticDefense.GetStrategy" result="$Strategy">
+                            <param name="StaticDefenseManager" value="StaticDefenseManager" />
+                            <param name="Sector" value="$Sector" />
+                            <param name="Faction" value="$Faction" />
+                            <param name="DeployableType" value="$DeployableType" />
+                            <param name="MaxSpawnPerIteration" value="6" />
+                            <param name="DebugChance" value="StaticDefenseManager.$DebugChance" />
+                          </run_actions>
+                          <do_if value="@$Strategy">
+                            <set_value name="$StrategiesCountThisLoop" operation="add" />
+                            <do_if value="not $StaticDefense_IsJobShipChecked?">
+                              <set_value name="$StaticDefense_IsJobShipChecked" exact="true" />
+                              <do_if value="StaticDefenseManager.$CombatEngineersAndSaboteurs.count lt 5" comment="3 x staticdefenseengineer, 2 x staticdefensesaboteur">
+                                <run_actions ref="md.TM_Empire_FactionLogic_StaticDefense.CreateJobShips">
+                                  <param name="StaticDefenseManager" value="StaticDefenseManager" />
+                                  <param name="Faction" value="$Faction" />
+                                  <param name="Sector" value="$Strategy.$Sector" />
+                                </run_actions>
+                              </do_if>
+                            </do_if>
+                            <debug_text text="'run_actions AddStrategy ' + $Strategy" chance="StaticDefenseManager.$DebugChance" />
+                            <run_actions ref="md.TM_Empire_FactionLogic_StaticDefense.AddStrategy">
+                              <param name="StaticDefenseManager" value="StaticDefenseManager" />
+                              <param name="Strategy" value="$Strategy" />
+                            </run_actions>
+                          </do_if>
+                        </do_if>
+                      </do_if>
+                      <do_else>
+                        <debug_text text="'No suitable zones found in ' + $Sector.knownname" chance="$DebugChance" />
+                      </do_else>
+                    </do_if>
+                    <do_else>
+                      <debug_text text="'No suitable sector found'" chance="$DebugChance" />
+                    </do_else>
+                  </do_while>
+                  <remove_value name="$StaticDefense_IsJobShipChecked" />
+                </do_if>
+                <do_else>
+                  <debug_text text="'No suitable sectors found'" chance="$DebugChance" />
+                </do_else>
+              </actions>
+            </cue>
+          </cues>
+        </cue>
+        <cue name="Patch__MaintainRiggedAsteroids_ExcessiveFields" onfail="cancel" namespace="this">
+          <conditions>
+            <check_value value="md.$TM_Empire_Patch_RiggedAsteroidLists?" />
+          </conditions>
+          <actions>
+            <set_value name="$Namespace" exact="parent.namespace" />
+            <set_value name="$Faction" exact="parent.namespace.$Faction" />
+            <find_sector name="$All_Sectors" multiple="true" />
+            <set_value name="$AllMissionAsteroids" exact="[]" />
+            <do_if value="$Faction.willclaimspace">
+              <set_value name="$HomeSectors" exact="$Namespace.$ClaimedSectors.list" />
+            </do_if>
+            <do_else>
+              <set_value name="$HomeSectors" exact="[]" />
+            </do_else>
+            <do_for_each name="$Sector" in="$All_Sectors">
+              <find_object name="$Asteroids" macro="macro.env_ast_ore_m_explosive_03_macro" owner="$Faction" space="$Sector" multiple="true" />
+              <do_if value="$Asteroids.count">
+                <do_for_each name="$MissionAsteroids" in="md.$TM_Empire_Patch_RiggedAsteroidLists" counter="$i" reverse="true">
+                  <do_if value="$MissionAsteroids.count and $MissionAsteroids.{1}.owner == $Faction and $MissionAsteroids.{1}.sector == $Sector">
+                    <add_to_group groupname="$Minefield" list="$MissionAsteroids" />
+                    <append_list_elements name="$AllMissionAsteroids" other="$MissionAsteroids" />
+                    <debug_text text="'Added mission related rigged asteroid group for ' + $Faction + ' in ' + $Sector.knownname" filter="savegame" />
+                    <remove_from_list name="$Asteroids" list="$MissionAsteroids" />
+                    <remove_value name="md.$TM_Empire_Patch_RiggedAsteroidLists.{$i}" />
+                  </do_if>
+                </do_for_each>
+                <do_while value="$Asteroids.count">
+                  <set_value name="$Asteroid" exact="$Asteroids.{1}" />
+                  <create_group groupname="$Minefield" />
+                  <add_to_group groupname="$Minefield" object="$Asteroid" />
+                  <remove_from_list name="$Asteroids" exact="$Asteroid" multiple="false" />
+                  <do_for_each name="$PotentiallyNearbyAsteroid" in="$Asteroids">
+                    <do_if value="$PotentiallyNearbyAsteroid.distanceto.{$Asteroid} le 8km">
+                      <add_to_group groupname="$Minefield" object="$PotentiallyNearbyAsteroid" />
+                      <do_if value="$Minefield.count ge 12">
+                        <break />
+                      </do_if>
+                    </do_if>
+                  </do_for_each>
+                  <remove_from_list name="$Asteroids" list="$Minefield.list" />
+                  <append_to_list name="$Namespace.$FactionMinefields" exact="$Minefield" />
+                </do_while>
+              </do_if>
+              <do_if value="not $Faction.willclaimspace">
+                <find_station_by_true_owner name="$Station" space="$Sector" faction="$Faction" known="true" />
+                <do_if value="$Station">
+                  <append_to_list name="$HomeSectors" exact="$Sector" />
+                </do_if>
+              </do_if>
+            </do_for_each>
+            <set_value name="$MinefieldGoalTotal" exact="[[$Namespace.$MinefieldGoalPerSector * $HomeSectors.count, 3].max, 12].min" comment="Spawn" />
+            <set_value name="$NumFields" exact="$Namespace.$FactionMinefields.count" />
+            <debug_text text="$Faction + ' has ' + $NumFields + ' rigged asteroid fields but wants ' + $MinefieldGoalTotal" filter="savegame" />
+            <shuffle_list list="$Namespace.$FactionMinefields" />
+            <remove_value name="$All_Sectors" />
+            <remove_value name="$HomeSectors" />
+            <do_if value="$Namespace.$FactionMinefields.count le $MinefieldGoalTotal">
+              <remove_value name="$AllMissionAsteroids" />
+              <run_actions ref="md.TM_Empire_Runtime.RevokeGoalApprovals">
+                <param name="CancelledCue" value="Patch__MaintainRiggedAsteroids_ExcessiveFields" />
+              </run_actions>
+              <cancel_cue cue="Patch__MaintainRiggedAsteroids_ExcessiveFields" />
+            </do_if>
+            <set_value name="$StartProcessingTime" min="player.age" max="player.age + 5s" />
+          </actions>
+          <cues>
+            <cue name="Patch__MaintainRiggedAsteroids_ExcessiveFields_Remove" instantiate="true" checkinterval="500ms">
+              <conditions>
+                <check_age min="$StartProcessingTime" />
+                <check_value value="$Namespace.$FactionMinefields.count gt $MinefieldGoalTotal" />
+              </conditions>
+              <actions>
+                <do_for_each name="$Field" in="$Namespace.$FactionMinefields" counter="$i" reverse="true">
+                  <do_if value="$Field.count == 0">
+                    <remove_value name="$Namespace.$FactionMinefields.{$i}" />
+                  </do_if>
+                  <do_elseif value="$AllMissionAsteroids.indexof.{$Field.{1}} == 0">
+                    <set_value name="$RemovedFieldCount" operation="add" />
+                    <set_value name="$RemovedAsteroidCount" operation="add" exact="$Field.count" />
+                    <destroy_group group="$Field" explosion="false" />
+                    <remove_value name="$Namespace.$FactionMinefields.{$i}" />
+                    <set_value name="$RemovedFieldCount" operation="add" />
+                    <do_if value="$Namespace.$FactionMinefields.count le $MinefieldGoalTotal">
+                      <remove_value name="$AllMissionAsteroids" />
+                      <debug_text text="$Faction + ' removed ' + $RemovedFieldCount + ' explosive asteroid fields with ' + $RemovedAsteroidCount + ' asteroids'" filter="savegame" />
+                      <run_actions ref="md.TM_Empire_Runtime.RevokeGoalApprovals">
+                        <param name="CancelledCue" value="Patch__MaintainRiggedAsteroids_ExcessiveFields" />
+                      </run_actions>
+                      <cancel_cue cue="Patch__MaintainRiggedAsteroids_ExcessiveFields" />
+                      <break />
+                    </do_if>
+                    <do_elseif value="$RemovedFieldCount gt 10">
+                      <break />
+                    </do_elseif>
+                  </do_elseif>
+                </do_for_each>
+              </actions>
+            </cue>
+          </cues>
+        </cue>
+        <cue name="TM_PersonnelGoal" namespace="this">
+          <cues>
+            <cue name="TM_PersonnelTick" checkinterval="10s">
+              <conditions>
+                <check_value value="parent.exists" />
+              </conditions>
+              <delay exact="10s" />
+              <actions>
+                <set_value name="parent.parent.$tm_empire_personnel_goal" exact="parent" />
+                <run_actions ref="md.TM_Empire_Personnel.StepPersonnel" result="$TM_PersonnelResult">
+                  <param name="ManagerCue" value="parent.parent" />
+                  <param name="GoalCue" value="parent" />
+                </run_actions>
+                <set_value name="parent.$LastResult" exact="$TM_PersonnelResult" />
+                <set_value name="parent.$LastReason" exact="if $TM_PersonnelResult == 'sent' and @parent.$Reason then parent.$Reason else $TM_PersonnelResult" />
+                <set_value name="parent.$LastObserved" exact="player.age" />
+                <reset_cue cue="this" />
+              </actions>
+            </cue>
+          </cues>
+        </cue>
+      </cues>
+    </library>
+    <cue name="EvaluateForceStrength" instantiate="true" namespace="static">
+      <conditions>
+        <event_cue_signalled />
+      </conditions>
+      <actions>
+        <run_actions ref="EvaluateForceStrengthLib" result="event.param.{1}.$EFS_Result">
+          <param name="Ships" value="event.param.{2}" />
+          <param name="ResultTable" value="@event.param.{5}" />
+        </run_actions>
+      </actions>
+    </cue>
+    <library name="EvaluateForceStrengthLib" purpose="run_actions">
+      <params>
+        <param name="Ships" comment="Ship or list/group of ships" />
+        <param name="SubordinateThreatFactor" default="0.8" />
+        <param name="ResultTable" default="null" />
+      </params>
+      <actions>
+        <set_value name="$Result" exact="0" />
+        <do_for_each name="$Ship" in="if typeof $Ships == datatype.component then [$Ships] else $Ships">
+          <run_actions ref="Estimated_Ship_Strength_Lib" result="$ShipThreat">
+            <param name="Ship" value="$Ship" />
+            <param name="SubordinateThreatFactor" value="$SubordinateThreatFactor" />
+          </run_actions>
+          <do_if value="$ResultTable">
+            <set_value name="$ResultTable.{$Ship}" exact="$ShipThreat" />
+          </do_if>
+          <set_value name="$Result" exact="$ShipThreat" operation="add" />
+        </do_for_each>
+        <return value="$Result" />
+      </actions>
+    </library>
+    <library name="Estimated_Ship_Strength">
+      <actions>
+        <run_actions ref="Estimated_Ship_Strength_Lib" result="$ESS_Result">
+          <param name="Ship" value="$ESS_Ship" />
+        </run_actions>
+      </actions>
+    </library>
+    <library name="Estimated_Ship_Strength_Lib" purpose="run_actions">
+      <params>
+        <param name="Ship" />
+        <param name="SubordinateThreatFactor" default="0.8" />
+      </params>
+      <actions>
+        <set_value name="$Result" exact="$Ship.threatscore" />
+        <do_if value="$Ship and $SubordinateThreatFactor gt 0.0">
+          <do_for_each name="$Subordinate" in="$Ship.allsubordinates">
+            <set_value name="$Result" operation="add" exact="$Subordinate.threatscore * $SubordinateThreatFactor" />
+          </do_for_each>
+        </do_if>
+        <return value="$Result" />
+      </actions>
+    </library>
+    <cue name="Get_Military_Jobs" instantiate="true" namespace="static">
+      <conditions>
+        <event_cue_signalled />
+      </conditions>
+      <actions>
+        <get_threat_score result="$Ship_XL_Threat" class="class.ship_xl" purpose="purpose.fight" />
+        <get_threat_score result="$Ship_L_Threat" class="class.ship_l" purpose="purpose.fight" />
+        <get_threat_score result="$Ship_M_Threat" class="class.ship_m" purpose="purpose.fight" />
+        <get_threat_score result="$Ship_S_Threat" class="class.ship_s" purpose="purpose.fight" />
+        <set_value name="$MilitaryTags" exact="[tag.military, tag.factionlogic]" />
+        <set_value name="$MilitaryJobDefinitions" exact="[                      table[$Points = $Ship_XL_Threat, $Class = class.ship_xl, $Tags = $MilitaryTags],                      table[$Points = $Ship_L_Threat,  $Class = class.ship_l,  $Tags = $MilitaryTags],                      table[$Points = $Ship_M_Threat,  $Class = class.ship_m,  $Tags = $MilitaryTags],                      table[$Points = $Ship_S_Threat,  $Class = class.ship_s,  $Tags = $MilitaryTags]]" />
+        <run_actions ref="Get_Suitable_Jobs_Lib" result="event.param.{1}.$Suitable_Jobs">
+          <param name="JobDefinitions" value="$MilitaryJobDefinitions" />
+          <param name="Points" value="event.param.{2}" />
+          <param name="Faction" value="event.param.{3}" />
+          <param name="Commandeerable" value="@event.param.{4}" />
+          <param name="AdditionalTags" value="@event.param.{5}" />
+        </run_actions>
+      </actions>
+    </cue>
+    <cue name="Get_Scout_Jobs" instantiate="true" namespace="static">
+      <conditions>
+        <event_cue_signalled />
+      </conditions>
+      <actions>
+        <get_threat_score result="$Ship_XL_Threat" class="class.ship_xl" purpose="purpose.fight" />
+        <get_threat_score result="$Ship_L_Threat" class="class.ship_l" purpose="purpose.fight" />
+        <get_threat_score result="$Ship_M_Threat" class="class.ship_m" purpose="purpose.fight" />
+        <get_threat_score result="$Ship_S_Threat" class="class.ship_s" purpose="purpose.fight" />
+        <set_value name="$ScoutTags" exact="[tag.scout, tag.factionlogic]" />
+        <set_value name="$ScoutJobDefinitions" exact="[                      table[$Points = $Ship_XL_Threat, $Class = class.ship_xl, $Tags = $ScoutTags],                      table[$Points = $Ship_L_Threat,  $Class = class.ship_l,  $Tags = $ScoutTags],                      table[$Points = $Ship_M_Threat,  $Class = class.ship_m,  $Tags = $ScoutTags],                      table[$Points = $Ship_S_Threat,  $Class = class.ship_s,  $Tags = $ScoutTags]]" />
+        <run_actions ref="Get_Suitable_Jobs_Lib" result="event.param.{1}.$Suitable_Jobs">
+          <param name="JobDefinitions" value="$ScoutJobDefinitions" />
+          <param name="Points" value="event.param.{2}" />
+          <param name="Faction" value="event.param.{3}" />
+          <param name="Commandeerable" value="@event.param.{4}" />
+          <param name="AdditionalTags" value="@event.param.{5}" />
+        </run_actions>
+      </actions>
+    </cue>
+    <library name="Get_Suitable_Jobs_Lib" purpose="run_actions">
+      <params>
+        <param name="JobDefinitions" />
+        <param name="Points" />
+        <param name="Faction" />
+        <param name="Commandeerable" default="false" />
+        <param name="AdditionalTags" default="null" comment="Tag or list of tags used in addition to the tags of the JobsTable" />
+        <param name="DebugChance" default="0" />
+      </params>
+      <actions>
+        <assert value="typeof $JobDefinitions == datatype.list" />
+        <assert value="$Points gt 0" />
+        <assert value="typeof $Faction == datatype.faction" />
+        <create_list name="$JobListIndexes" exact="$JobDefinitions.count" />
+        <do_all exact="$JobDefinitions.count" counter="$i">
+          <set_value name="$JobListIndexes.{$i}" exact="$i" />
+        </do_all>
+        <set_value name="$Suitable_Jobs" exact="[]" />
+        <debug_text text="'Attempting to get suitable job ships for ' + $Faction + '. Points: ' + $Points" chance="$DebugChance" />
+        <set_value name="$MatchingJobsTable" exact="table[]" />
+        <set_value name="$AffordableDefinitions" exact="[]" />
+        <do_if value="$AdditionalTags">
+          <set_value name="$CombinedTagList" exact="[]" />
+        </do_if>
+        <set_value name="$Tries" exact="0" />
+        <set_value name="$PointsOverflow" exact="0" />
+        <do_while value="$Points gt 0 and $JobListIndexes.count">
+          <set_value name="$Tries" operation="add" />
+          <set_value name="$Definition" exact="null" />
+          <set_value name="$Cost" exact="0" />
+          <clear_list list="$AffordableDefinitions" />
+          <do_all exact="$JobListIndexes.count" counter="$i">
+            <do_if value="$AffordableDefinitions.count or $JobDefinitions.{$JobListIndexes.{$i}}.$Points le $Points">
+              <append_to_list name="$AffordableDefinitions" exact="$JobListIndexes.{$i}" />
+            </do_if>
+          </do_all>
+          <do_if value="$AffordableDefinitions.count">
+            <do_if value="$Tries" exact="1">
+              <set_value name="$Index" min="1" max="$AffordableDefinitions.count" profile="decreasing" scale="4" />
+            </do_if>
+            <do_elseif value="$Tries" exact="2">
+              <set_value name="$Index" min="1" max="$AffordableDefinitions.count" profile="decreasing" scale="3" />
+            </do_elseif>
+            <do_elseif value="$Tries" exact="3">
+              <set_value name="$Index" min="1" max="$AffordableDefinitions.count" profile="decreasing" scale="2" />
+            </do_elseif>
+            <do_elseif value="$Tries" min="4">
+              <set_value name="$Index" min="1" max="$AffordableDefinitions.count" profile="decreasing" />
+            </do_elseif>
+            <set_value name="$SelectedJobIndex" exact="$AffordableDefinitions.{$Index}" />
+            <set_value name="$Definition" exact="$JobDefinitions.{$SelectedJobIndex}" />
+            <set_value name="$Cost" exact="$Definition.$Points" />
+            <do_if value="$MatchingJobsTable.{$SelectedJobIndex}?">
+              <set_value name="$JobsList" exact="$MatchingJobsTable.{$SelectedJobIndex}" />
+              <debug_text text="'Has already found suitable jobs for cost ' + $Cost + ' Jobs: ' + $JobsList" chance="$DebugChance" />
+            </do_if>
+            <do_else>
+              <do_if value="$CombinedTagList?">
+                <clear_list list="$CombinedTagList" />
+                <append_list_elements name="$CombinedTagList" other="$Definition.$Tags" />
+                <do_if value="typeof $AdditionalTags == datatype.list">
+                  <append_list_elements name="$CombinedTagList" other="$AdditionalTags" />
+                </do_if>
+                <do_else>
+                  <append_to_list name="$CombinedTagList" exact="$AdditionalTags" />
+                </do_else>
+                <run_actions ref="md.TM_Empire_Purchase.ReadPurchaseOptions" result="$JobsList">
+                  <param name="Tags" value="$CombinedTagList" />
+                  <param name="Classes" value="$Definition.$Class" />
+                </run_actions>
+              </do_if>
+              <do_else>
+                <run_actions ref="md.TM_Empire_Purchase.ReadPurchaseOptions" result="$JobsList">
+                  <param name="Tags" value="$Definition.$Tags" />
+                  <param name="Classes" value="$Definition.$Class" />
+                </run_actions>
+              </do_else>
+              <set_value name="$MatchingJobsTable.{$SelectedJobIndex}" exact="$JobsList" />
+            </do_else>
+            <do_if value="$JobsList.count">
+              <set_value name="$Tries" exact="0" />
+              <append_to_list name="$Suitable_Jobs" exact="$JobsList.random" />
+              <set_value name="$Points" operation="subtract" exact="$Cost" />
+              <debug_text text="'Selected job ' + $Suitable_Jobs.{$Suitable_Jobs.count} + ' for cost: ' + $Cost + '; points now ' + $Points" chance="$DebugChance" />
+              <do_if value="$PointsOverflow gt 0">
+                <debug_text text="'Attempted to add $PointsOverflow back to $Points. $PointsOverflow: ' + $PointsOverflow + '; $Points now: ' + ($Points + $PointsOverflow)" chance="$DebugChance" />
+                <set_value name="$Points" operation="add" exact="$PointsOverflow" />
+                <set_value name="$PointsOverflow" exact="0" />
+              </do_if>
+            </do_if>
+            <do_else>
+              <debug_text text="'No suitable job for class ' + $Definition.$Class + ' at cost ' + $Cost" chance="$DebugChance" />
+              <remove_from_list name="$JobListIndexes" exact="$SelectedJobIndex" multiple="false" />
+            </do_else>
+          </do_if>
+          <do_if value="$Tries gt 0">
+            <do_if value="$Cost">
+              <set_value name="$PointDiff" exact="$Points - $Cost" />
+            </do_if>
+            <do_elseif value="$Tries gt 4">
+              <do_if value="$Points gt 1">
+                <set_value name="$PointDiff" min="1" max="[$Points - 1, 2].max" />
+              </do_if>
+            </do_elseif>
+            <do_else>
+              <set_value name="$Points" exact="0" />
+              <set_value name="$PointDiff" exact="0" />
+            </do_else>
+            <do_if value="$PointDiff">
+              <set_value name="$Tries" exact="0" />
+              <set_value name="$Points" operation="subtract" exact="$PointDiff" />
+              <set_value name="$PointsOverflow" operation="add" exact="$PointDiff" />
+              <debug_text text="'Attempting another tier by reducing $Points to ' + $Points + '. Points overflow is now ' + $PointsOverflow" chance="$DebugChance" />
+            </do_if>
+          </do_if>
+        </do_while>
+        <return value="$Suitable_Jobs" />
+      </actions>
+    </library>
+    <library name="Get_Faction_Situation_By_Sector" purpose="run_actions">
+      <params>
+        <param name="Faction" />
+        <param name="Sector" />
+      </params>
+      <actions>
+        <set_value name="$DisplayNotification" exact="false" />
+        <set_value name="$SectorOwner" exact="$Sector.owner" />
+        <set_value name="$IsEnemyToLocation" exact="false" />
+        <do_if value="$Sector.iscontested">
+          <set_value name="$ContestingFactions" exact="$Sector.contestingfactions" />
+          <set_value name="$SectorOwner" exact="null" />
+        </do_if>
+        <run_actions ref="md.X4Ep1_War_Subscriptions.Get_Active_War_Subscriptions" result="$ActiveAlliedSubscriptions">
+          <param name="HostFactions" value="[$Faction]" />
+          <param name="EnemyFactions" value="if $ContestingFactions? then $ContestingFactions else [$SectorOwner]" />
+        </run_actions>
+        <set_value name="$ActiveEnemySubscriptions" exact="[]" />
+        <do_if value="not $ActiveAlliedSubscriptions">
+          <run_actions ref="md.X4Ep1_War_Subscriptions.Get_Active_War_Subscriptions" result="$ActiveEnemySubscriptions">
+            <param name="HostFactions" value="if $ContestingFactions? then $ContestingFactions else [$SectorOwner]" />
+            <param name="EnemyFactions" value="[$Faction]" />
+          </run_actions>
+        </do_if>
+        <do_if value="$ActiveAlliedSubscriptions.count">
+          <set_value name="$DisplayNotification" exact="true" />
+        </do_if>
+        <do_elseif value="$ActiveEnemySubscriptions.count">
+          <set_value name="$DisplayNotification" exact="true" />
+          <set_value name="$IsEnemyToLocation" exact="true" />
+        </do_elseif>
+        <do_elseif value="$Sector.isknown">
+          <set_value name="$SectorDist" exact="player.entity.gatedistance.{$Sector}" />
+          <do_if value="$SectorDist ge 0 and $SectorDist le 1">
+            <do_if value="$ContestingFactions?">
+              <do_for_each in="$ContestingFactions">
+                <do_if value="not loop.element.hasrelation.enemy.{faction.player}">
+                  <set_value name="$DisplayNotification" exact="true" />
+                  <do_if value="loop.element.hasrelation.enemy.{$Faction}">
+                    <set_value name="$IsEnemyToLocation" exact="true" />
+                  </do_if>
+                </do_if>
+              </do_for_each>
+            </do_if>
+            <do_elseif value="$SectorOwner">
+              <set_value name="$DisplayNotification" exact="not $SectorOwner.hasrelation.enemy.{faction.player}" />
+            </do_elseif>
+          </do_if>
+        </do_elseif>
+        <do_if value="$DisplayNotification">
+          <do_if value="$ActiveAlliedSubscriptions.count">
+            <return value="'faction_is_war_host'" />
+          </do_if>
+          <do_elseif value="$ActiveEnemySubscriptions.count">
+            <return value="'faction_is_war_enemy'" />
+          </do_elseif>
+          <do_elseif value="$IsEnemyToLocation">
+            <return value="'enemy_to_local_friend'" />
+          </do_elseif>
+          <do_else>
+            <return value="'neutral_to_local_friend'" />
+          </do_else>
+        </do_if>
+        <return value="null" />
+      </actions>
+    </library>
+    <cue name="TM_PlayerManagerWatch" checkinterval="5s" namespace="this">
+      <conditions>
+        <check_value value="player.entity.exists" />
+      </conditions>
+      <delay exact="5s" />
+      <actions>
+        <run_actions ref="md.TM_Empire_Runtime.ValidateBinding" />
+        <do_if value="md.TM_Empire_Runtime.Registry.$State == 'bound' and not @md.TM_Empire_Runtime.Registry.$ManagerCue.exists">
+          <set_value name="md.TM_Empire_Runtime.Registry.$State" exact="'starting'" />
+          <run_actions ref="md.TM_Empire_Runtime.PublishAIState" />
+          <signal_cue_instantly cue="TM_PlayerManagerStart" param="[md.TM_Empire_Runtime.Registry.$Governor, md.TM_Empire_Runtime.Registry.$Station, md.TM_Empire_Runtime.Registry.$Module]" />
+        </do_if>
+        <reset_cue cue="this" />
+      </actions>
+    </cue>
+    <cue name="TM_PlayerManagerStart" instantiate="true" namespace="this">
+      <conditions>
+        <event_cue_signalled />
+      </conditions>
+      <actions>
+        <run_actions ref="md.TM_Empire_Runtime.ValidateBinding" />
+        <do_if value="md.TM_Empire_Runtime.Registry.$State == 'starting' and not @md.TM_Empire_Runtime.Registry.$ManagerCue.exists and @event.param.{1} == @md.TM_Empire_Runtime.Registry.$Governor and @event.param.{2} == @md.TM_Empire_Runtime.Registry.$Station and @event.param.{3} == @md.TM_Empire_Runtime.Registry.$Module">
+          <set_value name="$Governor" exact="event.param.{1}" />
+          <set_value name="$GovernorStation" exact="event.param.{2}" />
+          <set_value name="$GovernorModule" exact="event.param.{3}" />
+        </do_if>
+        <do_else>
+          <run_actions ref="md.TM_Empire_Runtime.RevokeGoalApprovals">
+            <param name="CancelledCue" value="this" />
+          </run_actions>
+          <cancel_cue cue="this" />
+        </do_else>
+      </actions>
+      <cues>
+        <cue name="TM_PlayerManager" ref="Manager">
+          <param name="Faction" value="faction.player" />
+          <param name="Governor" value="$Governor" />
+          <param name="GovernorStation" value="$GovernorStation" />
+          <param name="GovernorModule" value="$GovernorModule" />
+        </cue>
+      </cues>
+    </cue>
+  </cues>
+</mdscript>

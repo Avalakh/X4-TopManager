@@ -1,0 +1,441 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mdscript xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" name="TM_Empire_FactionSubgoal_BuildStation" xsi:noNamespaceSchemaLocation="md.xsd">
+  <cues>
+    <cue name="Start" instantiate="true" namespace="this" version="4">
+      <conditions>
+        <event_cue_signalled />
+        <check_value value="typeof event.param == datatype.table" />
+      </conditions>
+      <actions>
+        <set_value name="$OwnerGoal" exact="event.param.$OwnerGoal" />
+        <set_value name="$TM_ManagerCue" exact="@$OwnerGoal.$TM_ManagerCue" />
+        <set_value name="$Descriptor" exact="event.param.$Descriptor" />
+        <set_value name="$DesiredEndTime" exact="@event.param.$DesiredEndTime" />
+        <set_value name="$Faction" exact="$OwnerGoal.$Faction" />
+        <set_value name="$StationMacro" exact="event.param.$StationMacro" />
+        <set_value name="$ConstructionPlan" exact="event.param.$ConstructionPlan" />
+        <set_value name="$StationRawName" exact="@event.param.$StationRawName" />
+        <set_value name="$DeployImmediate" exact="event.param.$DeployImmediate" />
+        <set_value name="$Target" exact="event.param.$Target" />
+        <set_value name="$Position" exact="event.param.$Position" />
+        <set_value name="$EntryPoint" exact="@event.param.$EntryPoint" />
+        <set_value name="$EntryPointPosition" exact="@event.param.$EntryPointPosition" />
+        <set_value name="$DebugChance" exact="@event.param.$DebugChance" />
+        <set_value name="$DebugChance2" exact="@event.param.$DebugChance2" />
+        <do_if value="$DebugChance or $DebugChance2 or player.debugfilteractive.economy_verbose">
+          <include_actions ref="GenerateDebugTextWithCueID" />
+          <debug_text filter="economy_verbose" text="'#FL#;%1;Started;%2;%3;%4;%5;%6;%7;%8'.[player.age, $DebugGoalText, $DebugText, null, null, $Target.knownname, $Faction.id, @$OwnerGoal.$EnemyFaction.id]" context="false" />
+        </do_if>
+        <do_else>
+          <set_value name="$DebugText" exact="'(' + $Faction.id + ') Build station: ' + $StationMacro.id + ' in ' + $Target.knownname + ' ' + $Target + ' - '" />
+        </do_else>
+        <debug_text text="'triggering ' + $DebugText" chance="$DebugChance" />
+        <set_value name="$Station" exact="null" />
+        <set_value name="$BuildOrders" exact="[]" />
+        <set_value name="$Phase" exact="if $DeployImmediate then 'build' else 'prepare'" />
+        <set_value name="$EvaluationResult" exact="'unknown'" />
+        <set_value name="$EvaluationDelay" exact="1ms" />
+        <set_value name="$InStandby" exact="false" />
+        <set_value name="$StationConstructed" exact="false" />
+        <set_value name="$OverTime" exact="if $DesiredEndTime then $DesiredEndTime + 10min else null" />
+        <set_value name="$RegistryTable" exact="table[]" />
+        <set_value name="$RegistryTable.$Cue" exact="this" />
+        <set_value name="$RegistryTable.$StartTime" exact="player.age" />
+        <set_value name="$RegistryTable.$Phase" exact="$Phase" />
+        <set_value name="$RegistryTable.$EvaluationResult" exact="$EvaluationResult" />
+        <set_value name="$RegistryTable.$StationMacro" exact="$StationMacro" />
+        <set_value name="$RegistryTable.$Station" exact="$Station" />
+        <signal_cue_instantly cue="$OwnerGoal" param="['add_subgoal', $RegistryTable]" />
+      </actions>
+      <cues>
+        <cue name="Init" onfail="cancel">
+          <conditions>
+            <check_value value="not @$SetToShutdown" />
+          </conditions>
+          <actions>
+            <set_value name="$RegistryTable.$GenerateReportCue" exact="Generate_Report" />
+            <set_value name="$RegistryTable.$UpdateSubgoalCue" exact="Update_Sub_Goal" />
+            <set_value name="$RegistryTable.$EvaluateCue" exact="Force_Evaluation" />
+            <signal_cue_instantly cue="On_Phase_Change" />
+          </actions>
+        </cue>
+        <cue name="Generate_Report" instantiate="true">
+          <conditions>
+            <event_cue_signalled />
+          </conditions>
+          <actions>
+            <debug_text text="'SUBGOAL (' + $EvaluationResult + ') ' + $DebugText + 'Station: ' + $Station + ' - ' + $Station.knownname" context="false" />
+          </actions>
+        </cue>
+        <cue name="Update_Sub_Goal" instantiate="true">
+          <conditions>
+            <event_cue_signalled />
+          </conditions>
+          <actions>
+            <debug_text text="$DebugText + 'Update request: ' + event.param.{1}" chance="$DebugChance" />
+            <do_if value="event.param.{1} == 'cleanup' or event.param.{1} == 'handoff'">
+              <signal_cue_instantly cue="Cleanup" />
+            </do_if>
+            <do_elseif value="event.param.{1} == 'standby'">
+              <set_value name="$InStandby" exact="true" />
+            </do_elseif>
+            <do_elseif value="event.param.{1} == 'reactivate'">
+              <assert value="$InStandby" text="$DebugText + 'subgoal was not in standby when asked to reactivate [Owen]'" break="1" />
+              <set_value name="$InStandby" exact="false" />
+              <signal_cue_instantly cue="$OwnerGoal" param="['reactivate_subgoal', $RegistryTable]" />
+              <set_value name="$NewPhase" exact="@event.param.{2}" />
+              <do_if value="$NewPhase">
+                <include_actions ref="ProcessNewPhaseRequest" />
+              </do_if>
+            </do_elseif>
+            <do_elseif value="event.param.{1} == 'change_phase'">
+              <set_value name="$NewPhase" exact="event.param.{2}" />
+              <include_actions ref="ProcessNewPhaseRequest" />
+            </do_elseif>
+            <do_else>
+              <assert value="event.param.{1}" text="$DebugText + 'Unknown update request [Owen]'" break="1" />
+            </do_else>
+          </actions>
+        </cue>
+        <library name="ProcessNewPhaseRequest">
+          <actions>
+            <do_if value="$NewPhase == 'prepare'">
+              <assert value="$NewPhase == 'prepare'" text="$DebugText + 'Attempting change into prepare state which currently should not be transitioned into [Owen]'" break="1" />
+              <set_value name="$NewPhase" exact="null" />
+            </do_if>
+            <do_elseif value="event.param.{2} == 'build'">
+              
+            </do_elseif>
+            <do_else>
+              <assert value="false" text="'Unknown phase request ' + $NewPhase + ' [Owen]'" break="1" />
+              <set_value name="$NewPhase" exact="null" />
+            </do_else>
+            <do_if value="$NewPhase">
+              <set_value name="$Phase" exact="$NewPhase" />
+              <signal_cue_instantly cue="On_Phase_Change" />
+            </do_if>
+            <remove_value name="$NewPhase" />
+          </actions>
+        </library>
+        <cue name="On_Phase_Change" instantiate="true">
+          <conditions>
+            <event_cue_signalled />
+          </conditions>
+          <actions>
+            <do_if value="$Phase == 'prepare'">
+              
+            </do_if>
+            <do_elseif value="$Phase == 'build'">
+              <do_if value="not @$TM_BuildPrepared">
+                <generate_loadout sequence="$ConstructionPlan" level="0.9" result="$Loadouts" faction="$Faction" />
+                <do_all exact="$Loadouts.count" counter="$l">
+                  <apply_loadout sequence="$ConstructionPlan" index="$l" loadout="$Loadouts.{$l}" />
+                </do_all>
+                <remove_value name="$Loadouts" />
+                <set_value name="$TM_BuildPrepared" exact="true" />
+              </do_if>
+            </do_elseif>
+          </actions>
+        </cue>
+        <cue name="Force_Evaluation" instantiate="true">
+          <conditions>
+            <event_cue_signalled />
+          </conditions>
+          <actions>
+            <set_value name="$EvaluationDelay" exact="0s" />
+            <reset_cue cue="Evaluate" />
+          </actions>
+        </cue>
+        <cue name="Evaluate">
+          <delay exact="$EvaluationDelay" />
+          <actions>
+            <set_value name="$OldResult" exact="$EvaluationResult" />
+            <set_value name="$EvaluationResult" exact="'unknown'" />
+            <do_if value="$StationConstructed">
+              <set_value name="$EvaluationResult" exact="'achieved'" />
+            </do_if>
+            <do_else>
+              <do_if value="@$TM_BuildPrepared and not @$TM_BuildAccepted">
+                <set_value name="$EvaluationResult" exact="'preparing'" />
+              </do_if>
+              <do_else>
+                <do_if value="$Phase == 'build' and not $Station.exists">
+                  <set_value name="$EvaluationResult" exact="'failed'" />
+                </do_if>
+                <do_else>
+                  <set_value name="this.$BuildingProcessor" exact="$Station.buildingprocessor" />
+                  <do_if value="this.$BuildingProcessor and (not this.$BuildingProcessor.requiresconstructionvessel or this.$BuildingProcessor.buildmodule.constructionvessel)">
+                    <set_value name="$EvaluationResult" exact="'performing'" />
+                  </do_if>
+                  <do_elseif value="not $DesiredEndTime">
+                    <set_value name="$EvaluationResult" exact="'preparing'" />
+                  </do_elseif>
+                  <do_elseif value="not $InStandby and player.age gt $DesiredEndTime">
+                    <do_if value="not $OverTime or player.age gt $OverTime">
+                      <set_value name="$EvaluationResult" exact="'failed'" />
+                    </do_if>
+                    <do_else>
+                      <set_value name="$EvaluationResult" exact="'failed'" />
+                    </do_else>
+                  </do_elseif>
+                  <do_else>
+                    <set_value name="$EvaluationResult" exact="'preparing'" />
+                  </do_else>
+                </do_else>
+              </do_else>
+            </do_else>
+            <debug_text text="$DebugText + 'Evaluation result changed from ' + $OldResult + ' to ' + $EvaluationResult" context="false" chance="if $EvaluationResult == $OldResult then 0 else $DebugChance" />
+            <set_value name="$RegistryTable.$EvaluationResult" exact="$EvaluationResult" />
+            <assert value="$EvaluationResult != 'unknown'" text="'Subgoal is in an invalid state [Owen]'" />
+            <set_value name="$EvaluationDelay" min="10s" max="20s" />
+            <reset_cue cue="Evaluate" />
+          </actions>
+        </cue>
+        <cue name="Station_Management">
+          <conditions>
+            <event_cue_signalled />
+          </conditions>
+          <actions>
+            <set_value name="$StationConstructed" exact="false" />
+            <do_if value="$Station.exists">
+
+            </do_if>
+            <do_else>
+              <assert value="$Station.exists" text="'Station does not exist. This cue should not have been signalled. [Owen]'" />
+              <reset_cue cue="this" />
+            </do_else>
+          </actions>
+          <cues>
+            <cue name="Station_UnderConstruction" comment="not instantiated intentionally, so it triggers only once - even if multiple modules are being built!">
+              <conditions>
+                <event_build_started object="$Station.buildstorage" />
+              </conditions>
+              <actions>
+                <do_if value="((not namespace.static.$subgoal_lastnotification?) or (player.age gt namespace.static.$subgoal_lastnotification + 60s))">
+                  <run_actions ref="md.TM_Empire_FactionLogic.Get_Faction_Situation_By_Sector" result="this.$NotificationSituation">
+                    <param name="Sector" value="$Station.sector" />
+                    <param name="Faction" value="$Faction" />
+                  </run_actions>
+                  <do_if value="this.$NotificationSituation">
+                    <do_if value="this.$NotificationSituation == 'faction_is_war_host'">
+                      <set_value name="this.$NotificationHeadline" exact="{1015,301}" comment="War update" />
+                    </do_if>
+                    <do_elseif value="this.$NotificationSituation == 'faction_is_war_enemy'">
+                      <set_value name="this.$NotificationHeadline" exact="{1015,301}" comment="War update" />
+                    </do_elseif>
+                    <do_elseif value="this.$NotificationSituation == 'enemy_to_local_friend'">
+                      <set_value name="this.$NotificationHeadline" exact="{1015,309}" comment="Emergency update" />
+                    </do_elseif>
+                    <do_elseif value="this.$NotificationSituation == 'neutral_to_local_friend'">
+                      <set_value name="this.$NotificationHeadline" exact="{1015,308}" comment="News update" />
+                    </do_elseif>
+                    <substitute_text text="$reason" source="{30004,8301}" comment="$FACTION$ station under construction in $DESTINATION$">
+                      <replace string="'$FACTION$'" with="$Faction.name" />
+                      <replace string="'$DESTINATION$'" with="$Station.sector.knownname" />
+                    </substitute_text>
+                    <do_if value="md.$TM_Empire_DebuggingNotifications">
+                      <set_value name="$reason" exact="$reason + '\n' + $DebugText + ' phase=' + $Phase + ' station: ' + $Station.knownname + ' sector: ' + $Station.sector.knownname" />
+                    </do_if>
+                    <signal_cue_instantly cue="md.GenericMissions.GenericNewsLogbookEntry" param="['', this.$NotificationHeadline, $reason]" />
+                    <set_value name="namespace.static.$subgoal_lastnotification" exact="player.age" />
+                  </do_if>
+                </do_if>
+                <do_if value="player.debugfilteractive.economy_verbose">
+                  <include_actions ref="GenerateDebugTextWithCueID" />
+                  <debug_text filter="economy_verbose" text="'#FL#;%1;StationStartedConstruction;%2;%3;%4;%5;%6;%7;%8'.[player.age, $DebugGoalText, $DebugText, $Station.knownname, $Station.idcode, $Target.knownname, $Faction.id, @$OwnerGoal.$EnemyFaction.id]" context="false" />
+                </do_if>
+              </actions>
+            </cue>
+            <cue name="Station_Destroyed">
+              <conditions>
+                <event_object_destroyed object="$Station" />
+              </conditions>
+              <actions>
+                <run_actions ref="md.TM_Empire_FactionLogic.Get_Faction_Situation_By_Sector" result="this.$NotificationSituation">
+                  <param name="Sector" value="$Station.sector" />
+                  <param name="Faction" value="$Faction" />
+                </run_actions>
+                <do_if value="this.$NotificationSituation">
+                  <do_if value="this.$NotificationSituation == 'faction_is_war_host'">
+                    <set_value name="this.$NotificationHeadline" exact="{1015,301}" comment="War update" />
+                  </do_if>
+                  <do_elseif value="this.$NotificationSituation == 'faction_is_war_enemy'">
+                    <set_value name="this.$NotificationHeadline" exact="{1015,301}" comment="War update" />
+                  </do_elseif>
+                  <do_elseif value="this.$NotificationSituation == 'enemy_to_local_friend'">
+                    <set_value name="this.$NotificationHeadline" exact="{1015,308}" comment="News update" />
+                  </do_elseif>
+                  <do_elseif value="this.$NotificationSituation == 'neutral_to_local_friend'">
+                    <set_value name="this.$NotificationHeadline" exact="{1015,309}" comment="Emergency update" />
+                  </do_elseif>
+                </do_if>
+                <do_if value="@this.$NotificationHeadline">
+                  <substitute_text text="$reason" source="{30004,8303}" comment="station was destroyed">
+                    <replace string="'$FACTION$'" with="$Faction.name" />
+                    <replace string="'$DESTINATION$'" with="$Station.sector.knownname" />
+                  </substitute_text>
+                  <do_if value="md.$TM_Empire_DebuggingNotifications">
+                    <set_value name="$reason" exact="$reason + '\n' + $DebugText + ' phase=' + $Phase + ' station: ' + $Station.knownname + ' sector: ' + $Station.sector.knownname" />
+                  </do_if>
+                  <signal_cue_instantly cue="md.GenericMissions.GenericNewsLogbookEntry" param="['', this.$NotificationHeadline, $reason]" />
+                </do_if>
+                <set_value name="$Station" exact="null" />
+                <reset_cue cue="Station_Management" />
+              </actions>
+            </cue>
+            <cue name="Station_Completed">
+              <conditions>
+                <event_build_finished object="$Station.buildstorage" />
+              </conditions>
+              <actions>
+                <debug_text text="$DebugText + player.age + ': Station ' + $Station.knownname + ' ' + $Station + ' has finished building.'" context="false" chance="$DebugChance" />
+                <set_value name="$StationConstructed" exact="true" />
+                <run_actions ref="md.TM_Empire_FactionLogic.Get_Faction_Situation_By_Sector" result="this.$NotificationSituation">
+                  <param name="Sector" value="$Station.sector" />
+                  <param name="Faction" value="$Faction" />
+                </run_actions>
+                <do_if value="this.$NotificationSituation">
+                  <do_if value="this.$NotificationSituation == 'faction_is_war_host'">
+                    <set_value name="this.$NotificationHeadline" exact="{1015,301}" comment="War update" />
+                  </do_if>
+                  <do_elseif value="this.$NotificationSituation == 'faction_is_war_enemy'">
+                    <set_value name="this.$NotificationHeadline" exact="{1015,301}" comment="War update" />
+                  </do_elseif>
+                  <do_elseif value="this.$NotificationSituation == 'enemy_to_local_friend'">
+                    <set_value name="this.$NotificationHeadline" exact="{1015,309}" comment="Emergency update" />
+                  </do_elseif>
+                  <do_elseif value="this.$NotificationSituation == 'neutral_to_local_friend'">
+                    <set_value name="this.$NotificationHeadline" exact="{1015,308}" comment="News update" />
+                  </do_elseif>
+                  <do_if value="@this.$NotificationHeadline">
+                    <substitute_text text="$reason" source="{30004,8302}" comment="Construction of $FACTION$ station completed in $DESTINATION$">
+                      <replace string="'$FACTION$'" with="$Faction.name" />
+                      <replace string="'$DESTINATION$'" with="$Station.sector.knownname" />
+                    </substitute_text>
+                    <do_if value="md.$TM_Empire_DebuggingNotifications">
+                      <set_value name="$reason" exact="$reason + '\n' + $DebugText + ' phase=' + $Phase + ' station: ' + $Station.knownname + ' sector: ' + $Station.sector.knownname" />
+                    </do_if>
+                    <signal_cue_instantly cue="md.GenericMissions.GenericNewsLogbookEntry" param="['', this.$NotificationHeadline, $reason]" />
+                  </do_if>
+                </do_if>
+                <do_if value="player.debugfilteractive.economy_verbose">
+                  <include_actions ref="GenerateDebugTextWithCueID" />
+                  <debug_text filter="economy_verbose" text="'#FL#;%1;StationComplete;%2;%3;%4;%5;%6;%7;%8'.[player.age, $DebugGoalText, $DebugText, $Station.knownname, $Station.idcode, $Target.knownname, $Faction.id, @$OwnerGoal.$EnemyFaction.id]" context="false" />
+                </do_if>
+              </actions>
+            </cue>
+          </cues>
+        </cue>
+        <cue name="Cleanup">
+          <conditions>
+            <check_any>
+              <event_cue_cancelled cue="$OwnerGoal" />
+              <event_cue_signalled />
+            </check_any>
+          </conditions>
+          <actions>
+            <do_if value="$EvaluationResult == 'failed'">
+              <do_if value="$Station.exists">
+                <debug_text text="$DebugText + 'Failed. Removing station ' + $Station.knownname + ' ' + $Station" context="false" chance="$DebugChance" />
+                <set_value name="$TM_CleanupReason" exact="'native_goal_cleanup_retained_actual_property'" />
+                <set_value name="$TM_CleanupReason" exact="'native_goal_cleanup_retained_actual_property'" />
+              </do_if>
+            </do_if>
+            <do_if value="player.debugfilteractive.economy_verbose">
+              <include_actions ref="GenerateDebugTextWithCueID" />
+              <debug_text filter="economy_verbose" text="'#FL#;%1;Cleanup;%2;%3;%4;%5;%6;%7;%8'.[player.age, $DebugGoalText, $DebugText, null, null, $Target.knownname, $Faction.id, @$OwnerGoal.$EnemyFaction.id]" context="false" />
+            </do_if>
+            <do_if value="event.name != 'event_cue_cancelled'">
+              <signal_cue_instantly cue="$OwnerGoal" param="['remove_subgoal', $RegistryTable]" />
+            </do_if>
+            <run_actions ref="md.TM_Empire_Runtime.RevokeGoalApprovals">
+              <param name="CancelledCue" value="Start" />
+            </run_actions>
+            <cancel_cue cue="Start" />
+          </actions>
+        </cue>
+        <cue name="TM_BuildStationProgress" checkinterval="15s">
+          <conditions>
+            <check_value value="$Phase == 'build' and @$TM_BuildPrepared and not @$TM_BuildAccepted" />
+          </conditions>
+          <delay exact="15s" />
+          <actions>
+            <do_if value="@$TM_BuildPlanKey and not @$tm_empire_station_creation and @md.TM_Empire_Construction.Request.$Receipt.$key == $TM_BuildPlanKey and md.TM_Empire_Construction.Request.$Receipt.$state == 'abandoned_before_effect'">
+              <remove_value name="$TM_BuildPlanKey" />
+            </do_if>
+            <do_if value="not @$TM_BuildPlanKey">
+              <run_actions ref="md.TM_Empire_Construction.RequestPlanValidation" result="$TM_PlanResult">
+                <param name="ManagerCue" value="$TM_ManagerCue" />
+                <param name="GoalCue" value="namespace" />
+                <param name="Sequence" value="$ConstructionPlan" />
+              </run_actions>
+              <do_if value="@md.TM_Empire_Construction.Request.$Receipt.$key == $TM_PlanResult">
+                <set_value name="$TM_BuildPlanKey" exact="$TM_PlanResult" />
+              </do_if>
+              <set_value name="$TM_BuildReason" exact="$TM_PlanResult" />
+            </do_if>
+            <do_if value="@$TM_BuildPlanKey">
+              <run_actions ref="md.TM_Empire_Construction.CreateValidatedNativeStation" result="$TM_Creation">
+                <param name="ManagerCue" value="$TM_ManagerCue" />
+                <param name="GoalCue" value="namespace" />
+                <param name="PlanKey" value="$TM_BuildPlanKey" />
+                <param name="Sector" value="$Target" />
+                <param name="Position" value="$Position" />
+                <param name="Macro" value="$StationMacro" />
+                <param name="RawName" value="$StationRawName" />
+                <param name="Budget" value="player.money" />
+              </run_actions>
+              <set_value name="$TM_BuildReason" exact="@$TM_Creation.$reason" />
+              <do_if value="@$TM_Creation.$station.exists">
+                <set_value name="$Station" exact="$TM_Creation.$station" />
+                <set_value name="$RegistryTable.$Station" exact="$Station" />
+                <run_actions ref="md.TM_Empire_Construction.StepCreatedNativeStation" result="$TM_Creation">
+                  <param name="ManagerCue" value="$TM_ManagerCue" />
+                  <param name="GoalCue" value="namespace" />
+                </run_actions>
+                <set_value name="$TM_BuildReason" exact="$TM_Creation.$reason" />
+                <do_if value="$TM_Creation.$state == 'adopted'">
+                  <set_value name="$BuildID" exact="$TM_Creation.$build" />
+                  <set_value name="$TM_BuildAccepted" exact="true" />
+                  <set_value name="$RegistryTable.$Station" exact="$Station" />
+                  <remove_value name="$ConstructionPlan" />
+                  <debug_text text="$DebugText + 'Started construction of station ' + $Station.knownname + ' ' + $Station + ' - Build ID: ' + $BuildID" context="false" chance="$DebugChance" />
+                  <do_if value="player.debugfilteractive.economy_verbose">
+                    <include_actions ref="GenerateDebugTextWithCueID" />
+                    <debug_text filter="economy_verbose" text="'#FL#;%1;CreateStation;%2;%3;%4;%5;%6;%7;%8'.[player.age, $DebugGoalText, $DebugText, $Station.knownname, $Station.idcode, $Target.knownname, $Faction.id, @$OwnerGoal.$EnemyFaction.id]" context="false" />
+                  </do_if>
+                  <signal_cue cue="Station_Management" />
+                  <signal_cue_instantly cue="Force_Evaluation" />
+                </do_if>
+              </do_if>
+            </do_if>
+            <do_if value="not @$TM_BuildAccepted">
+              <reset_cue cue="this" />
+            </do_if>
+          </actions>
+        </cue>
+      </cues>
+    </cue>
+    <library name="GenerateDebugTextWithCueID">
+      <actions>
+        <set_value name="$CueInstanceString" exact="'' + [namespace]" />
+        <substitute_text source="$CueInstanceString" text="$DebugID">
+          <replace string="'md.'" with="''" />
+          <replace string="'.Start'" with="''" />
+          <replace string="'['" with="''" />
+          <replace string="']'" with="''" />
+        </substitute_text>
+        <set_value name="$DebugText" exact="'(' + $Faction.id + ') ' + $DebugID + ': ' + $StationMacro.id + ' in ' + $Target.knownname + ' ' + $Target" />
+        <remove_value name="$DebugID" />
+        <set_value name="$CueInstanceString" exact="'' + [$OwnerGoal]" />
+        <substitute_text source="$CueInstanceString" text="$DebugGoalText">
+          <replace string="'md.'" with="''" />
+          <replace string="'.Start'" with="''" />
+          <replace string="'['" with="''" />
+          <replace string="']'" with="''" />
+        </substitute_text>
+        <remove_value name="$CueInstanceString" />
+      </actions>
+    </library>
+  </cues>
+</mdscript>

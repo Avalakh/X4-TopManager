@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mdscript name="TM_Empire_Lifecycle_Probe" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="md.xsd">
+  <!-- Fixed isolated fixture only. No identifier or executable code supplied by client. -->
+  <cues>
+    <cue name="State" namespace="this"><actions><set_value name="$Fixture" exact="null" /></actions></cue>
+    <cue name="Command" instantiate="true" namespace="this">
+      <conditions><event_ui_triggered screen="'TM_Empire_Probe'" control="'LifecycleProbe'" /></conditions>
+      <actions><run_actions ref="Execute"><param name="Phase" value="event.param3" /><param name="ActorCue" value="this" /></run_actions></actions>
+    </cue>
+    <library name="Execute" purpose="run_actions" namespace="this">
+      <params><param name="Phase" /><param name="ActorCue" /></params>
+      <actions>
+        <do_if value="$Phase == 'prepare' and not State.$Fixture">
+          <set_value name="$Home" exact="@md.TM_Empire_Runtime.Registry.$Station" />
+          <set_value name="$Original" exact="@md.TM_Empire_Runtime.Registry.$Governor" />
+          <do_if value="not $Home.isplayerowned or not $Original.exists or md.TM_Empire_Runtime.Registry.$State != 'active' or md.TM_Empire_Roles.Pending.$Stage != 'idle'"><raise_lua_event name="'TM_Empire_Probe.Result'" param="'lifecycle|state=preparation_unavailable|effects=false'" /><return /></do_if>
+          <get_character_definition reference="$Definition" race="race.argon" faction="faction.argon" tags="[tag.recruitable, tag.regular, tag.pilot]" />
+          <do_if value="not $Definition"><raise_lua_event name="'TM_Empire_Probe.Result'" param="'lifecycle|state=preparation_unavailable|effects=false'" /><return /></do_if>
+          <set_value name="State.$Fixture" exact="table[$state='creating', $original=$Original, $originalseed=$Original.seed, $home=$Home, $homemodule=md.TM_Empire_Runtime.Registry.$Module, $homemanager=@$Home.assignedcontrolentity.{controlpost.manager}]" />
+          <create_station name="$Station" macro="macro.station_gen_factory_base_01_macro" constructionplan="'scenario2_silicon_refinery'" owner="faction.player" sector="$Home.sector" state="componentstate.operational" rawname="'TopManager lifecycle fixture'">
+            <safepos value="$Home.position" min="30km" max="50km" includeplotbox="true" radius="8km" />
+          </create_station>
+          <set_value name="State.$Fixture.$station" exact="$Station" />
+          <create_control_entity object="$Station" post="controlpost.manager"><select faction="faction.argon" tags="controlpost.manager.tag" /><owner exact="faction.player" /></create_control_entity>
+          <create_module name="$Module" object="$Station" macro="macro.tm_empire_control_arg_macro"><position x="4000m" y="2000m" z="0m" /></create_module>
+          <set_value name="State.$Fixture.$module" exact="$Module" />
+          <create_cue_actor cue="$ActorCue" name="$Actor" ref="$Definition"><owner exact="faction.player" /></create_cue_actor>
+          <set_value name="State.$Fixture.$actor" exact="$Actor" />
+          <set_entity_traits entity="$Actor" temporary="false" />
+          <set_entity_role entity="$Actor" role="entityrole.passenger" />
+          <set_entity_role_object entity="$Actor" object="$Station" />
+          <add_actor_to_room actor="$Actor" object="$Station.controlroom" result="$Placed" />
+          <set_value name="State.$Fixture.$seed" exact="$Actor.seed" />
+          <set_value name="State.$Fixture.$state" exact="if $Placed then 'prepared' else 'unknown'" />
+        </do_if>
+        <set_value name="$F" exact="State.$Fixture" />
+        <do_if value="not $F"><raise_lua_event name="'TM_Empire_Probe.Result'" param="'lifecycle|state=not_prepared|effects=false'" /><raise_lua_event name="'TM_Empire_Probe.Result'" param="'lifecycle|state=preparation_unavailable|effects=false'" /><return /></do_if>
+        <do_if value="$Phase == 'bind' and $F.$state == 'prepared' and @md.TM_Empire_Runtime.Registry.$Governor == $F.$original">
+          <set_value name="$F.$state" exact="'binding'" />
+          <set_value name="$F.$oldmanager" exact="@md.TM_Empire_Runtime.Registry.$ManagerCue" />
+          <run_actions ref="md.TM_Empire_Runtime.UnbindGovernor"><param name="Actor" value="$F.$original" /></run_actions>
+          <set_value name="$F.$originaltemporary" exact="$F.$original.istemporary" />
+          <set_entity_traits entity="$F.$original" temporary="false" />
+          <run_actions ref="md.TM_Empire_Roles.RequestAssignment" result="$Bound"><param name="Actor" value="$F.$actor" /><param name="Station" value="$F.$station" /><param name="Module" value="$F.$module" /></run_actions>
+          <set_value name="$F.$state" exact="if $Bound == 'bound' then 'bound' else 'unknown'" />
+        </do_if>
+        <do_if value="($Phase == 'module_loss' or $Phase == 'station_loss' or $Phase == 'actor_loss') and $F.$state == 'bound' and md.TM_Empire_Runtime.Registry.$State == 'active' and @md.TM_Empire_Runtime.Registry.$Governor == $F.$actor and $F.$actor.seed == $F.$seed and $F.$station != $F.$home and $F.$module != $F.$homemodule">
+          <set_value name="$F.$oldmanager" exact="@md.TM_Empire_Runtime.Registry.$ManagerCue" />
+          <set_value name="$F.$state" exact="$Phase" />
+          <do_if value="$Phase == 'module_loss'"><destroy_object object="$F.$module" explosion="false" /></do_if>
+          <do_elseif value="$Phase == 'station_loss'"><set_owner object="$F.$station" faction="faction.argon" /></do_elseif>
+          <do_else><remove_actor_from_room actor="$F.$actor" destroy="true" /></do_else>
+        </do_if>
+        <do_if value="$Phase == 'rebind' and ($F.$state == 'module_loss' or $F.$state == 'station_loss') and not @md.TM_Empire_Runtime.Registry.$Governor.exists and $F.$actor.exists and $F.$actor.seed == $F.$seed">
+          <set_value name="$F.$state" exact="'rebinding'" />
+          <set_owner object="$F.$station" faction="faction.player" />
+          <do_if value="not $F.$module.isoperational"><create_module name="$NewModule" object="$F.$station" macro="macro.tm_empire_control_arg_macro"><position x="4000m" y="2000m" z="0m" /></create_module><set_value name="$F.$module" exact="$NewModule" /></do_if>
+          <run_actions ref="md.TM_Empire_Roles.RequestAssignment" result="$Bound"><param name="Actor" value="$F.$actor" /><param name="Station" value="$F.$station" /><param name="Module" value="$F.$module" /></run_actions>
+          <set_value name="$F.$state" exact="if $Bound == 'bound' then 'bound' else 'unknown'" />
+        </do_if>
+        <do_if value="$Phase == 'restore' and @md.TM_Empire_Runtime.Registry.$Governor == $F.$actor and $F.$actor.exists and $F.$actor.seed == $F.$seed">
+          <run_actions ref="md.TM_Empire_Runtime.UnbindGovernor"><param name="Actor" value="$F.$actor" /></run_actions>
+        </do_if>
+        <do_if value="$Phase == 'restore' and $F.$original.exists and $F.$original.seed == $F.$originalseed and $F.$homemodule.isoperational and $F.$home.isplayerowned and @$F.$home.assignedcontrolentity.{controlpost.manager} == $F.$homemanager and $F.$originaltemporary? and not @md.TM_Empire_Runtime.Registry.$Governor.exists">
+          <set_entity_traits entity="$F.$original" temporary="$F.$originaltemporary" />
+          <run_actions ref="md.TM_Empire_Roles.RequestAssignment" result="$Restored"><param name="Actor" value="$F.$original" /><param name="Station" value="$F.$home" /><param name="Module" value="$F.$homemodule" /></run_actions>
+          <set_value name="$F.$state" exact="if $Restored == 'bound' then 'restored' else 'unknown'" />
+        </do_if>
+        <run_actions ref="md.TM_Empire_Runtime.ValidateBinding" />
+        <set_value name="$Stopped" exact="@$F.$oldmanager and (not $F.$oldmanager.exists or $F.$oldmanager.state == cuestate.cancelled or $F.$oldmanager.state == cuestate.disabled)" />
+        <raise_lua_event name="'TM_Empire_Probe.Result'" param="'lifecycle|phase=' + $Phase + '|state=' + $F.$state + '|runtime=' + md.TM_Empire_Runtime.Registry.$State + '|governor=' + @md.TM_Empire_Runtime.Registry.$Governor + '|manager=' + @md.TM_Empire_Runtime.Registry.$ManagerCue + '|old_manager_stopped=' + $Stopped + '|actor_exists=' + $F.$actor.exists + '|module_operational=' + @$F.$module.isoperational + '|station_owned=' + $F.$station.isplayerowned + '|home_manager_unchanged=' + (@$F.$home.assignedcontrolentity.{controlpost.manager} == $F.$homemanager) + '|original_seed=' + @$F.$original.seed + '|expected_original_seed=' + $F.$originalseed + '|reason=' + @md.TM_Empire_Runtime.Registry.$StopReason + '|free_world_preparation=true'" />
+      </actions>
+    </library>
+  </cues>
+</mdscript>
+

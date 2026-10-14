@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mdscript name="TM_Empire_Blocked_Crew_Probe" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="md.xsd"><cues>
+<cue name="State" namespace="this"><actions><set_value name="$Prepared" exact="false" /></actions></cue>
+<cue name="Command" instantiate="true" namespace="this"><conditions><event_ui_triggered screen="'TM_Empire_Probe'" control="'BlockedCrewProbe'" /></conditions><actions><run_actions ref="ProbeBlockedCrew"><param name="Phase" value="event.param3" /></run_actions></actions></cue>
+<library name="ProbeBlockedCrew" purpose="run_actions" namespace="this">
+      <params>
+        <param name="Phase" />
+      </params>
+      <actions>
+        <do_if value="$Phase == 'prepare'">
+          <do_if value="State.$BlockedCrew?">
+            <raise_lua_event name="'TM_Empire_Probe.Result'" param="'crew_blocked|previous_attempt|effects=false'" />
+            <return />
+          </do_if>
+          <set_value name="$Station" exact="@md.TM_Empire_Runtime.Registry.$Station" />
+          <do_if value="md.TM_Empire_Runtime.Registry.$State != 'active' or not $Station.exists or not $Station.isplayerowned or not $Station.zone.exists or @md.TM_Empire_Personnel.Transfer.$Receipt.$state == 'sent' or @md.TM_Empire_Personnel.Transfer.$Receipt.$state == 'unknown'">
+            <raise_lua_event name="'TM_Empire_Probe.Result'" param="'crew_blocked|context_unavailable|effects=false'" />
+            <return />
+          </do_if>
+          <find_dockingbay name="$Dock" object="$Station" checkoperational="true">
+            <match_dock storage="true" size="tag.dock_s" />
+          </find_dockingbay>
+          <do_if value="not $Dock">
+            <raise_lua_event name="'TM_Empire_Probe.Result'" param="'crew_blocked|dock_unavailable|effects=false'" />
+            <return />
+          </do_if>
+          <set_value name="State.$BlockedCrew" exact="table[$state='creating', $issued=player.age]" />
+          <create_ship name="$Source" macro="macro.ship_arg_s_scout_01_a_macro" dock="$Dock">
+            <owner exact="faction.player" />
+            <loadout>
+              <level exact="1" />
+            </loadout>
+            <pilot actor="null" />
+            <people>
+              <fillpercent exact="100" />
+              <person role="service" weight="100">
+                <select faction="faction.argon" tags="tag.service" />
+              </person>
+            </people>
+          </create_ship>
+          <set_value name="State.$BlockedCrew.$source" exact="$Source" />
+          <create_ship name="$Target" macro="macro.ship_arg_s_scout_01_a_macro" zone="$Station.zone">
+            <owner exact="faction.player" />
+            <loadout>
+              <level exact="1" />
+            </loadout>
+            <pilot actor="null" />
+            <safepos value="$Station.position" min="20km" max="25km" />
+          </create_ship>
+          <set_value name="State.$BlockedCrew.$target" exact="$Target" />
+          <do_if value="not $Source.exists or not $Target.exists or not $Target.people.free">
+            <set_value name="State.$BlockedCrew.$state" exact="'unknown'" />
+            <raise_lua_event name="'TM_Empire_Probe.Result'" param="'crew_blocked|world_preparation_unconfirmed|effects=true'" />
+            <return />
+          </do_if>
+          <set_value name="$People" exact="$Source.people.list" />
+          <do_all exact="[32, $People.count].min" counter="$PersonIndex">
+            <set_value name="$Person" exact="$People.{$PersonIndex}" />
+            <do_if value="$Source.people.{$Person}.role == entityrole.service and not $Source.people.{$Person}.isintransit and not $Source.people.{$Person}.istransferscheduled and not $Source.people.{$Person}.isbusy and not @$Source.roleentity.{$Person}.controlpost">
+              <set_value name="State.$BlockedCrew.$person" exact="$Person" />
+              <set_value name="State.$BlockedCrew.$seed" exact="$Source.people.{$Person}.seed" />
+              <break />
+            </do_if>
+          </do_all>
+          <do_if value="not State.$BlockedCrew.$person?">
+            <set_value name="State.$BlockedCrew.$state" exact="'unknown'" />
+            <raise_lua_event name="'TM_Empire_Probe.Result'" param="'crew_blocked|person_unconfirmed|effects=true'" />
+            <return />
+          </do_if>
+          <set_value name="State.$BlockedCrew.$state" exact="'prepared'" />
+        </do_if>
+        <do_if value="not State.$BlockedCrew?">
+          <raise_lua_event name="'TM_Empire_Probe.Result'" param="'crew_blocked|no_attempt|effects=false'" />
+          <return />
+        </do_if>
+        <set_value name="$Data" exact="State.$BlockedCrew" />
+        <set_value name="$Source" exact="$Data.$source" />
+        <set_value name="$Target" exact="$Data.$target" />
+        <set_value name="$Person" exact="@$Data.$person" />
+        <do_if value="$Phase == 'transfer'">
+          <do_if value="$Data.$state != 'prepared' or $Data.$transferattempted?">
+            <raise_lua_event name="'TM_Empire_Probe.Result'" param="'crew_blocked|previous_attempt_or_not_prepared|effects=false'" />
+            <return />
+          </do_if>
+          <set_value name="$Manager" exact="@md.TM_Empire_Runtime.Registry.$ManagerCue" />
+          <set_value name="$Goal" exact="@$Manager.$tm_empire_economy_cue" />
+          <do_if value="not $Goal.exists or not $Source.exists or not $Target.exists or not $Source.people.{$Person}.exists or $Source.people.{$Person}.seed != $Data.$seed">
+            <raise_lua_event name="'TM_Empire_Probe.Result'" param="'crew_blocked|binding_unavailable|effects=false'" />
+            <return />
+          </do_if>
+          <set_value name="$Data.$transferattempted" exact="player.age" />
+          <run_actions ref="md.TM_Empire_Personnel.RequestTransfer" result="$TransferResult">
+            <param name="ManagerCue" value="$Manager" />
+            <param name="GoalCue" value="$Goal" />
+            <param name="Source" value="$Source" />
+            <param name="Person" value="$Person" />
+            <param name="Target" value="$Target" />
+            <param name="Role" value="entityrole.service" />
+          </run_actions>
+          <set_value name="$Data.$result" exact="$TransferResult" />
+          <do_if value="$TransferResult == 'sent'">
+            <set_value name="$Data.$key" exact="md.TM_Empire_Personnel.Transfer.$Receipt.$key" />
+          </do_if>
+        </do_if>
+        <do_if value="$Phase == 'destination_loss' and $Data.$result == 'sent' and not $Data.$lossissued? and $Target.exists and @md.TM_Empire_Personnel.Transfer.$Receipt.$key == $Data.$key and md.TM_Empire_Personnel.Transfer.$Receipt.$state == 'sent'">
+<set_value name="$Data.$lossissued" exact="player.age" />
+<destroy_object object="$Target" explosion="false" />
+</do_if><set_value name="$Receipt" exact="@md.TM_Empire_Personnel.Transfer.$Receipt" />
+        <set_value name="$Matched" exact="$Data.$key? and @$Receipt.$key == $Data.$key and @$Receipt.$source == $Source and @$Receipt.$target == $Target and @$Receipt.$person == $Person and @$Receipt.$seed == $Data.$seed" />
+        <raise_lua_event name="'TM_Empire_Probe.Result'" param="'crew_blocked|fixture=' + $Data.$state + '|issued=' + $Data.$issued + '|result=' + @$Data.$result + '|key=' + @$Data.$key + '|receipt_matches=' + $Matched + '|receipt_state=' + (if $Matched then $Receipt.$state else 'unmatched') + '|reason=' + (if $Matched then @$Receipt.$reason else '') + '|lossissued=' + @$Data.$lossissued + '|source=' + @$Source.idcode + '|target=' + @$Target.idcode + '|person=' + $Person + '|seed=' + @$Data.$seed + '|source_member=' + @$Source.people.{$Person}.exists + '|target_member=' + @$Target.people.{$Person}.exists + '|target_seed=' + @$Target.people.{$Person}.seed + '|target_role=' + @$Target.people.{$Person}.role + '|transit=' + @$Target.people.{$Person}.isintransit + '|scheduled=' + @$Target.people.{$Person}.istransferscheduled + '|podarrival=' + @$Target.people.{$Person}.podarrivaltime + '|temporary=' + @$Target.people.{$Person}.istemporary + '|target_docked=' + @$Target.dock.exists" />
+      </actions>
+    </library>
+    </cues></mdscript>

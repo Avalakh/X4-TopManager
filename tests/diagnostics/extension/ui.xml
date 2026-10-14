@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<addon name="tm_empire_diagnostics">
+  <environment type="menus">
+    <file name="ui/native_pipe.lua"/>
+    <file name="ui/pipe_presence.lua"/>
+    <file name="ui/save_menu.lua"/>
+    <file name="ui/role_probe.lua"/>
+    <dependency name="sn_mod_support_apis"/>
+  </environment>
+</addon>
